@@ -1,0 +1,5 @@
+
+(date && echo "  => USB plugged $* on /mnt/usb") >> /tmp/LOG
+mkdir -p /mnt/usb
+mount "/dev/$1" /mnt/usb >> /tmp/LOG 2>> /tmp/LOG
+echo "$1" > .mounted

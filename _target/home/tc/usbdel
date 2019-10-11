@@ -1,0 +1,4 @@
+
+[ "$1" != "$(cat .mounted)" ] && exit
+(date && echo "  => USB removed $* on /mnt/usb") >> /tmp/LOG
+umount  /mnt/usb && rm -f .mounted >> /tmp/LOG 2>> /tmp/LOG 
