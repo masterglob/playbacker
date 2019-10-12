@@ -5,7 +5,7 @@
 @set PPK=C:\Users\MAO\Documents\_ssh\id-rsa-priv.ppk
 @set TARGET_PATH=/home/%USER%/_dev
 
-cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\WtPlayer
+cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
 @echo Copying source files to target
 
 

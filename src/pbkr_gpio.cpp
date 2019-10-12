@@ -35,11 +35,16 @@ int      GPIO::io_mode[nb_ios]=
 {-1, -1, -1, -1, -1, -1, -1, -1, // 0-7
 		-1, -1, -1, -1, -1, -1, -1, -1, // 8-15
 		-1, -1, -1, -1, -1, -1, -1, -1, // 16-23
-		-1, -1, -1, -1, -1, -1, -1, -1}; //24 - 31
+		-1, -1, -1, -1, -1, -1, -1, -1}; //24 - 31,
+bool GPIO::_began(false);
 GPIO::GPIO(const GPIO_id id, const int mode, const std::string& name):
 		_name(name),
 		_gpio(id)
 {
+	if(_began)
+	{
+		throw std::range_error("GPIO::begin() already called");
+	}
 	if (_gpio >= nb_ios)
 	{
 		throw std::range_error(std::string("Bad GPIO:")+std::to_string(_gpio));
@@ -57,7 +62,6 @@ GPIO::GPIO(const GPIO_id id, const int mode, const std::string& name):
 	if (io_mode[_gpio] == -1)
 	{
 		io_mode[_gpio] = mode;
-		pinMode(_gpio, mode);
 	}
 	else
 	{
@@ -67,6 +71,25 @@ GPIO::GPIO(const GPIO_id id, const int mode, const std::string& name):
 			_gpio,_pin,
 			mode_to_string (mode), _name.c_str());
 }
+
+void GPIO::begin(void)
+{
+	if (_began)
+	{
+		throw std::range_error("GPIO::begin() called twice!");
+	}
+	_began = true;
+
+	wiringPiSetup ();
+	printf("wiringPiSetup()\n");
+	for (GPIO_id i(0) ; i< nb_ios ; ++i)
+	{
+		const int mode(io_mode[i]);
+		if (mode >= 0)
+			pinMode(i, mode);
+	}
+}
+
 GPIO_id GPIO::pinToId(const PIN_id pin)
 {
 	for (GPIO_id i(0) ; i< nb_ios ; ++i)

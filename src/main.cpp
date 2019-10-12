@@ -23,8 +23,8 @@ static volatile int keepRunning = 1;
 static const int DISPLAY_I2C_ADDRESS (0x27);
 
 DISPLAY::I2C_Display display( DISPLAY_I2C_ADDRESS);
+const GPIOs::Button BTN (GPIOs::GPIO::pinToId(16));
 const GPIOs::Led led(GPIOs::GPIO::pinToId(11));
-const GPIOs::Button BTN (GPIOs::GPIO::pinToId(12));
 
 void intHandler(int dummy) {
 	keepRunning = 0;
@@ -42,14 +42,13 @@ int main (int argc, char**argv)
 {
 	static const int POLL_PERIOD_MS(100);
 	static const float LED_PERIOD_MS(1500);
+	GPIOs::GPIO::begin();
+
 	signal(SIGINT, intHandler);
 	try {
-		wiringPiSetup () ;
-
-
 		display.begin();
 		display.backlight();
-		display.print("Hello!\n");
+		display.print("BUILD " __TIME__ "\n");
 		display.print("World!\n");
 
 		printf("Press btn...!\n");
@@ -61,18 +60,11 @@ int main (int argc, char**argv)
 			if (BTN.pressed()) break;
 			delay (POLL_PERIOD_MS);
 			led_time_ms -= POLL_PERIOD_MS;
-			if (POLL_PERIOD_MS <= 0)
+			if (led_time_ms <= 0)
 			{
 				led_time_ms += LED_PERIOD_MS;
 				led_on = not led_on;
-				if (led_on)
-				{
-					led.on();
-				}
-				else
-				{
-					led.off();
-				}
+				led.set (led_on);
 			}
 		}
 		printf("Button pressed!\n");

@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
 #include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 #include <stdexcept>
 
 #include "pbkr_display.h"
@@ -69,8 +70,8 @@ I2C_Display::I2C_Display (const int address, const int nb_lines):_file(-1),
 		_backlightval(LCD_NOBACKLIGHT),
 		_currLine(0),
 		_nb_lines(nb_lines),
-		_sda (GPIOs::GPIO(GPIO_I2C1_SDA,INPUT,"I2C SDA")),
-		_scl (GPIOs::GPIO(GPIO_I2C1_SCL,GPIO_CLOCK,"I2C SCL"))
+		_sda (GPIOs::GPIO(GPIO_I2C1_SDA,RESERVED_MODE,"I2C SDA")),
+		_scl (GPIOs::GPIO(GPIO_I2C1_SCL,RESERVED_MODE,"I2C SCL"))
 {
 	if (_nb_lines > 1) _displayfunction |= LCD_2LINE;
 }
@@ -81,8 +82,8 @@ void I2C_Display::begin (void)
 	char filename[20];
 
 	snprintf (filename, 19, "/dev/i2c-%d", adapter_nr);
-	printf("Opening '%s'...\n",filename);
-	_file = open(filename, O_RDWR);
+	printf("Opening '%s' (addr=%x)...\n",filename, _address);
+	_file = wiringPiI2CSetupInterface (filename, _address);
 	if (_file < 0) {
 		/* ERROR HANDLING; you can check errno to see what went wrong */
 		throw std::range_error(std::string("Could not find I2C:")+filename);
@@ -220,8 +221,9 @@ void I2C_Display::write4bits(uint8_t value) {
 	pulseEnable(value);
 }
 inline void I2C_Display::expanderWrite(uint8_t value) {
-	const int res = i2c_smbus_write_byte_data(_file,  0,value);
-	if (res < 0)
+	//const int res = i2c_smbus_write_byte_data(_file,  0,value);
+	const int res = wiringPiI2CWrite(_file, value);
+	if (res != 0)
 	{
 		printf("i2c_smbus_write_byte_data returned %d\n",res);
 	}

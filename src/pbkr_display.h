@@ -2,6 +2,7 @@
 #define _pbkr_display_h_
 
 #include <wiringPi.h>
+#include <wiringPiI2C.h>
 #include <inttypes.h>
 #include <stdint.h>
 

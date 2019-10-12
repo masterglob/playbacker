@@ -20,10 +20,14 @@ static const unsigned int nb_ios(32);
 typedef unsigned int GPIO_id;
 typedef int PIN_id;
 typedef int BCM_id;
+
+#define RESERVED_MODE -2
+
 class GPIO
 {
 public:
 	GPIO(const GPIO_id id, const int mode, const std::string& name);
+	static void begin(void);
 	BCM_id getBCM(void)const{return _bcm;};
 	PIN_id getPIN(void)const{return _pin;};
 	static GPIO_id pinToId(const PIN_id pin);
@@ -36,6 +40,7 @@ protected:
 	GPIO_id _gpio;
 	PIN_id _pin;
 	BCM_id _bcm;
+	static bool _began;
 };
 
 
@@ -86,6 +91,7 @@ public:
 	Led (const unsigned int id):GPIO(id, OUTPUT,"LED"){};
 	void on(void)const{digitalWrite(_gpio, HIGH);}
 	void off(void)const{digitalWrite(_gpio, LOW);}
+	void set(bool isOn)const {if (isOn) on(); else off();}
 };
 
 
