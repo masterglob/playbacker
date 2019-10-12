@@ -7,6 +7,9 @@
 
 cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
 
-@echo Running
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "cd %TARGET_PATH%/out && sudo ./pbkr"
-pause
+
+::@%PUTTYPATH%\pscp
+%PUTTYPATH%\pscp -i %PPK% -r src/ %USER%@%IP%:/home/tc/_dev/src
+
+@echo Compiling
+%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make -C %TARGET_PATH% clean all"

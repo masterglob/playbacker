@@ -74,11 +74,8 @@ I2C_Display::I2C_Display (const int address, const int nb_lines):_file(-1),
 		_scl (GPIOs::GPIO(GPIO_I2C1_SCL,RESERVED_MODE,"I2C SCL"))
 {
 	if (_nb_lines > 1) _displayfunction |= LCD_2LINE;
-}
 
-void I2C_Display::begin (void)
-{
-	int adapter_nr = 1;
+	const int adapter_nr = 1;
 	char filename[20];
 
 	snprintf (filename, 19, "/dev/i2c-%d", adapter_nr);
@@ -94,6 +91,10 @@ void I2C_Display::begin (void)
 		throw std::range_error(std::string("I2C init failed"));
 		exit(1);
 	}
+}
+
+void I2C_Display::begin (void)
+{
 
 	delay(50);
 	expanderWrite(0);	// reset expander
