@@ -5,7 +5,8 @@ g++ src/i2s.cpp -o out/i2s -lasound
 
  */
 
-#include <pbkr_snd.h>
+#include "pbkr_snd.h"
+#include "pbkr_utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdexcept>
@@ -20,14 +21,140 @@ g++ src/i2s.cpp -o out/i2s -lasound
 
 using namespace PBKR;
 
-#define PI 3.14159265
+class Console:public Thread
+{
+public:
+	Console(void): Thread(),
+	exitreq(false),
+	doSine(false),
+	_volume(0.01),
+	_fader(NULL)
+{}
+	virtual ~Console(void){}
+	virtual void body(void)
+	{
+		printf("Console Ready\n");
+		while (not exitreq)
+		{
+			printf("> ");
+			fflush(stdout);
+			const char c ( getch());
+			printf("%c\n",c);
+			switch (c) {
+			case 'q':
+			case 'Q':
+				printf("Exit requested\n");
+				exitreq = true;
+				break;
+				// Sine on/off
+			case 's':doSine = not doSine;
+				break;
+			case '+':
+				changeVolume (_volume + 0.02);
+				break;
+			case '-':
+				changeVolume (_volume - 0.02);
+				break;
+			default:
+				printf("Unknown command :0x(%02X)\n",c);
+				break;
+			}
+		}
+		printf("Console Exiting\n");
+	}
+	bool exitreq;
+	bool doSine;
+	float volume(void);
+	void changeVolume (float v, const float duration = volumeFaderDurationS);
+private:
+	static const float volumeFaderDurationS;
+	float _volume;
+	Fader* _fader;
+};
+const float Console::volumeFaderDurationS (0.1);
+
+void Console::changeVolume (float v, const float duration)
+{
+	if (v > 1.0) v = 1.0;
+	if (v < 0.0) v = 0.0;
+	// printf("New volume : %d%%\n",(int)(_volume*100));
+	const float v0(volume()); // !! Compute volume before destroying fader!
+	if (_fader)
+	{
+		free (_fader);
+	}
+	_fader =  new Fader(duration,v0, v);
+}
+
+float Console::volume(void)
+{
+	if (_fader)
+	{
+		const float f(_fader->position());
+		if (_fader->done())
+		{
+			_volume = f;
+			// printf("FADER DONE\n");
+			free (_fader);
+			_fader=NULL;
+		}
+		else
+			return f;
+	}
+	return _volume;
+}
+
+static Console console;
 
 int main (int argc, char**argv)
 {
-	SOUND::SoundPlayer player (argc < 2 ? "hw:0" : argv[1]);
+	SOUND::SoundPlayer player1 ("hw:0");
+	SOUND::SoundPlayer player2 ("hw:1");
 
-	printf("%s open!\n",player.pcm_name());
+	printf("%s open!\n",player1.pcm_name());
+	printf("%s open!\n",player2.pcm_name());
 
+	{
+		console.start();
+
+#define PI 3.14159265
+#define TWO_PI (2.0*PI)
+		float l,r;
+		float phase = 0;
+		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
+		Fader* fader(NULL);
+		float faderVol(1.0);
+		while (1)
+		{
+			if (console.exitreq && !fader)
+			{
+				printf("Exit cleany (no clip)\n");
+				fader = new Fader(0.3, 1.0,0.0);
+			}
+			if (fader)
+			{
+				faderVol = fader->position();
+				if (fader -> done()) break;
+			}
+			if (console.doSine)
+			{
+				l = sin (phase) * console.volume() * faderVol;
+				r = l;
+			}
+			else
+			{
+				l=0;
+				r=0;
+			}
+			phase += phasestep;
+			if (phase > TWO_PI) phase -=TWO_PI;
+
+			VirtualTime::elapseSample();
+			player1.write_sample(l,r);
+			player2.write_sample(l,r);
+		}
+	}
+#if 0
 	try
 	{
 		/* Write num_frames frames from buffer data to    */
@@ -92,7 +219,7 @@ int main (int argc, char**argv)
 		while (1)
 		{
 			const float s=(sine[i++]);
-			player.write_sample(s,s);
+			player1.write_sample(s,s);
 			i %= sinLen;
 		}
 
@@ -101,8 +228,10 @@ int main (int argc, char**argv)
 	catch (std::exception& e) {
 		printf("Exception :%s\n",e.what());
 	}
+#endif
 
-	printf("%s closed!\n",player.pcm_name());
+	printf("%s closed!\n",player1.pcm_name());
+	printf("%s closed!\n",player2.pcm_name());
 	return 0;
 }
 

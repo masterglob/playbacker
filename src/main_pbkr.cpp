@@ -16,6 +16,8 @@
 using namespace PBKR;
 using namespace std;
 
+extern void *signal(int sig, void (*func)(int));
+
 
 namespace
 {

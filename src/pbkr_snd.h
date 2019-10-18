@@ -5,6 +5,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <string>
+#include "pbkr_utils.h"
 
 #include <alsa/asoundlib.h>
 
@@ -17,7 +18,6 @@ typedef uint16_t MonoSample;
 typedef uint32_t StereoSample;
 
 // Output sound frequency
-static const unsigned int FREQUENCY_HZ (44100u);
 #define SND_MAX_LEVEL        ((float)0x7FFF)
 
 /*******************************************************************************

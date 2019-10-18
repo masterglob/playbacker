@@ -4,6 +4,8 @@ OUT=out
 CC=g++
 CFLAGS= -O1 -Wall
 LIBS=-lwiringPi
+LIBS+=-lasound
+LIBS+=-lpthread
 
 
 default:all
@@ -27,6 +29,7 @@ all:prepare compile link_pbkr
 i2s:prepare
 	$(Q)make obj FILE=main_i2s.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
-	$(Q)make link LIBS+=-lasound TARGET=i2s --no-print-directory 
+	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
+	$(Q)make link TARGET=i2s --no-print-directory 
 clean:
 	rm -f src/* .build/*
