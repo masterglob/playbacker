@@ -11,3 +11,4 @@ cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
 
 ::@%PUTTYPATH%\pscp
 %PUTTYPATH%\pscp -i %PPK% -r src/ %USER%@%IP%:/home/tc/_dev/src
+%PUTTYPATH%\pscp -i %PPK% -r Makefile %USER%@%IP%:/home/tc/_dev

@@ -1,9 +1,5 @@
-/* to compile:
+#include "pbkr_snd.h"
 
-
-g++ src/i2s.cpp -o out/i2s -lossredir -laoss -ldl
-
- */
 #include <sys/select.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -17,61 +13,32 @@ g++ src/i2s.cpp -o out/i2s -lossredir -laoss -ldl
 #include <alsa/asoundlib.h>
 #include <alloca.h>
 
-#define PI 3.14159265
+/*******************************************************************************
+ * LOCAL FUNCTIONS
+ *******************************************************************************/
+namespace
+{
 
+// Sound buffer size (in bytes). Contains L + R samples
+#define SND_BUFFER_SIZE   4096
+// number of samples on in SND_BUFFER_SIZE (L + R)
+#define SND_BUFF_SAMPLES  (SND_BUFFER_SIZE / 2)
+// number of samples on in SND_BUFFER_SIZE (in one channel)
+#define SND_CHANNEL_SAMPLES  (SND_BUFF_SAMPLES / 2)
+
+#define SND_FRAGMENTS     2
+
+#define BYTE_PER_STEREO_SAMPLE     (SND_BUFFER_SIZE / SND_CHANNEL_SAMPLES)
+} // namespace
+
+
+/*******************************************************************************
+ * EXTERNAL FUNCTIONS
+ *******************************************************************************/
 namespace PBKR
 {
-/*******************************************************************************
- *
- *******************************************************************************/
-
-typedef uint16_t MonoSample;
-typedef uint32_t StereoSample;
-
-
-#define MAX_VOLUME        ((float)0x7FFF)
-#define SND_FREQ          44100u
-#define SND_FRAGMENTS     2
-#define SND_BUFFER_SIZE   4096
-#define SND_BUFF_SAMPLES  (SND_BUFFER_SIZE / 2)
-#define SND_CHANNEL_SAMPLES  (SND_BUFF_SAMPLES / 2) // number of samples on each channel in  a buffer
-#define BYTE_PER_STEREO_SAMPLE     (SND_BUFFER_SIZE / SND_CHANNEL_SAMPLES)
-#define ZERO_LEVEL        ((PBKR::MonoSample) 0x0000u)
-#define ZERO_LEVEL_ST     ((PBKR::StereoSample) 0x80008000u)
-
-#define FLOAT_TO_SAMPLE16(F) (( (int) (MAX_VOLUME * (F))  ) & 0xFFFF)
-#define TO_STEREO(L,R) (FLOAT_TO_SAMPLE16(L) | ((FLOAT_TO_SAMPLE16(R))<<16))
-
-
-class SoundPlayer
+namespace SOUND
 {
-public:
-	SoundPlayer(const char * device_name = "hw:0");
-	virtual ~SoundPlayer(void);
-	const char* pcm_name(void)const{return _pcm_name;}
-	void fill(const StereoSample* samples, snd_pcm_uframes_t count);
-	void play(unsigned char * data, int frames);
-private:
-	void fail(const std::string& msg);
-	/* Handle for the PCM device */
-	snd_pcm_t *pcm_handle;
-	/* Playback stream */
-	const snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
-	/* This structure contains information about    */
-	/* the hardware and can be used to specify the  */
-	/* configuration to be used for the PCM stream. */
-	snd_pcm_hw_params_t *hwparams;
-	/* Name of the PCM device, default = hw:0,0          */
-	char* _pcm_name;
-
-	StereoSample* _samples;
-	StereoSample* _sampleFill;
-
-	/* 0 = buffer empty */
-	size_t _sampleToFill;
-
-};
-
 /*******************************************************************************/
 SoundPlayer::SoundPlayer(const char * device_name)
 {
@@ -97,7 +64,7 @@ SoundPlayer::SoundPlayer(const char * device_name)
 
 	unsigned int exact_rate;   /* Sample rate returned by */
 	/* snd_pcm_hw_params_set_rate_near */
-	int dir;          /* exact_rate == rate --> dir = 0 */
+	// int dir;          /* exact_rate == rate --> dir = 0 */
 	/* exact_rate < rate  --> dir = -1 */
 	/* exact_rate > rate  --> dir = 1 */
 
@@ -118,14 +85,14 @@ SoundPlayer::SoundPlayer(const char * device_name)
 
 	/* Set sample rate. If the exact rate is not supported */
 	/* by the hardware, use nearest possible rate.         */
-	exact_rate = SND_FREQ;
+	exact_rate = FREQUENCY_HZ;
 	if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
 		fprintf(stderr, "Error setting rate.\n");
 		fail("Error setting rate.");
 	}
-	if (SND_FREQ != exact_rate) {
+	if (FREQUENCY_HZ != exact_rate) {
 		fprintf(stderr, "The rate %d Hz is not supported by your hardware.\n"
-				"==> Using %u Hz instead.\n", SND_FREQ, exact_rate);
+				"==> Using %u Hz instead.\n", FREQUENCY_HZ, exact_rate);
 	}
 	else
 	{
@@ -157,7 +124,7 @@ SoundPlayer::SoundPlayer(const char * device_name)
 	_samples =  (StereoSample *)malloc(SND_BUFFER_SIZE);
 	_sampleFill = _samples;
 	_sampleToFill = 0;
-}
+} // SoundPlayer::SoundPlayer
 
 /*******************************************************************************/
 SoundPlayer::~SoundPlayer(void)
@@ -169,7 +136,7 @@ SoundPlayer::~SoundPlayer(void)
 	//snd_pcm_drain(pcm_handle);
 	free (_pcm_name);
 	free (_samples);
-}
+} // SoundPlayer::~SoundPlayer
 
 /*******************************************************************************/
 void SoundPlayer::fail(const std::string& msg)
@@ -177,7 +144,7 @@ void SoundPlayer::fail(const std::string& msg)
 	std::string s (_pcm_name);
 	fprintf(stderr, "%s\n",msg.c_str());
 	throw std::runtime_error (s + std::string(":") + msg);
-}
+} // SoundPlayer::fail
 
 /*******************************************************************************/
 void SoundPlayer::play(unsigned char * data, int frames)
@@ -187,8 +154,8 @@ void SoundPlayer::play(unsigned char * data, int frames)
 		snd_pcm_prepare(pcm_handle);
 		fprintf(stderr, "<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
 	}
+} // SoundPlayer::play
 
-}
 /*******************************************************************************/
 void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
 {
@@ -220,89 +187,7 @@ void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
 			_sampleFill = _samples;
 		}
 	}
-}
+} // SoundPlayer::fill
 
+} // namespace SOUND
 } // namespace PBKR
-
-
-int main (int argc, char**argv)
-{
-	PBKR::SoundPlayer player (argc < 2 ? "hw:0" : argv[1]);
-
-	printf("%s open!\n",player.pcm_name());
-
-	try
-	{
-		/* Write num_frames frames from buffer data to    */
-		/* the PCM device pointed to by pcm_handle.       */
-		/* Returns the number of frames actually written. */
-		// snd_pcm_sframes_t snd_pcm_writei(pcm_handle, data, num_frames);
-#if 0
-		unsigned char *data;
-		int pcmreturn, l1, l2;
-		short s1, s2;
-		int frames;
-
-		data = (unsigned char *)malloc(SND_BUFFER_SIZE);
-		frames = SND_BUFFER_SIZE >> 2;
-		for(l1 = 0; l1 < 100; l1++) {
-			for(l2 = 0; l2 < frames; l2++) {
-				s1 = (l2 % 128) * 100 - 5000;
-				s2 = (l2 % 256) * 100 - 5000;
-				data[4*l2] = (unsigned char)s1;
-				data[4*l2+1] = s1 >> 8;
-				data[4*l2+2] = (unsigned char)s2;
-				data[4*l2+3] = s2 >> 8;
-			}
-			player.play( data, frames);
-		}
-#else
-		static const int sinLen (200); // for 440Hz: 100.22 samples
-		static const float volume (0.3);
-		PBKR::StereoSample *sine = (PBKR::StereoSample *)malloc (sinLen*sizeof(*sine));
-
-#define DO_SINE
-#ifdef DO_SINE
-		for (int i(0) ; i < sinLen ; i++)
-		{
-			const float s(sin(((float) (PI *2 * i))/sinLen));
-			sine[i] = TO_STEREO(volume * s,volume * s);
-		}
-#else
-		const int vol(MAX_VOLUME /(sinLen  / 2));
-		for (int i(0) ; i < sinLen  / 2; i++)
-		{
-			float r(i);
-			r /= sinLen  / 2;
-			r -= 0.5;
-			r *= 2;
-			sine[i] = TO_STEREO(volume * r,volume * 0);
-		}
-		for (int i(sinLen  / 2) ; i < sinLen  ; i++)
-		{
-			float r(sinLen -i);
-			r /= sinLen  / 2;
-			r -= 0.5;
-			r *= 2;
-			sine[i] = TO_STEREO(volume * r,volume * 0);
-		}
-#endif
-
-		for (int i(0) ; i < sinLen ; i++)
-		{
-			printf ("Sine[%02X]=%08X\n",i,sine[i]);
-		}
-		while (1)
-		{
-			player.fill(sine, sinLen);
-		}
-
-#endif
-	}
-	catch (std::exception& e) {
-		printf("Exception :%s\n",e.what());
-	}
-
-	printf("%s closed!\n",player.pcm_name());
-	return 0;
-}
