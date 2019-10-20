@@ -64,12 +64,12 @@ private:
 /*******************************************************************************
  * FADER
  *******************************************************************************/
-
 class Fader
 {
 public:
 	Fader(float dur_s, float initVal, float finalVal);
 	float position (void);
+	bool update(void); // Return true if fader is done
 	inline bool done (void)const{return _done;}
 private:
 	VirtualTime::Time _initTime;
@@ -81,6 +81,28 @@ private:
 	bool _done;
 };
 
+/*******************************************************************************
+ * FILE MANAGER
+ *******************************************************************************/
+class FileManager: protected Thread
+{
+public:
+	FileManager (const char* path);
+	virtual ~FileManager (void);
+    void playIndex(const size_t i);
+protected:
+	virtual void body(void);
+private:
+    bool is_connected(void);
+    void on_connect(void);
+    void on_disconnect(void);
+    std::string _path;
+    std::string _files[100];
+    int _indexPlaying;
+    size_t _nbFiles;
+    std::string _title;
+    void* _currFile;
+};
 
 /*******************************************************************************
  * GENERAL PURPOSE FUNCTIONSS

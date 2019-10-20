@@ -85,23 +85,28 @@ static const GPIO_id GPIO_22_PIN15 (GPIO::pinToId(15));
 /*******************************************************************************
  *
  *******************************************************************************/
-class Led: protected GPIO
+class Output: public GPIO
 {
 public:
-	Led (const unsigned int id):GPIO(id, OUTPUT,"LED"){};
+	Output (const unsigned int id, const char*name):GPIO(id, OUTPUT,name){};
 	void on(void)const{digitalWrite(_gpio, HIGH);}
 	void off(void)const{digitalWrite(_gpio, LOW);}
 	void set(bool isOn)const {if (isOn) on(); else off();}
+};
+class Led: public Output
+{
+public:
+	Led (const unsigned int id):Output(id, "LED"){};
 };
 
 
 /*******************************************************************************
  *
  *******************************************************************************/
-class Button: protected GPIO
+class Input: protected GPIO
 {
 public:
-	Button (const unsigned int id):GPIO(id, INPUT,"BUTTON"){};
+	Input (const unsigned int id, const char*name="BUTTON"):GPIO(id, INPUT,name){};
 	bool pressed(void)const{return digitalRead(_gpio);}
 };
 }

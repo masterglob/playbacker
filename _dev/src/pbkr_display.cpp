@@ -53,7 +53,10 @@
 #define En 0x04  // Enable bit
 #define Rw 0x02  // Read/Write bit
 #define Rs 0x01  // Register select bit
-
+namespace
+{
+static const int DISPLAY_I2C_ADDRESS (0x27);
+}
 namespace PBKR
 {
 namespace DISPLAY
@@ -61,9 +64,13 @@ namespace DISPLAY
 /*******************************************************************************
  *
  *******************************************************************************/
+DISPLAY::I2C_Display display( DISPLAY_I2C_ADDRESS, GPIOs::GPIO_17_PIN11);
 
-I2C_Display::I2C_Display (const int address, const int nb_lines):_file(-1),
+I2C_Display::I2C_Display (const int address,
+		const GPIOs::GPIO_id powPin,
+		const int nb_lines):_file(-1),
 		_address(address),
+		_powPin (GPIOs::Output (powPin, "I2C POWER")),
 		_displayfunction(LCD_4BITMODE | LCD_5x8DOTS),
 		_displaycontrol(LCD_DISPLAYON | LCD_CURSORON | LCD_BLINKON),
 		_displaymode(LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT),
@@ -92,13 +99,19 @@ I2C_Display::I2C_Display (const int address, const int nb_lines):_file(-1),
 		exit(1);
 	}
 }
+/*******************************************************************************/
+I2C_Display::~I2C_Display(void)
+{
+	_powPin.off();
+}
 
+/*******************************************************************************/
 void I2C_Display::begin (void)
 {
-
-	delay(50);
+	_powPin.on();
+	delay(100);
 	expanderWrite(0);	// reset expander
-	delay(1000);
+	delay(500);
 
 	write4bits(0x03 << 4); // Set to 4 bits
 	delayMicroseconds(4500); // wait min 4.1ms
@@ -134,6 +147,7 @@ void I2C_Display::home(){
 	command(LCD_RETURNHOME);  // set cursor position to zero
 	delayMicroseconds(1600);  // this command takes a long time!
 }
+
 void I2C_Display::noBacklight()
 {
 	_backlightval=LCD_NOBACKLIGHT;

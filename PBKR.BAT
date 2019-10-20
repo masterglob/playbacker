@@ -3,4 +3,4 @@ cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
 call COPY.BAT
 
 @echo Compiling
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make -C %TARGET_PATH% i2s"
+%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make -C %TARGET_PATH% pbkr"

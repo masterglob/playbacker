@@ -65,7 +65,8 @@ GPIO::GPIO(const GPIO_id id, const int mode, const std::string& name):
 	}
 	else
 	{
-		throw std::range_error(std::string("GPIO ")+std::to_string(_gpio)+" is already assigned");
+		throw std::range_error(std::string("GPIO ")+std::to_string(_gpio)+" is already assigned. "
+				"Cannot assign to " + name);
 	}
 	printf("GPIO %d(pin %d) is set to mode %s for %s\n",
 			_gpio,_pin,
@@ -87,6 +88,8 @@ void GPIO::begin(void)
 		const int mode(io_mode[i]);
 		if (mode >= 0)
 			pinMode(i, mode);
+		if (mode == OUTPUT)
+			digitalWrite(i,LOW);
 	}
 }
 

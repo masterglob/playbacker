@@ -1,17 +1,24 @@
 #include "pbkr_utils.h"
+#include "pbkr_display.h"
 #include <stdio.h>
 
 #include <unistd.h>
+#include <string.h>
 #include <termios.h>
+#include <dirent.h>
+#include <iostream>
+#include <fstream>
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
 namespace
 {
+static const char* PROJECT_TITLE ("pbkr.title");
 } // namespace
 
 
+#define PRELOAD_RAM 1
 #define DEBUG (void)
 
 /*******************************************************************************
@@ -158,6 +165,12 @@ Fader::Fader(float dur_s, float initVal, float finalVal):
 				_done(false)
 {}
 
+bool Fader::update(void)
+{
+	if (_finalTime < VirtualTime::now())
+		_done = true;
+	return _done;
+}
 float Fader::position (void)
 {
 	const VirtualTime::Time now (VirtualTime::now());
@@ -176,6 +189,168 @@ float Fader::position (void)
 	return result;
 }
 
+/*******************************************************************************
+ * FILE MANAGER
+ *******************************************************************************/
+FileManager::FileManager (const char* path):
+        Thread(),
+        _path(path),
+        _indexPlaying(-1),
+        _nbFiles(0),
+        _currFile(NULL)
+{
+    start();
+}
+FileManager::~FileManager (void)
+{
+    if (_currFile) free (_currFile);
+}
+
+void FileManager::body(void)
+{
+    printf("FileManager::body(%s)!\n",_path.c_str());
+    DISPLAY::display.noBlink();
+    DISPLAY::display.noCursor();
+    on_disconnect();
+
+    while (1)
+    {
+        do
+        {
+            usleep(10 * 1000);
+        } while (not is_connected());
+        on_connect();
+        do
+        {
+            usleep(10 * 1000);
+        } while (is_connected());
+        on_disconnect();
+    }
+}
+
+bool FileManager::is_connected(void)
+{
+    DIR *dir;
+    if ((dir = opendir (_path.c_str())) != NULL)
+    {
+        closedir (dir);
+        return true;
+    }
+    return false;
+}
+
+void FileManager::on_disconnect(void)
+{
+    DISPLAY::display.clear();
+    DISPLAY::display.print("No USB key...\n");
+    printf("USB disconnected!\n");
+    _nbFiles = 0;
+    _title = "NO USB KEY";
+}
+
+void FileManager::on_connect(void)
+{
+    DISPLAY::display.clear();
+    DISPLAY::display.print("USB connected!\n");
+    printf("USB connected!\n");
+
+    // search for compatible files
+    DIR *dir;
+    struct dirent *ent;
+    _nbFiles = 0;
+    if ((dir = opendir (_path.c_str())) != NULL)
+    {
+        // using  std::regex is reaaly too long for compile time!
+
+        while ((ent = readdir (dir)) != NULL)
+        {
+            const size_t l(strlen(ent->d_name));
+            if (l < 4) continue;
+            const char* end(&ent->d_name[l-4]);
+            if (strcmp (end,".WAV") == 0 ||
+                    strcmp (end,".wav") == 0)
+            {
+                printf ("%s\n", ent->d_name);
+                _files[_nbFiles] =ent->d_name;
+                _nbFiles++;
+            }
+        }
+        closedir (dir);
+    }
+    char txt[40];
+    snprintf(txt,sizeof(txt),"%d files",_nbFiles);
+    DISPLAY::display.print(txt);
+
+    // search for TITLE
+    _title = "No Title";
+    try
+    {
+        std::ifstream f;
+        f.open((_path + PROJECT_TITLE).c_str());
+        if (f.is_open())
+        {
+            getline (f,_title);
+        }
+    }
+    catch (...) {
+    }
+    sleep(1);
+
+    DISPLAY::display.clear();
+    DISPLAY::display.print(_title.c_str());
+    DISPLAY::display.line2();
+    DISPLAY::display.print(txt);
+
+} // FileManager::on_connect
+
+void FileManager::playIndex(const size_t i)
+{
+    if (i > _nbFiles) return;
+    DISPLAY::display.clear();
+    DISPLAY::display.print(_title.c_str());
+    DISPLAY::display.line2();
+    if (i == 0)
+    {
+        if (_currFile) free (_currFile);
+        _currFile = NULL;
+        _indexPlaying = -1;
+        char txt[40];
+        snprintf(txt,sizeof(txt),"%d files",_nbFiles);
+        DISPLAY::display.print(txt);
+        return;
+    }
+    _indexPlaying = i-1;
+    // Read file in RAM (if possible)
+    std::ifstream       file( std::string (_path) + _files[_indexPlaying]);
+    printf("Opening <%s>\n",_files[_indexPlaying].c_str());
+    if (file)
+    {
+        /*
+         * Get the size of the file
+         */
+        file.seekg(0,std::ios::end);
+        std::streampos          length = file.tellg();
+        file.seekg(0,std::ios::beg);
+
+#if PRELOAD_RAM
+        if (_currFile) free (_currFile);
+        _currFile = malloc((unsigned int)length);
+        if (_currFile == NULL)
+        {
+            printf("File too large for RAM... use direct access\n");
+        }
+        else
+        {
+            printf("File <%s> loaded in RAM (%lld k)\n",
+                    _files[i].c_str(),
+                    length / 1024);
+            file.read((char*)_currFile,length);
+        }
+#endif
+        DISPLAY::display.print(_files[_indexPlaying].c_str());
+    }
+
+} // FileManager::playIndex
 
 /*******************************************************************************
  * GENERAL PURPOSE FUNCTIONSS

@@ -111,8 +111,6 @@ int main (int argc, char**argv)
 	SOUND::SoundPlayer player1 ("hw:0");
 	SOUND::SoundPlayer player2 ("hw:1");
 
-	printf("%s open!\n",player1.pcm_name());
-	printf("%s open!\n",player2.pcm_name());
 
 	{
 		console.start();
@@ -228,8 +226,6 @@ int main (int argc, char**argv)
 	}
 #endif
 
-	printf("%s closed!\n",player1.pcm_name());
-	printf("%s closed!\n",player2.pcm_name());
 	return 0;
 }
 

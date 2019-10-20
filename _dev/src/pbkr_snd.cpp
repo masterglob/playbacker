@@ -94,10 +94,6 @@ SoundPlayer::SoundPlayer(const char * device_name)
 		fprintf(stderr, "The rate %d Hz is not supported by your hardware.\n"
 				"==> Using %u Hz instead.\n", FREQUENCY_HZ, exact_rate);
 	}
-	else
-	{
-		fprintf(stdout,"Frequency set to %u Hz\n",exact_rate);
-	}
 
 	/* Set number of channels */
 	if (snd_pcm_hw_params_set_channels(pcm_handle, hwparams, 2) < 0) {
@@ -120,6 +116,7 @@ SoundPlayer::SoundPlayer(const char * device_name)
 	if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
 		fail("Error setting HW params.");
 	}
+	printf("SoundPlayer(%s) opened at %d Hz\n",pcm_name(),exact_rate);
 
 	_samples =  (StereoSample *)malloc(SND_BUFFER_SIZE);
 	_sampleFill = _samples;
@@ -134,6 +131,7 @@ SoundPlayer::~SoundPlayer(void)
 
 	/* Stop PCM device after pending frames have been played */
 	//snd_pcm_drain(pcm_handle);
+	printf("SoundPlayer(%s) closed!\n",pcm_name());
 	free (_pcm_name);
 	free (_samples);
 } // SoundPlayer::~SoundPlayer
