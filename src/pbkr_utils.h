@@ -79,7 +79,6 @@ private:
 	const float _duration;
 	const float _factor;
 	bool _done;
-	float deltap;
 };
 
 

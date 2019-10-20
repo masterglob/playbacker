@@ -117,8 +117,6 @@ int main (int argc, char**argv)
 	{
 		console.start();
 
-#define PI 3.14159265
-#define TWO_PI (2.0*PI)
 		float l,r;
 		float phase = 0;
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;

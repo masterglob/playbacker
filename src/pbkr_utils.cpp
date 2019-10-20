@@ -155,8 +155,7 @@ Fader::Fader(float dur_s, float initVal, float finalVal):
 				_finalVal(finalVal),
 				_duration(VirtualTime::toS(_finalTime-_initTime)),
 				_factor((initVal-finalVal)/_duration),
-				_done(false),
-				deltap(0.0)
+				_done(false)
 {}
 
 float Fader::position (void)
@@ -173,16 +172,6 @@ float Fader::position (void)
 		return _finalVal;
 	}
 	const float delta(VirtualTime::toS(_finalTime - now));
-	if (deltap < delta)
-	{
-		printf("delta issue: %f / %f (now=%lu/%lu), final=(%lu/%lu)\n",
-				delta,
-				deltap,
-				now.nbSec, now.samples,
-				_finalTime.nbSec, _finalTime.samples
-				);
-	}
-	deltap = delta;
 	const float result (_finalVal + _factor * delta);
 	return result;
 }
