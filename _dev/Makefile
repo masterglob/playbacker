@@ -34,6 +34,7 @@ i2s:prepare
 pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory & 
+	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory

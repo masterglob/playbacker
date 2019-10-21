@@ -5,10 +5,13 @@
 #include <stdlib.h>
 #include <stdexcept>
 #include <exception>
+#include <string.h>
+
 
 namespace PBKR
 {
 
+class WavFileLRC;
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
@@ -89,24 +92,35 @@ class FileManager: protected Thread
 public:
 	FileManager (const char* path);
 	virtual ~FileManager (void);
-    void playIndex(const size_t i);
+    void selectIndex(const size_t i);
+    void stopReading(void);
+    void startReading(void);
+    void getSample( float& l, float & r);
+    bool reading(void)const{return _reading;}
 protected:
 	virtual void body(void);
 private:
     bool is_connected(void);
     void on_connect(void);
     void on_disconnect(void);
+    void preBuffer(void);
     std::string _path;
     std::string _files[100];
     int _indexPlaying;
     size_t _nbFiles;
     std::string _title;
-    void* _currFile;
+    WavFileLRC* _file;
+    bool _reading;
+    float _lastL;
+    float _lastR;
 };
 
 /*******************************************************************************
  * GENERAL PURPOSE FUNCTIONSS
  *******************************************************************************/
 const char  getch(void);
+
+#define ZERO(x) memset(&(x),0, sizeof(x))
+
 }
 #endif // _pbkr_utils_h_

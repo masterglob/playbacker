@@ -90,7 +90,7 @@ int main (int argc, char**argv)
 			else
 			{
 				printf ("Unknown command:%s\n",arg);
-				throw;
+				throw ("Unknown command");
 			}
 			i++;
 		}

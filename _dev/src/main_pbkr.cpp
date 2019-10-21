@@ -66,17 +66,23 @@ public:
             case '-':
                 changeVolume (_volume - 0.02);
                 break;
+            case ' ':
+                if (manager.reading())
+                    manager.stopReading();
+                else
+                    manager.startReading ();
+                break;
             case '0':
-                manager.playIndex (0);
+                manager.selectIndex (0);
                 break;
             case '1':
-                manager.playIndex (1);
+                manager.selectIndex (1);
                 break;
             case '2':
-                manager.playIndex (2);
+                manager.selectIndex (2);
                 break;
             case '3':
-                manager.playIndex (3);
+                manager.selectIndex (3);
                 break;
             default:
                 printf("Unknown command :(0x%02X)\n",c);
@@ -104,10 +110,7 @@ void Console::changeVolume (float v, const float duration)
     if (v < 0.0) v = 0.0;
     // printf("New volume : %d%%\n",(int)(_volume*100));
     const float v0(volume()); // !! Compute volume before destroying fader!
-    if (_fader)
-    {
-        free (_fader);
-    }
+    if (_fader) delete (_fader);
     _fader =  new Fader(duration,v0, v);
 }
 
@@ -120,7 +123,7 @@ float Console::volume(void)
         {
             _volume = f;
             // printf("FADER DONE\n");
-            free (_fader);
+            delete (_fader);
             _fader=NULL;
         }
         else
@@ -163,7 +166,7 @@ int main (int argc, char**argv)
 
 		float l,r;
 		float phase = 0;
-		float volume(0.2);
+		float volume(0.9);
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
 		SOUND::SoundPlayer player1 ("hw:0");
 		SOUND::SoundPlayer player2 ("hw:1");
@@ -182,8 +185,9 @@ int main (int argc, char**argv)
 			}
 			else
 			{
-			    l = 0;
-			    r = l;
+			    manager.getSample(l,r);
+                l *=  volume * console.volume();
+                r *=  volume * console.volume();
 			}
 
 			VirtualTime::elapseSample();
@@ -195,7 +199,7 @@ int main (int argc, char**argv)
 
 			if (ledFader->update())
 			{
-				free(ledFader);
+			    delete(ledFader);
 				ledFader = new Fader(0.5,0,0);
 				led_on = not led_on;
 				led.set (led_on);

@@ -1,5 +1,6 @@
 #include "pbkr_utils.h"
 #include "pbkr_display.h"
+#include "pbkr_wav.h"
 #include <stdio.h>
 
 #include <unistd.h>
@@ -15,10 +16,12 @@
 namespace
 {
 static const char* PROJECT_TITLE ("pbkr.title");
+
+
 } // namespace
 
 
-#define PRELOAD_RAM 1
+#define PRELOAD_RAM 0
 #define DEBUG (void)
 
 /*******************************************************************************
@@ -197,13 +200,16 @@ FileManager::FileManager (const char* path):
         _path(path),
         _indexPlaying(-1),
         _nbFiles(0),
-        _currFile(NULL)
+        _file(NULL),
+        _reading(false),
+        _lastL(0.0),
+        _lastR(0.0)
 {
     start();
 }
 FileManager::~FileManager (void)
 {
-    if (_currFile) free (_currFile);
+    if (_file) delete (_file);
 }
 
 void FileManager::body(void)
@@ -238,6 +244,7 @@ bool FileManager::is_connected(void)
     }
     return false;
 }
+
 
 void FileManager::on_disconnect(void)
 {
@@ -303,51 +310,88 @@ void FileManager::on_connect(void)
 
 } // FileManager::on_connect
 
-void FileManager::playIndex(const size_t i)
+
+void FileManager::startReading(void)
+{
+    if (_file)
+    {
+        _reading = true;
+        printf("Start reading...\n");
+    }
+    else
+    {
+        printf("No selected file!\n");
+    }
+}
+
+void FileManager::stopReading(void)
+{
+    _reading = false;
+    _indexPlaying = -1;
+
+    // Read file in RAM (if possible)
+    if (_file) delete (_file);
+    _file = NULL;
+
+    return;
+
+} // FileManager::stopReading
+
+void FileManager::getSample(float& l, float & r)
+{
+    if (_reading && _file)
+    {
+        uint16_t midi(0);
+        _file->getNextSample(l ,r, midi);
+
+        return;
+    }
+
+    l = _lastL;
+    r = _lastR;
+}
+
+void FileManager::selectIndex(const size_t i)
 {
     if (i > _nbFiles) return;
     DISPLAY::display.clear();
     DISPLAY::display.print(_title.c_str());
     DISPLAY::display.line2();
+    stopReading();
     if (i == 0)
     {
-        if (_currFile) free (_currFile);
-        _currFile = NULL;
-        _indexPlaying = -1;
         char txt[40];
         snprintf(txt,sizeof(txt),"%d files",_nbFiles);
         DISPLAY::display.print(txt);
+        stopReading();
         return;
     }
     _indexPlaying = i-1;
-    // Read file in RAM (if possible)
-    std::ifstream       file( std::string (_path) + _files[_indexPlaying]);
-    printf("Opening <%s>\n",_files[_indexPlaying].c_str());
-    if (file)
+    if (_file) delete (_file);
+    try
     {
-        /*
-         * Get the size of the file
-         */
-        file.seekg(0,std::ios::end);
-        std::streampos          length = file.tellg();
-        file.seekg(0,std::ios::beg);
-
-#if PRELOAD_RAM
-        if (_currFile) free (_currFile);
-        _currFile = malloc((unsigned int)length);
-        if (_currFile == NULL)
+        _file = new WavFileLRC ( std::string (_path) , _files[_indexPlaying]);
+    }
+    catch (...) {
+        printf("Open cancelled, file badly formatted\n");
+        _file = NULL;
+        return;
+    }
+    if (_file->is_open())
+    {
+        if (_file->isLRC())
         {
-            printf("File too large for RAM... use direct access\n");
+            printf("Opened %s\n",_file->_filename.c_str());
+            DISPLAY::display.print(_files[_indexPlaying].c_str());
         }
         else
         {
-            printf("File <%s> loaded in RAM (%lld k)\n",
-                    _files[i].c_str(),
-                    length / 1024);
-            file.read((char*)_currFile,length);
+            printf("Incorrect format for %s\n",_file->_filename.c_str());
         }
-#endif
-        DISPLAY::display.print(_files[_indexPlaying].c_str());
+    }
+    else
+    {
+        printf("Failed to open <%s>\n",_files[_indexPlaying].c_str());
     }
 
 } // FileManager::playIndex
