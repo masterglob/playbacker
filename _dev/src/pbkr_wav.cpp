@@ -52,11 +52,11 @@ namespace PBKR
 
 /*******************************************************************************/
 WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
-                _filename(filename),
-                _f(path + filename),
+                _filename(path + filename),
+                _f(_filename),
                 _len(fileLength(_f)),
-                _goodFormat(true),
                 _eof(NULL),
+                _bof(NULL),
                 _bufferIdx(0)
 {
     WAVHdr wavHdr;
@@ -74,66 +74,51 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
     CHECK_FIELD("Bad file size", wavHdr.FileSize + 8, _len);
 
     // CHECK AUDIO HEADER
-    if (_goodFormat)
+    readFile((char*)&audioHdr, sizeof(audioHdr));
+    CHECK_FIELD("File truncated2", _f.gcount(), sizeof(audioHdr));
+    CHECK_FIELD("FMT type", audioHdr.ckID, WAV_HDR_FMT);
+    CHECK_FIELD("NB Channels", audioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
+    CHECK_FIELD("Sampling rate", audioHdr.nSamplesPerSec, NB_SAMPLES_PER_SEC);
+    CHECK_FIELD("Blk size", audioHdr.nBlockAlign, NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE);
+    CHECK_FIELD("bit depth", audioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
+    if (wavHdr.FileSize > 0x10 + 1)
     {
-        readFile((char*)&audioHdr, sizeof(audioHdr));
-        CHECK_FIELD("File truncated2", _f.gcount(), sizeof(audioHdr));
-        CHECK_FIELD("FMT type", audioHdr.ckID, WAV_HDR_FMT);
-        CHECK_FIELD("NB Channels", audioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
-        CHECK_FIELD("Sampling rate", audioHdr.nSamplesPerSec, NB_SAMPLES_PER_SEC);
-        CHECK_FIELD("Blk size", audioHdr.nBlockAlign, NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE);
-        CHECK_FIELD("bit depth", audioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
-        if (wavHdr.FileSize > 0x10 + 1)
+        uint16_t cbSize;
+        readFile((char*)&cbSize, sizeof(cbSize));
+        CHECK_FIELD("File truncated3", _f.gcount(), sizeof(cbSize));
+        if (cbSize == 22)
         {
-            uint16_t cbSize;
-            readFile((char*)&cbSize, sizeof(cbSize));
-            CHECK_FIELD("File truncated3", _f.gcount(), sizeof(cbSize));
-            if (cbSize == 22)
-            {
 
-                readFile((char*)&addHdr, sizeof(addHdr));
-                CHECK_FIELD("File truncated4", _f.gcount(), sizeof(addHdr));
-                CHECK_FIELD("bit depth2", addHdr.wValidBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
-                CHECK_FIELD("Sub PCM type", addHdr.wFormatTag, WAV_FMT_PCM);
-            }
-            else if  (cbSize == 0)
-            {
-                //  No additional HDR
-            }
-            else
-            {
-                CHECK_FIELD("cbSize!=0|22",false,true);
-            }
+            readFile((char*)&addHdr, sizeof(addHdr));
+            CHECK_FIELD("File truncated4", _f.gcount(), sizeof(addHdr));
+            CHECK_FIELD("bit depth2", addHdr.wValidBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
+            CHECK_FIELD("Sub PCM type", addHdr.wFormatTag, WAV_FMT_PCM);
         }
-        // actual format (
-        if (audioHdr.wFormatTag != SUB_FORMAT_MASK)
+        else if  (cbSize == 0)
         {
-            CHECK_FIELD("PCM type", audioHdr.wFormatTag, WAV_FMT_PCM);
+            //  No additional HDR
         }
+        else
+        {
+            CHECK_FIELD("cbSize!=0|22",false,true);
+        }
+    }
+    // actual format (
+    if (audioHdr.wFormatTag != SUB_FORMAT_MASK)
+    {
+        CHECK_FIELD("PCM type", audioHdr.wFormatTag, WAV_FMT_PCM);
     }
     // CHECK DATA HEADER
-    if (_goodFormat)
-    {
-        uint32_t dataMark;
-        uint32_t dataSize;
-        readFile((char*)&dataMark, sizeof(dataMark));
-        CHECK_FIELD("File truncated5", _f.gcount(), sizeof(dataMark));
-        readFile((char*)&dataSize, sizeof(dataSize));
-        CHECK_FIELD("File truncated6", _f.gcount(), sizeof(dataSize));
-        _eof = NULL;
-        // read first buffer
-        ZERO(_buffers[0]._data);
-        readFile((char*)_buffers[0]._data, sizeof(_buffers[0]._data));
-        _buffers[0]._pos = 0;
-        for (size_t i(0) ; i < WAV_NB_BUFFERS ; i++)
-        {
-            readBuffer(i);
-        }
-        _bufferIdx = 0;
-    }
-    // DATA contains : [Chan1 sample 1, Chan2 Sample 1, Chan3 Sample 1, Chan1 Sample 2 ...]
+    uint32_t dataMark;
+    uint32_t dataSize;
+    readFile((char*)&dataMark, sizeof(dataMark));
+    CHECK_FIELD("File truncated5", _f.gcount(), sizeof(dataMark));
+    readFile((char*)&dataSize, sizeof(dataSize));
+    CHECK_FIELD("File truncated6", _f.gcount(), sizeof(dataSize));
 
-    // Fill in buffers
+    _hdrLen = (size_t) _f.tellg();
+
+    reset();
 
 }
 #undef CHECK_FIELD
@@ -146,10 +131,26 @@ WavFileLRC::~WavFileLRC (void)
 }
 
 /*******************************************************************************/
-bool
-WavFileLRC::isLRC(void)const
+void
+WavFileLRC::reset(void)
 {
-    return _goodFormat;
+    if (_bof) delete (_bof);
+    _bof = new Fader(0.2, 0.0, 1.0 );
+    if (_eof) delete(_eof);
+    _eof=NULL;
+    _f.close();
+    _f.open(_filename);
+    _f.seekg(_hdrLen,std::ios::beg);
+    // read first buffer
+    ZERO(_buffers[0]._data);
+    readFile((char*)_buffers[0]._data, sizeof(_buffers[0]._data));
+    _buffers[0]._pos = 0;
+    for (size_t i(0) ; i < WAV_NB_BUFFERS ; i++)
+    {
+        readBuffer(i);
+    }
+    _bufferIdx = 0;
+
 }
 
 /*******************************************************************************/
@@ -160,7 +161,7 @@ WavFileLRC::is_open(void)
 }
 
 /*******************************************************************************/
-void
+bool
 WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
@@ -178,22 +179,35 @@ WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
             l = 0.0;
             r = 0.0;
             midi = 0;
-            return;
+            return false;
         }
     }
     LRC_Sample& sample (b->_data[b->_pos++]);
     l = ((float)sample.l) * READ_VOLUME;
     r = ((float)sample.r) * READ_VOLUME;
+    midi = sample.midi;
     /*printf("Sample = %d / %d\n",sample.l, sample.r);
     sleep (1.0);*/
+    if (_bof)
+    {
+        const float fadevol(_bof->position());
+        l *= fadevol;
+        r *= fadevol;
+        if (_bof->done())
+        {
+            delete _bof;
+            _bof = NULL;
+        }
+    }
     if (_eof)
     {
         // Apply fade out
         const float fadevol(_eof->position());
         l *= fadevol;
         r *= fadevol;
+        if (_eof->done()) return false;
     }
-    midi = sample.midi;
+    return true;
 }
 
 /*******************************************************************************/

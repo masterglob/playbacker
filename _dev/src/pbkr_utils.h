@@ -95,7 +95,7 @@ public:
     void selectIndex(const size_t i);
     void stopReading(void);
     void startReading(void);
-    void getSample( float& l, float & r);
+    void getSample( float& l, float & r, float& l2, float &r2);
     bool reading(void)const{return _reading;}
 protected:
 	virtual void body(void);

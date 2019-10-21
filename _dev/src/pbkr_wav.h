@@ -17,25 +17,28 @@ static const size_t WAV_BUFFER_SAMPLES(1024);
 class WavFileLRC
 {
 public:
-    WavFileLRC (const std::string& path, const std::string& filename);
-    virtual  ~WavFileLRC (void);
-
     /* Check LRC format:
      * - 44.1Khz
      * - 3 channels
      * - 16 bits
-     * - seek file until beginning of data
      */
-    bool isLRC(void)const;
+    WavFileLRC (const std::string& path, const std::string& filename);
+    virtual  ~WavFileLRC (void);
+
     bool is_open(void);
-    void getNextSample(float & l, float & r, uint16_t midi);
+    /**
+     * Return True if the file is still reading. false when terminated
+     */
+    bool getNextSample(float & l, float & r, uint16_t midi);
+    void reset(void);
     const std::string _filename;
 
 private:
     std::ifstream _f;
+    size_t _hdrLen;
     size_t _len;
-    bool _goodFormat;
-    Fader* _eof;
+    Fader* _eof;  // Fade out
+    Fader* _bof;  // Fade in
 
     inline void readFile(char* dest, const size_t s)
     {

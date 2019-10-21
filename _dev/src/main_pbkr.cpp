@@ -66,6 +66,9 @@ public:
             case '-':
                 changeVolume (_volume - 0.02);
                 break;
+            case 'v':
+                printf("Current volume = %d%%\n", (int)(_volume *100));
+                break;
             case ' ':
                 if (manager.reading())
                     manager.stopReading();
@@ -112,6 +115,7 @@ void Console::changeVolume (float v, const float duration)
     const float v0(volume()); // !! Compute volume before destroying fader!
     if (_fader) delete (_fader);
     _fader =  new Fader(duration,v0, v);
+    printf("New volume = %d%%\n", (int)(_volume *100));
 }
 
 float Console::volume(void)
@@ -164,7 +168,8 @@ int main (int argc, char**argv)
 		bool  led_on(true);
 		led.set (led_on);
 
-		float l,r;
+        float l,r;
+        float l2,r2;
 		float phase = 0;
 		float volume(0.9);
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
@@ -185,7 +190,7 @@ int main (int argc, char**argv)
 			}
 			else
 			{
-			    manager.getSample(l,r);
+			    manager.getSample(l,r,l2,r2);
                 l *=  volume * console.volume();
                 r *=  volume * console.volume();
 			}
@@ -195,7 +200,7 @@ int main (int argc, char**argv)
             if (phase > TWO_PI) phase -=TWO_PI;
 
 			player1.write_sample(l,r);
-			player2.write_sample(l,r);
+			player2.write_sample(l2,r2);
 
 			if (ledFader->update())
 			{

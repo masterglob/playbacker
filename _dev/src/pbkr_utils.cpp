@@ -315,6 +315,7 @@ void FileManager::startReading(void)
 {
     if (_file)
     {
+        _file->reset();
         _reading = true;
         printf("Start reading...\n");
     }
@@ -326,29 +327,32 @@ void FileManager::startReading(void)
 
 void FileManager::stopReading(void)
 {
+    printf("Stop reading\n");
     _reading = false;
-    _indexPlaying = -1;
-
-    // Read file in RAM (if possible)
-    if (_file) delete (_file);
-    _file = NULL;
-
-    return;
 
 } // FileManager::stopReading
 
-void FileManager::getSample(float& l, float & r)
+void FileManager::getSample(float& l, float & r, float& l2, float &r2)
 {
     if (_reading && _file)
     {
         uint16_t midi(0);
-        _file->getNextSample(l ,r, midi);
+        if (not _file->getNextSample(l ,r, midi))
+        {
+            stopReading();
+        }
+
+        // TODO fill l2 & r2 with MIDI
+        l2 = 0.0;
+        r2 = 0.0;
 
         return;
     }
 
     l = _lastL;
     r = _lastR;
+    l2 = 0.0;
+    r2 = 0.0;
 }
 
 void FileManager::selectIndex(const size_t i)
@@ -379,15 +383,8 @@ void FileManager::selectIndex(const size_t i)
     }
     if (_file->is_open())
     {
-        if (_file->isLRC())
-        {
-            printf("Opened %s\n",_file->_filename.c_str());
-            DISPLAY::display.print(_files[_indexPlaying].c_str());
-        }
-        else
-        {
-            printf("Incorrect format for %s\n",_file->_filename.c_str());
-        }
+        printf("Opened %s\n",_file->_filename.c_str());
+        DISPLAY::display.print(_files[_indexPlaying].c_str());
     }
     else
     {
