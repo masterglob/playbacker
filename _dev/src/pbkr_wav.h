@@ -2,6 +2,7 @@
 #define _pbkr_wav_h_
 
 #include "pbkr_utils.h"
+#include "pbkr_config.h"
 
 #include <iostream>
 #include <fstream>
@@ -13,6 +14,11 @@ namespace PBKR
 static const size_t WAV_NB_BUFFERS(2);
 static const size_t WAV_BUFFER_SAMPLES(1024);
 
+#if USE_MIDI_AS_TRACK
+typedef int16_t MIDI_Sample;
+#else
+typedef float MIDI_Sample;
+#endif
 /** reading & chacking 3 track WAV file */
 class WavFileLRC
 {
@@ -29,7 +35,7 @@ public:
     /**
      * Return True if the file is still reading. false when terminated
      */
-    bool getNextSample(float & l, float & r, uint16_t midi);
+    bool getNextSample(float & l, float & r, MIDI_Sample& midi);
     void reset(void);
     const std::string _filename;
 
@@ -91,7 +97,7 @@ private:
     {
         int16_t l;
         int16_t r;
-        uint16_t midi;
+        int16_t midi;
     };
 
     struct Buffer

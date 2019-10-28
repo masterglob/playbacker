@@ -7,6 +7,7 @@
 #include <exception>
 #include <string.h>
 
+#include "pbkr_config.h"
 
 namespace PBKR
 {
@@ -84,6 +85,46 @@ private:
 	bool _done;
 };
 
+#if USE_MIDI_AS_TRACK
+/*******************************************************************************
+ * MIDI Event
+ *******************************************************************************/
+class MIDI_Event
+{
+public:
+    MIDI_Event(uint16_t event);
+    bool isProgChange(void);
+    void getProgChange(uint8_t& prg, bool& firstChannel);
+    bool isSoundEvent(void);
+    void getSoundEvent(uint8_t& sndId);
+    bool isCtrlChange(void);
+    void getCtrlChange(uint8_t& ctrl, uint8_t& val, bool& firstChannel);
+private:
+    uint8_t _type;
+    uint8_t _val;
+};
+
+/*******************************************************************************
+ * MIDI Decoder
+ *******************************************************************************/
+
+class MIDI_Decoder
+{
+public:
+    MIDI_Decoder(void);
+    /* @param val: the MIDI value read from WAV stream
+     * @return a MIDI command
+     */
+    void incoming (int16_t val);
+    MIDI_Event* pop (void);
+private:
+    inline void reset(void){_currCmd=0;_currBit=0x8000;}
+    uint16_t _currCmd;
+    uint16_t _currBit;
+    MIDI_Event* _event;
+};
+
+#endif // USE_MIDI_AS_TRACK
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
@@ -113,6 +154,10 @@ private:
     bool _reading;
     float _lastL;
     float _lastR;
+#if USE_MIDI_AS_TRACK
+    MIDI_Decoder _midiDecoder;
+    void process_midi(const int16_t& midi,float& l, float & r);
+#endif // USE_MIDI_AS_TRACK
 };
 
 /*******************************************************************************

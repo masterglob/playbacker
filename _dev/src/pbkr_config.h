@@ -1,3 +1,6 @@
+#ifndef _pbkr_config_h_
+#define _pbkr_config_h_
+
 /*
  HW configuration:
       Raspberry 3 B
@@ -33,4 +36,26 @@ USER LED1    [ 3] -| 15 16 |- [4]
          (Not working, maybe not enoough current. need a relay?
 
 
+================
+NETWORK
+================
+(installation hostapd)
+
+eth0      Link encap:Ethernet  HWaddr B8:27:EB:88:E2:F1
+          inet addr:192.168.7.80  Bcast:192.168.7.255  Mask:255.255.255.0
+
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+
+wlan0     Link encap:Ethernet  HWaddr B8:27:EB:DD:B7:A4
+          inet addr:192.168.22.1  Bcast:192.168.22.255  Mask:255.255.255.0
+
+
+
  */
+
+// If 1 , the 3rd track contains MIDI-type events otherwise raw WAV mono
+#define USE_MIDI_AS_TRACK 0
+
+
+#endif

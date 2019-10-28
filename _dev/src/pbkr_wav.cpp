@@ -162,7 +162,7 @@ WavFileLRC::is_open(void)
 
 /*******************************************************************************/
 bool
-WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
+WavFileLRC::getNextSample(float & l, float & r, MIDI_Sample& midi)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
     Buffer* b(&_buffers[_bufferIdx]);
@@ -185,7 +185,11 @@ WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
     LRC_Sample& sample (b->_data[b->_pos++]);
     l = ((float)sample.l) * READ_VOLUME;
     r = ((float)sample.r) * READ_VOLUME;
+#if USE_MIDI_AS_TRACK
     midi = sample.midi;
+#else
+    midi = ((float)sample.midi) * READ_VOLUME;
+#endif
     /*printf("Sample = %d / %d\n",sample.l, sample.r);
     sleep (1.0);*/
     if (_bof)
@@ -193,6 +197,10 @@ WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
         const float fadevol(_bof->position());
         l *= fadevol;
         r *= fadevol;
+#if USE_MIDI_AS_TRACK
+#else
+        midi *= fadevol;
+#endif
         if (_bof->done())
         {
             delete _bof;
@@ -205,6 +213,10 @@ WavFileLRC::getNextSample(float & l, float & r, uint16_t midi)
         const float fadevol(_eof->position());
         l *= fadevol;
         r *= fadevol;
+#if USE_MIDI_AS_TRACK
+#else
+        midi *= fadevol;
+#endif
         if (_eof->done()) return false;
     }
     return true;

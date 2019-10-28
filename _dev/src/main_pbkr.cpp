@@ -38,7 +38,7 @@ public:
     Console(void): Thread(),
     exitreq(false),
     doSine(false),
-    _volume(0.01),
+    _volume(0.11),
     _fader(NULL)
 {}
     virtual ~Console(void){}
@@ -153,6 +153,14 @@ void intHandler(int dummy) {
  *******************************************************************************/
 int main (int argc, char**argv)
 {
+    /*
+     * usage $0 <hw:x> <hw:y>
+     * with x= I2S DAC
+     * with y=ALSA default DAC
+     */
+    static const char* hifidac(argc>1 ? argv[1]: "hw:0");
+    static const char* lofidac(argc>2 ? argv[2]: "hw:1");
+
 	GPIOs::GPIO::begin();
 
 	signal(SIGINT, intHandler);
@@ -171,10 +179,11 @@ int main (int argc, char**argv)
         float l,r;
         float l2,r2;
 		float phase = 0;
-		float volume(0.9);
+        float volume(0.9);
+        float volume2(0.5);
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
-		SOUND::SoundPlayer player1 ("hw:0");
-		SOUND::SoundPlayer player2 ("hw:1");
+		SOUND::SoundPlayer playerHifi (hifidac);
+		SOUND::SoundPlayer playerLofi (lofidac);
 
 
 
@@ -193,14 +202,16 @@ int main (int argc, char**argv)
 			    manager.getSample(l,r,l2,r2);
                 l *=  volume * console.volume();
                 r *=  volume * console.volume();
+                l2 *= volume2;
+                r2 *= volume2;
 			}
 
 			VirtualTime::elapseSample();
             phase += phasestep;
             if (phase > TWO_PI) phase -=TWO_PI;
 
-			player1.write_sample(l,r);
-			player2.write_sample(l2,r2);
+			playerLofi.write_sample(l2,r2);
+			playerHifi.write_sample(l,r);
 
 			if (ledFader->update())
 			{
