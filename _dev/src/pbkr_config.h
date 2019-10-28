@@ -58,4 +58,5 @@ wlan0     Link encap:Ethernet  HWaddr B8:27:EB:DD:B7:A4
 #define USE_MIDI_AS_TRACK 0
 
 
+#define MOUNT_POINT ("/mnt/usb/PBKR/")
 #endif

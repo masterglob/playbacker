@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <math.h>
 
+#include "pbkr_config.h"
 #include "pbkr_gpio.h"
 #include "pbkr_display.h"
 #include "pbkr_utils.h"
@@ -26,11 +27,8 @@ static volatile int keepRunning = 1;
 const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
 const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
-static const char* MOUNT_POINT("/mnt/usb/PBKR/");
 static FileManager manager (MOUNT_POINT);
 static void intHandler(int dummy);
-
-
 
 class Console:public Thread
 {
@@ -76,16 +74,16 @@ public:
                     manager.startReading ();
                 break;
             case '0':
-                manager.selectIndex (0);
-                break;
             case '1':
-                manager.selectIndex (1);
-                break;
             case '2':
-                manager.selectIndex (2);
-                break;
             case '3':
-                manager.selectIndex (3);
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+                manager.selectIndex (c - '0');
                 break;
             default:
                 printf("Unknown command :(0x%02X)\n",c);
@@ -167,8 +165,6 @@ int main (int argc, char**argv)
 	try {
 	    DISPLAY::display.begin();
 	    DISPLAY::display.backlight();
-	    DISPLAY::display.print("BUILD " __TIME__ "\n");
-	    DISPLAY::display.print("World!\n");
 
 		printf("Press btn...!\n");
         console.start();

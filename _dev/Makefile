@@ -2,10 +2,11 @@ Q=@
 BUILD=.build
 OUT=out
 CC=g++
-CFLAGS= -O1 -Wall
+CFLAGS= -O1 -Wall -I/usr/local/include/libxml2
 LIBS=-lwiringPi
 LIBS+=-lasound
 LIBS+=-lpthread
+LIBS+=-lxml2
 
 
 default:all

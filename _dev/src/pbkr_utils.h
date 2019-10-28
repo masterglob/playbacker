@@ -6,6 +6,11 @@
 #include <stdexcept>
 #include <exception>
 #include <string.h>
+#include <vector>
+
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
 
 #include "pbkr_config.h"
 
@@ -37,6 +42,37 @@ private:
 	static void* real_start(void* param);
 	pthread_t _thread;
 	pthread_attr_t* _attr;
+};
+
+/*******************************************************************************
+ * CONFIGURATION (XML)
+ *******************************************************************************/
+class XMLConfig
+{
+public:
+    XMLConfig(const char* filename);
+
+    class TrackNode
+    {
+    public:
+        TrackNode ( xmlNode *trackNode);
+        ~TrackNode (void);
+    private:
+        xmlNode *_n;
+    public:
+        const int id;
+        const std::string title;
+        const std::string filename;
+    private:
+        const int   getIntAttr(const char* attrName);
+    };
+    typedef std::vector<TrackNode> TrackVect;
+    TrackVect _trackVect;
+    const std::string& getTitle(void)const{return _title;}
+private:
+    std::string _title;
+
+
 };
 
 /*******************************************************************************
@@ -158,6 +194,7 @@ private:
     MIDI_Decoder _midiDecoder;
     void process_midi(const int16_t& midi,float& l, float & r);
 #endif // USE_MIDI_AS_TRACK
+    XMLConfig* _pConfig;
 };
 
 /*******************************************************************************

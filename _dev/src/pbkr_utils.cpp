@@ -10,12 +10,38 @@
 #include <iostream>
 #include <fstream>
 
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#include <libxml/xpath.h>
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
 namespace
 {
-static const char* PROJECT_TITLE ("pbkr.title");
+
+static bool strEqual (const xmlChar* a, const char* b)
+{
+    return strcmp((const char*)a, b) == 0;
+}
+
+static std::string getStrAttr(xmlNode * n,const char* attrName)
+{
+    xmlAttr* attribute = n->properties;
+    while(attribute && attribute->name && attribute->children)
+    {
+        xmlChar* value = xmlNodeListGetString(n->doc, attribute->children, 1);
+        if (::strEqual (attribute->name,attrName))
+        {
+            std::string res(std::string((const char*)value));
+            xmlFree(value);
+            return res;
+        }
+        xmlFree(value);
+        attribute = attribute->next;
+    }
+    throw std::range_error("Attribute not found");
+}
 
 
 } // namespace
@@ -153,6 +179,98 @@ VirtualTime::Time VirtualTime::inS(float s)
 	return result;
 }
 
+/*******************************************************************************
+ * CONFIGURATION (XML)
+ *******************************************************************************/
+
+XMLConfig::XMLConfig(const char* filename)
+{
+    _trackVect.clear();
+    LIBXML_TEST_VERSION
+
+    xmlDocPtr doc; /* the resulting document tree */
+    xmlNode *root_element = NULL;
+
+    doc = xmlReadFile( filename, NULL, 0);
+    if (doc == NULL) {
+        fprintf(stderr, "Failed to parse document\n");
+        return;
+    }
+
+    root_element = xmlDocGetRootElement(doc);
+
+    // Look for "<PBKR>"
+
+    xmlNode *pbkrNode = NULL;
+
+    for (pbkrNode = root_element; pbkrNode; pbkrNode = pbkrNode->next) {
+        if (pbkrNode->type == XML_ELEMENT_NODE && strEqual (pbkrNode->name,"PBKR") )
+            break;
+    }
+    if (pbkrNode)
+    {
+        _title = ::getStrAttr(pbkrNode, "title");
+
+        xmlNode *trackNode = NULL;
+        for (trackNode = pbkrNode->children; trackNode; trackNode = trackNode->next) {
+            if (trackNode->type == XML_ELEMENT_NODE && strEqual (trackNode->name,"Track") )
+            {
+                // process node!
+                TrackNode t (trackNode);
+                _trackVect.push_back(t);
+                printf("Track %d (%s :%s)\n",t.id,t.title.c_str(),t.filename.c_str());
+            }
+        }
+    }
+    else
+    {
+        printf("No element PBKR found...\n");
+    }
+
+
+    printf("%s open successfull\n",filename);
+    xmlFreeDoc(doc);
+    xmlCleanupParser();
+}
+XMLConfig::TrackNode::TrackNode ( xmlNode *trackNode):
+        _n(trackNode),
+        id(getIntAttr("id")),
+        title(::getStrAttr(_n,"title")),
+        filename(::getStrAttr(_n,"file"))
+{
+
+} //XMLConfig::TrackNode::TrackNode
+
+XMLConfig::TrackNode::~TrackNode (void)
+{
+}
+
+const int XMLConfig::TrackNode::getIntAttr(const char* attrName)
+{
+    xmlAttr* attribute = _n->properties;
+    while(attribute && attribute->name && attribute->children)
+    {
+        xmlChar* value = xmlNodeListGetString(_n->doc, attribute->children, 1);
+        if (strEqual (attribute->name,attrName))
+        {
+            const std::string res (strdup((const char*)value));
+            try
+            {
+                int i = std::stoi(res);
+                xmlFree(value);
+                return i;
+            }
+            catch (...)
+            {
+                printf("Invalid INT value:%s\n",res.c_str());
+                return 0;
+            }
+        }
+        xmlFree(value);
+        attribute = attribute->next;
+    }
+    return 0;
+} // XMLConfig::TrackNode::getIntAttr
 
 /*******************************************************************************
  * FADER
@@ -310,9 +428,11 @@ FileManager::FileManager (const char* path):
         _file(NULL),
         _reading(false),
         _lastL(0.0),
-        _lastR(0.0)
+        _lastR(0.0),
+        _pConfig(NULL)
 {
     start();
+
 }
 FileManager::~FileManager (void)
 {
@@ -360,6 +480,13 @@ void FileManager::on_disconnect(void)
     printf("USB disconnected!\n");
     _nbFiles = 0;
     _title = "NO USB KEY";
+
+    if (_pConfig) delete _pConfig;
+    _pConfig = NULL;
+
+    std::string path (MOUNT_POINT);
+    path += "pbkr.xml";
+    _pConfig = new XMLConfig (path.c_str());
 }
 
 void FileManager::on_connect(void)
@@ -396,17 +523,18 @@ void FileManager::on_connect(void)
     DISPLAY::display.print(txt);
 
     // search for TITLE
-    _title = "No Title";
+    if (_pConfig) delete _pConfig;
+
+    std::string path (MOUNT_POINT);
+    path += "pbkr.xml";
+
     try
     {
-        std::ifstream f;
-        f.open((_path + PROJECT_TITLE).c_str());
-        if (f.is_open())
-        {
-            getline (f,_title);
-        }
+        _pConfig = new XMLConfig (path.c_str());
+        _title = _pConfig->getTitle();
     }
     catch (...) {
+        _pConfig = NULL;
     }
     sleep(1);
 
