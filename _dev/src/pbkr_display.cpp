@@ -64,7 +64,7 @@ namespace DISPLAY
 /*******************************************************************************
  *
  *******************************************************************************/
-DISPLAY::I2C_Display display( DISPLAY_I2C_ADDRESS, GPIOs::GPIO_17_PIN11);
+static I2C_Display display( DISPLAY_I2C_ADDRESS, GPIOs::GPIO_17_PIN11);
 
 I2C_Display::I2C_Display (const int address,
 		const GPIOs::GPIO_id powPin,
@@ -251,7 +251,160 @@ void I2C_Display::pulseEnable(uint8_t _data){
 	delayMicroseconds(50);		// commands need > 37us to settle
 }
 
+/*******************************************************************************
+ *  DisplayManager
+ *******************************************************************************/
+
+DisplayManager& DisplayManager::instance(void)
+{
+    static DisplayManager singleton;
+    return singleton;
+}
+
+DisplayManager::DisplayManager(void):
+        m_running(true),
+        m_ready(false),
+        m_printIdx(0),
+        m_title( "Unnamed project"),
+        m_event(""),
+        m_filename(""),
+        m_trackIdx(""),
+        m_trackCount(""),
+        m_reading(false),
+        m_thread([this](){this->incrementTime();})
+{
+}
+DisplayManager::~DisplayManager(void)
+{
+    m_running = false;
+    m_thread.join();
+}
+
+void DisplayManager::incrementTime(void)
+{
+    while (m_running)
+    {
+        for (int i(0);(i<10) && m_running ;i++)
+            usleep(1000*100);
+        m_printIdx++;
+        refresh();
+    }
+}
+
+void DisplayManager::refresh(void)
+{
+    if (!m_ready) return;
+    std::string l1 (m_title);
+    std::string l2 ("");
+    const uint32_t idx(m_printIdx%10);
+    if (m_reading)
+    {
+        if (idx < 3)
+        {
+            l1 = m_title;
+        }
+        else if (idx <6)
+            l1 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
+        else
+            l1 ="Reading...";
+        l2 = m_filename;
+    }
+    else
+    {
+        if (m_filename.length() >0)
+        {
+            if (idx < 4)
+                l2 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
+            else if (idx < 6)
+                l2 = m_filename;
+            else
+                l2 = "Stopped";
+        }
+        else
+        {
+            if (idx < 2)
+                l2 = "No sel. track";
+            else
+                l2 = std::string("Track -") + "/" + m_trackCount;
+        }
+    }
+    if (m_line1 != l1 || m_line2 != l2)
+    {
+        m_line1 = l1;
+        m_line2 = l2;
+        DISPLAY::display.clear();
+        DISPLAY::display.setCursor(0,0);
+        DISPLAY::display.print(l1.c_str());
+        DISPLAY::display.setCursor(0, 1);
+        DISPLAY::display.print(l2.c_str());
+    }
+}
+
+void DisplayManager::onEvent (const Event e, const std::string& param)
+{
+    switch (e) {
+    case evBegin:
+        display.begin();
+        display.backlight();
+        display.noBlink();
+        display.noCursor();
+        m_title = "No project";
+        m_event = "Starting...";
+        m_filename = "";
+        m_ready = true;
+        break;
+    case evEnd:
+        display.noBacklight();
+        display.noDisplay();
+        display.noCursor();
+        m_title = "";
+        m_event = "Exiting...";
+        m_filename = "";
+        break;
+    case evProjectTrackCount:
+        m_trackCount = param;
+        break;
+    case evUsbIn:
+        m_title = "";
+        m_event = "Reading USB...";
+        m_filename = "";
+        break;
+    case evUsbOut:
+        m_title = "No USB key";
+        m_event = "USB unplugged!";
+        m_filename = "";
+        m_trackCount = "";
+        m_trackIdx = "";
+        break;
+    case evProjectTitle:
+        m_title = param;
+        break;
+    case evTrack:
+        m_trackIdx = param;
+        break;
+    case evPlay:
+        m_event = "Reading...";
+        m_reading = true;
+        break;
+    case evStop:
+        m_event = "Stopped...";
+        m_reading = false;
+        break;
+    case evFile:
+        m_event = std::string ("Reading ") + param;
+        m_filename = param;
+        break;
+    default:
+        return;
+    }
+    m_printIdx = 0;
+    refresh();
+}
 
 
-}
-}
+
+
+
+
+} // namespace DISPLAY
+} // namespace PBKR

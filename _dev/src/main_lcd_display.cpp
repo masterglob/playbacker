@@ -17,8 +17,7 @@ using namespace std;
 namespace
 {
 static const int DISPLAY_I2C_ADDRESS (0x27);
-static const GPIOs::GPIO GPIO_I2C_POW(GPIOs::GPIO_17_PIN11,INPUT,"I2C POWER");
-DISPLAY::I2C_Display display( DISPLAY_I2C_ADDRESS, GPIO_I2C_POW);
+PBKR::DISPLAY::I2C_Display display( DISPLAY_I2C_ADDRESS, GPIOs::GPIO_17_PIN11);
 }
 /*******************************************************************************
  *

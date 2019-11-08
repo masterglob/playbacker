@@ -169,6 +169,7 @@ class FileManager: protected Thread
 public:
 	FileManager (const char* path);
 	virtual ~FileManager (void);
+    void startup(void);
     void selectIndex(const size_t i);
     void stopReading(void);
     void startReading(void);
@@ -183,8 +184,8 @@ private:
     void preBuffer(void);
     std::string _path;
     std::string _files[100];
-    int _indexPlaying;
-    size_t _nbFiles;
+    size_t _indexPlaying;
+    size_t m_nbFiles;
     std::string _title;
     WavFileLRC* _file;
     bool _reading;

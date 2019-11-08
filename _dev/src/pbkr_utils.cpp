@@ -19,7 +19,8 @@
  *******************************************************************************/
 namespace
 {
-
+using namespace PBKR;
+static DISPLAY::DisplayManager& display (DISPLAY::DisplayManager::instance());
 static bool strEqual (const xmlChar* a, const char* b)
 {
     return strcmp((const char*)a, b) == 0;
@@ -424,16 +425,15 @@ FileManager::FileManager (const char* path):
         Thread(),
         _path(path),
         _indexPlaying(-1),
-        _nbFiles(0),
+        m_nbFiles(0),
         _file(NULL),
         _reading(false),
         _lastL(0.0),
         _lastR(0.0),
         _pConfig(NULL)
 {
-    start();
-
 }
+
 FileManager::~FileManager (void)
 {
     if (_file) delete (_file);
@@ -442,8 +442,6 @@ FileManager::~FileManager (void)
 void FileManager::body(void)
 {
     printf("FileManager::body(%s)!\n",_path.c_str());
-    DISPLAY::display.noBlink();
-    DISPLAY::display.noCursor();
     on_disconnect();
 
     while (1)
@@ -475,10 +473,9 @@ bool FileManager::is_connected(void)
 
 void FileManager::on_disconnect(void)
 {
-    DISPLAY::display.clear();
-    DISPLAY::display.print("No USB key...\n");
+    display.onEvent(DISPLAY::DisplayManager::evUsbOut);
     printf("USB disconnected!\n");
-    _nbFiles = 0;
+    m_nbFiles = 0;
     _title = "NO USB KEY";
 
     if (_pConfig) delete _pConfig;
@@ -491,14 +488,13 @@ void FileManager::on_disconnect(void)
 
 void FileManager::on_connect(void)
 {
-    DISPLAY::display.clear();
-    DISPLAY::display.print("USB connected!\n");
+    display.onEvent(DISPLAY::DisplayManager::evUsbIn);
     printf("USB connected!\n");
 
     // search for compatible files
     DIR *dir;
     struct dirent *ent;
-    _nbFiles = 0;
+    m_nbFiles = 0;
     if ((dir = opendir (_path.c_str())) != NULL)
     {
         // using  std::regex is reaaly too long for compile time!
@@ -512,15 +508,13 @@ void FileManager::on_connect(void)
                     strcmp (end,".wav") == 0)
             {
                 printf ("%s\n", ent->d_name);
-                _files[_nbFiles] =ent->d_name;
-                _nbFiles++;
+                _files[m_nbFiles] =ent->d_name;
+                m_nbFiles++;
             }
         }
         closedir (dir);
     }
-    char txt[40];
-    snprintf(txt,sizeof(txt),"%d files",_nbFiles);
-    DISPLAY::display.print(txt);
+    display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
 
     // search for TITLE
     if (_pConfig) delete _pConfig;
@@ -528,6 +522,7 @@ void FileManager::on_connect(void)
     std::string path (MOUNT_POINT);
     path += "pbkr.xml";
 
+    _title= "Untitled project";
     try
     {
         _pConfig = new XMLConfig (path.c_str());
@@ -536,12 +531,9 @@ void FileManager::on_connect(void)
     catch (...) {
         _pConfig = NULL;
     }
-    sleep(1);
 
-    DISPLAY::display.clear();
-    DISPLAY::display.print(_title.c_str());
-    DISPLAY::display.line2();
-    DISPLAY::display.print(txt);
+    //sleep(1);
+    display.onEvent(DISPLAY::DisplayManager::evProjectTitle, _title);
 
 } // FileManager::on_connect
 
@@ -553,6 +545,7 @@ void FileManager::startReading(void)
         _file->reset();
         _reading = true;
         printf("Start reading...\n");
+        display.onEvent(DISPLAY::DisplayManager::evPlay);
     }
     else
     {
@@ -563,6 +556,7 @@ void FileManager::startReading(void)
 void FileManager::stopReading(void)
 {
     printf("Stop reading\n");
+    display.onEvent(DISPLAY::DisplayManager::evStop);
     _reading = false;
 
 } // FileManager::stopReading
@@ -635,19 +629,17 @@ void FileManager::getSample(float& l, float & r, float& l2, float &r2)
     r2 = 0.0;
 } // FileManager::getSample
 
+void FileManager::startup(void)
+{
+    start();
+}
+
 void FileManager::selectIndex(const size_t i)
 {
-    if (i > _nbFiles) return;
-    DISPLAY::display.clear();
-    DISPLAY::display.print(_title.c_str());
-    DISPLAY::display.line2();
+    if (i > m_nbFiles) return;
     stopReading();
     if (i == 0)
     {
-        char txt[40];
-        snprintf(txt,sizeof(txt),"%d files",_nbFiles);
-        DISPLAY::display.print(txt);
-        stopReading();
         return;
     }
     _indexPlaying = i-1;
@@ -664,7 +656,18 @@ void FileManager::selectIndex(const size_t i)
     if (_file->is_open())
     {
         printf("Opened %s\n",_file->_filename.c_str());
-        DISPLAY::display.print(_files[_indexPlaying].c_str());
+
+        if (_pConfig && _indexPlaying < _pConfig->_trackVect.size())
+        {
+            const XMLConfig::TrackNode & tn (_pConfig->_trackVect[_indexPlaying]);
+            display.onEvent(DISPLAY::DisplayManager::evFile,tn.title);
+        }
+        else
+        {
+            display.onEvent(DISPLAY::DisplayManager::evFile, _files[_indexPlaying]);
+        }
+        display.onEvent(DISPLAY::DisplayManager::evTrack, std::to_string(_indexPlaying+1));
+
     }
     else
     {

@@ -139,9 +139,7 @@ void intHandler(int dummy) {
     keepRunning = 0;
     console.exitreq = true;
     led.off();
-    DISPLAY::display.noBacklight();
-    DISPLAY::display.noDisplay();
-    DISPLAY::display.noCursor();
+    PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
 }
 
 } // namsepace
@@ -151,6 +149,7 @@ void intHandler(int dummy) {
  *******************************************************************************/
 int main (int argc, char**argv)
 {
+    using namespace PBKR;
     /*
      * usage $0 <hw:x> <hw:y>
      * with x= I2S DAC
@@ -163,9 +162,8 @@ int main (int argc, char**argv)
 
 	signal(SIGINT, intHandler);
 	try {
-	    DISPLAY::display.begin();
-	    DISPLAY::display.backlight();
-
+	    DISPLAY::DisplayManager::instance().onEvent(DISPLAY::DisplayManager::evBegin);
+	    manager.startup();
 		printf("Press btn...!\n");
         console.start();
 		Fader* ledFader(new Fader(0.5,0,0));
