@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string>
 #include <thread>
+#include <mutex>
 
 #include "pbkr_gpio.h"
 
@@ -14,7 +15,8 @@ namespace PBKR
 {
 namespace DISPLAY
 {
-
+static const int WARNING_DISPLAY_SEC(4);
+static const int INFO_DISPLAY_SEC(2);
 
 /*******************************************************************************
  *
@@ -87,6 +89,8 @@ public:
         evUsbIn, evUsbOut,
         evPlay, evStop,
         evTrack, evFile};
+    void info (const std::string& msg);
+    void warning (const std::string& msg);
     void onEvent (const Event e, const std::string& param="");
     void setFilename (const std::string& filename);
     void stopReading (void);
@@ -100,6 +104,9 @@ private:
     bool m_running;
     bool m_ready;
     volatile uint32_t m_printIdx;
+    bool m_isInfo;
+    volatile bool m_canEvent;
+    std::string m_warning;
     std::string m_line1;
     std::string m_line2;
     std::string m_title;
@@ -108,6 +115,7 @@ private:
     std::string m_trackIdx;
     std::string m_trackCount;
     bool m_reading;
+    std::mutex m_mutex;
     std::thread m_thread;
 }; // class
 extern DisplayManager displayManager;

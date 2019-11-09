@@ -17,6 +17,18 @@
 namespace PBKR
 {
 
+class EXCEPTION : public std::exception
+{
+public:
+    EXCEPTION (const std::string& msg): m_msg(msg){}
+    const char * what () const throw ()
+    {
+        return m_msg.c_str();
+    }
+private:
+    std::string m_msg;
+};
+
 class WavFileLRC;
 /*******************************************************************************
  * GLOBAL CONSTANTS
@@ -66,7 +78,7 @@ public:
     private:
         const int   getIntAttr(const char* attrName);
     };
-    typedef std::vector<TrackNode> TrackVect;
+    typedef std::vector<TrackNode,std::allocator<TrackNode>> TrackVect;
     TrackVect _trackVect;
     const std::string& getTitle(void)const{return _title;}
 private:
@@ -170,7 +182,9 @@ public:
 	FileManager (const char* path);
 	virtual ~FileManager (void);
     void startup(void);
-    void selectIndex(const size_t i);
+    void selectIndex(const size_t i); /* @param i = track index, starting at 0 */
+    void nextTrack(void);
+    void prevTrack(void);
     void stopReading(void);
     void startReading(void);
     void getSample( float& l, float & r, float& l2, float &r2);
@@ -184,7 +198,7 @@ private:
     void preBuffer(void);
     std::string _path;
     std::string _files[100];
-    size_t _indexPlaying;
+    size_t _indexPlaying; // 0 = track 1
     size_t m_nbFiles;
     std::string _title;
     WavFileLRC* _file;

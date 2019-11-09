@@ -424,7 +424,7 @@ MIDI_Event* MIDI_Decoder::pop (void)
 FileManager::FileManager (const char* path):
         Thread(),
         _path(path),
-        _indexPlaying(-1),
+        _indexPlaying(0),
         m_nbFiles(0),
         _file(NULL),
         _reading(false),
@@ -542,10 +542,19 @@ void FileManager::startReading(void)
 {
     if (_file)
     {
-        _file->reset();
-        _reading = true;
-        printf("Start reading...\n");
-        display.onEvent(DISPLAY::DisplayManager::evPlay);
+        if (_reading)
+        {
+            _reading = false;
+            printf("Stop reading\n");
+            display.onEvent(DISPLAY::DisplayManager::evStop);
+        }
+        else
+        {
+            _file->reset();
+            _reading = true;
+            printf("Start reading...\n");
+            display.onEvent(DISPLAY::DisplayManager::evPlay);
+        }
     }
     else
     {
@@ -556,6 +565,8 @@ void FileManager::startReading(void)
 void FileManager::stopReading(void)
 {
     printf("Stop reading\n");
+    if (_file) delete (_file);
+    _file=NULL;
     display.onEvent(DISPLAY::DisplayManager::evStop);
     _reading = false;
 
@@ -634,22 +645,37 @@ void FileManager::startup(void)
     start();
 }
 
+void FileManager::nextTrack(void)
+{
+    printf("nextTrack %d %d \n",m_nbFiles, _indexPlaying);
+    if (m_nbFiles > 0 && _indexPlaying + 1 < m_nbFiles )
+        selectIndex(_indexPlaying+1);
+}
+
+void FileManager::prevTrack(void)
+{
+    printf("prevTrack %d %d \n",m_nbFiles, _indexPlaying);
+    if (m_nbFiles > 0 && _indexPlaying > 0 )
+        selectIndex(_indexPlaying - 1);
+}
+
 void FileManager::selectIndex(const size_t i)
 {
-    if (i > m_nbFiles) return;
-    stopReading();
-    if (i == 0)
+    if (i > m_nbFiles)
     {
+        display.warning(std::string("No track #") + std::to_string(i+1));
         return;
     }
-    _indexPlaying = i-1;
-    if (_file) delete (_file);
+    stopReading();
+    _indexPlaying = i;
     try
     {
         _file = new WavFileLRC ( std::string (_path) , _files[_indexPlaying]);
     }
     catch (...) {
         printf("Open cancelled, file badly formatted\n");
+
+        display.warning(std::string("BAD FILE FORMAT"));
         _file = NULL;
         return;
     }
@@ -682,6 +708,7 @@ void FileManager::selectIndex(const size_t i)
 
 const char getch(void) {
 	char buf = 0;
+#if 1
 	struct termios old = {0};
 	if (tcgetattr(0, &old) < 0)
 		perror("tcsetattr()");
@@ -691,12 +718,15 @@ const char getch(void) {
 	old.c_cc[VTIME] = 0;
 	if (tcsetattr(0, TCSANOW, &old) < 0)
 		perror("tcsetattr ICANON");
+#endif
 	if (read(0, &buf, 1) < 0)
 		perror ("read()");
+#if 1
 	old.c_lflag |= ICANON;
 	old.c_lflag |= ECHO;
 	if (tcsetattr(0, TCSADRAIN, &old) < 0)
 		perror ("tcsetattr ~ICANON");
+#endif
 	return (buf);
 }
 

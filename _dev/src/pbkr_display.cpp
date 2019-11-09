@@ -265,6 +265,8 @@ DisplayManager::DisplayManager(void):
         m_running(true),
         m_ready(false),
         m_printIdx(0),
+        m_isInfo(true),
+        m_canEvent(false),
         m_title( "Unnamed project"),
         m_event(""),
         m_filename(""),
@@ -285,19 +287,43 @@ void DisplayManager::incrementTime(void)
     while (m_running)
     {
         for (int i(0);(i<10) && m_running ;i++)
+        {
             usleep(1000*100);
+            m_mutex.lock();
+            m_canEvent = true;
+            m_mutex.unlock();
+        }
+        m_mutex.lock();
         m_printIdx++;
         refresh();
+        m_mutex.unlock();
     }
 }
 
+/*******************************************************************************/
 void DisplayManager::refresh(void)
 {
-    if (!m_ready) return;
+    if (!(m_ready&&m_canEvent)) return;
     std::string l1 (m_title);
     std::string l2 ("");
     const uint32_t idx(m_printIdx%10);
-    if (m_reading)
+    if (m_warning != "")
+    {
+        if (m_isInfo)
+        {
+            l1 ="Info:";
+            if (m_printIdx >= INFO_DISPLAY_SEC)
+                m_warning = "";
+        }
+        else
+        {
+            l1 ="Error:";
+            if (m_printIdx >= WARNING_DISPLAY_SEC)
+                m_warning = "";
+        }
+        l2 = m_warning;
+    }
+    else if (m_reading)
     {
         if (idx < 3)
         {
@@ -307,7 +333,8 @@ void DisplayManager::refresh(void)
             l1 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
         else
             l1 ="Reading...";
-        l2 = m_filename;
+        const char scroll[4] = {'/', '-', '/', '|'};
+        l2 = m_filename + (scroll[m_printIdx % sizeof(scroll)]);
     }
     else
     {
@@ -338,10 +365,40 @@ void DisplayManager::refresh(void)
         DISPLAY::display.setCursor(0, 1);
         DISPLAY::display.print(l2.c_str());
     }
-}
+    m_canEvent = false;
+} // DisplayManager::refresh
 
+/*******************************************************************************/
+void DisplayManager::info (const std::string& msg)
+{
+    if (m_warning == msg) return ;
+
+    m_mutex.lock();
+    m_warning = msg;
+    m_isInfo = true;
+    m_printIdx = 0;
+    refresh();
+
+    m_mutex.unlock();
+} // DisplayManager::info
+
+/*******************************************************************************/
+void DisplayManager::warning (const std::string& msg)
+{
+    if (m_warning == msg) return ;
+
+    m_mutex.lock();
+    m_warning = msg;
+    m_isInfo = false;
+    m_printIdx = 0;
+    refresh();
+    m_mutex.unlock();
+} // DisplayManager::warning
+
+/*******************************************************************************/
 void DisplayManager::onEvent (const Event e, const std::string& param)
 {
+    m_mutex.lock();
     switch (e) {
     case evBegin:
         display.begin();
@@ -354,6 +411,7 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_ready = true;
         break;
     case evEnd:
+        display.clear();
         display.noBacklight();
         display.noDisplay();
         display.noCursor();
@@ -395,12 +453,13 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_filename = param;
         break;
     default:
-        return;
+        break;
     }
+    m_warning = "";
     m_printIdx = 0;
     refresh();
-}
-
+    m_mutex.unlock();
+} // DisplayManager::onEvent
 
 
 
