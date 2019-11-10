@@ -645,6 +645,20 @@ void FileManager::startup(void)
     start();
 }
 
+std::string FileManager::filename(size_t idx)const
+{
+    if (idx > sizeof(_files)/sizeof(*_files)) return "";
+    return _files[idx];
+}
+
+std::string FileManager::fileTitle(size_t idx)const
+{
+    if (idx > sizeof(_files)/sizeof(*_files)) return "";
+    if (_pConfig == NULL) return "";
+    const XMLConfig::TrackNode & tn (_pConfig->_trackVect[idx]);
+    return tn.title;
+}
+
 void FileManager::nextTrack(void)
 {
     printf("nextTrack %d %d \n",m_nbFiles, _indexPlaying);

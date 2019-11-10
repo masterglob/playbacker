@@ -3,6 +3,7 @@
 
 #include "pbkr_config.h"
 #include "pbkr_utils.h"
+#include <mutex>
 #include <inttypes.h>
 #include <alsa/asoundlib.h>
 #include <sys/soundcard.h>
@@ -76,8 +77,10 @@ public:
     virtual ~MIDI_Controller_Mgr(void){}
     virtual void onInputConnect (const MIDI_Ctrl_Cfg& cfg) = 0;
     void onDisconnect (const char* device);
+    const MIDI_Ctrl_Cfg_Vect getControllers(void);
 private:
     MIDI_Ctrl_Cfg_Vect m_InputControllers;
+    std::mutex m_mutex;
 };
 
 

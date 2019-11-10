@@ -342,6 +342,7 @@ void MIDI_Controller_Mgr::loop(void)
             const MIDI_Ctrl_Cfg& cfg (*it);
             if (cfg.isInput)
             {
+                m_mutex.lock();
                 bool found(false);
                 // Was it already present?
                 for (MIDI_Ctrl_Cfg_Vect::const_iterator jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
@@ -354,11 +355,21 @@ void MIDI_Controller_Mgr::loop(void)
                     m_InputControllers.push_back(cfg);
                     onInputConnect (cfg);
                 }
+                m_mutex.unlock();
             }
         }
     }
 
 } // MIDI_Controller_Mgr::body
+
+/*******************************************************************************/
+const MIDI_Ctrl_Cfg_Vect  MIDI_Controller_Mgr::getControllers(void)
+{
+    m_mutex.lock();
+    const MIDI_Ctrl_Cfg_Vect v(m_InputControllers);
+    m_mutex.unlock();
+    return v;
+} // MIDI_Controller_Mgr::getControllers
 
 
 } // namespace MIDI

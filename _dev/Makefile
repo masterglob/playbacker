@@ -33,13 +33,15 @@ i2s:prepare
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make link TARGET=i2s --no-print-directory 
 bdisp:
-	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory  
 	$(Q)make link TARGET=pbkr --no-print-directory 
 pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory

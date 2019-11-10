@@ -189,6 +189,10 @@ public:
     void startReading(void);
     void getSample( float& l, float & r, float& l2, float &r2);
     bool reading(void)const{return _reading;}
+    const std::string title(void)const {return _title;}
+    size_t nbFiles(void)const {return m_nbFiles;}
+    std::string filename(size_t idx)const;
+    std::string fileTitle(size_t idx)const;
 protected:
 	virtual void body(void);
 private:
@@ -197,7 +201,7 @@ private:
     void on_disconnect(void);
     void preBuffer(void);
     std::string _path;
-    std::string _files[100];
+    std::string _files[256];
     size_t _indexPlaying; // 0 = track 1
     size_t m_nbFiles;
     std::string _title;
