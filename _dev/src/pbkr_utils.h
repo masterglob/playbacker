@@ -190,6 +190,7 @@ public:
     void getSample( float& l, float & r, float& l2, float &r2);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return _title;}
+    size_t indexPlaying(void)const {return _indexPlaying;}
     size_t nbFiles(void)const {return m_nbFiles;}
     std::string filename(size_t idx)const;
     std::string fileTitle(size_t idx)const;

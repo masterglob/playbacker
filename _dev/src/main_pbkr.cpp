@@ -17,6 +17,7 @@
 #include "pbkr_snd.h"
 #include "pbkr_midi.h"
 #include "pbkr_webserv.h"
+#include "pbkr_osc.h"
 
 
 /*******************************************************************************
@@ -416,7 +417,21 @@ public:
     {
         using namespace std;
 
-        std::string res(WEB::toTitle1("MIDI configuration."));
+        const std::string idx(findParamValue(params,"idx"));
+        if (idx != "")
+        {
+            try {
+                const unsigned int trackid (std::stoi(idx));
+                manager.selectIndex(trackid);
+            } catch (...) {}
+        }
+        const std::string playpause(findParamValue(params,"playpause"));
+        if (playpause != "")
+        {
+            manager.startReading();
+        }
+
+        std::string res(WEB::toTitle1("Active playlist."));
         res += WEB::toLink("Return to main page", "/");
         res += WEB::newline();
         res += WEB::toLink("Refresh", "/play");
@@ -436,7 +451,16 @@ public:
             res += "</td></tr>";
         }
 
-        res += "</tbody></table>";
+        res += "</tbody></table><BR>";
+
+        if (manager.indexPlaying() < manager.nbFiles())
+        {
+            res += "Selected:";
+            const std::string title (manager.fileTitle(manager.indexPlaying()));
+            res += WEB::toBold(title);
+            res += WEB::newline();
+            res += WEB::toBold(WEB::toLink("Play/Pause","/play&playpause=1"));
+        }
         return res;
     } // pagePLAY
 
@@ -455,8 +479,46 @@ public:
         }
         return res;
     }
+    static std::string findParamValue(
+            const WEB::ParamVect& params,
+            const std::string & name)
+    {
+        for (auto it = params.begin(); it != params.end();it++)
+        {
+            const WEB::HTMLParam& p (*it);
+            if (name == p.name) return p.value;
+        }
+        return "";
+    }
 };
 
+
+class OSC_Event : public OSC::OSC_Event
+{
+public:
+    virtual ~OSC_Event(void){}
+    virtual void onNoValueEvent (const std::string& name);
+    virtual void onFloatEvent (const std::string& name, float f)
+    {
+        printf("OSC EVENT: %s = %.03f\n",name.c_str(), f);
+    }
+};
+static OSC_Event oscEvent;
+
+static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
+static OSC::OSC_Controller osc(oscCfg,oscEvent);
+
+void OSC_Event::onNoValueEvent (const std::string& name)
+{
+    if (name == "/ping")
+    {
+        osc.sendPing();
+    }
+    else
+    {
+        printf("OSC EVENT: %s\n",name.c_str());
+    }
+}
 } // namsepace
 
 /*******************************************************************************

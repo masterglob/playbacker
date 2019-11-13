@@ -88,7 +88,7 @@ void SockListener::do_listen(int id)
             else
                 continue;
         } while(false);
-        // printf("%s\n",request.c_str());
+         printf("%s\n",request.c_str());
         process_request(request);
 
         close(m_fd);
