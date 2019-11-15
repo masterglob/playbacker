@@ -27,13 +27,10 @@ link_display:
 compile:
 	@for i in $$(cd src && ls -1 *.c[p]*); do make obj FILE=$$i --no-print-directory || exit 1; done
 all:prepare compile link_pbkr
-i2s:prepare
-	$(Q)make obj FILE=main_i2s.cpp --no-print-directory
-	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
-	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
-	$(Q)make link TARGET=i2s --no-print-directory 
-bdisp:
-	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory
+main:
+	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
+osc:
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
 pbkr:prepare
