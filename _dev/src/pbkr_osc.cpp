@@ -9,6 +9,11 @@
 #include <string>
 #include <stdexcept>
 
+#define DO_DEBUG 0
+
+#define OSC_PAGE "4"
+#define OSC_NAME(x) "/" OSC_PAGE "/" x
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -26,6 +31,22 @@ inline void* MALLOC(size_t len)
     return res;
 }
 
+std::string splitStringPath(std::string& s)
+{
+    const size_t pos(s.find('/'));
+    if (pos == std::string::npos)
+    {
+        const std::string res (s);
+        s = "";
+        return res;
+    }
+    else
+    {
+        const std::string res (s.substr(0, pos));
+        s = s.substr(1 + pos);
+        return res;
+    }
+}
 } // namespace
 
 
@@ -36,7 +57,7 @@ namespace PBKR
 {
 namespace OSC
 {
-
+OSC_Controller* p_osc_instance = NULL;
 
 /*******************************************************************************
  * OSC_Msg_Hdr
@@ -66,6 +87,15 @@ OSC_Msg_Hdr::~OSC_Msg_Hdr(void)
 /*******************************************************************************
  * OSC_Msg_To_Send
  *******************************************************************************/
+
+/*******************************************************************************/
+OSC_Msg_To_Send::OSC_Msg_To_Send(const OSC_Msg_To_Send& ref)
+:
+        OSC_Msg_Hdr(std::string (ref.m_name), ref.m_type, ref.m_valLen)
+{
+    memcpy (m_value, ref.m_value, m_valLen);
+} // copy constructor
+
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name)
 :
@@ -109,9 +139,11 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
 /*******************************************************************************/
 OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
         m_receiver(receiver),
-        m_cfg(cfg)
+        m_cfg(cfg),
+        m_isClientKnown(false)
 {
-
+    if (p_osc_instance)
+        throw EXCEPTION(std::string ("OSC_Controller : Cannot create several instances!"));
     // Creating socket file descriptor
     m_inSockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_inSockfd < 0 )
@@ -139,6 +171,8 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
         throw EXCEPTION(std::string ("OSC_Controller : Failed to CREATE socket2! "));
 
     start();
+    p_osc_instance = this;
+
 } // MIDI_Controller::MIDI_Controller
 
 /*******************************************************************************/
@@ -149,8 +183,60 @@ OSC_Controller::~OSC_Controller(void)
 } // MIDI_Controller::~MIDI_Controller
 
 /*******************************************************************************/
+void OSC_Controller::sendLabelMessage(const std::string& msg)
+{
+    send (OSC_Msg_To_Send (OSC_NAME("lMessage"), msg));
+} // OSC_Controller::sendMessage
+
+/*******************************************************************************/
+void OSC_Controller::setPbCtrlStatus(const bool isPlaying)
+{
+    send (OSC_Msg_To_Send (OSC_NAME("pPlay"), (float)(isPlaying ? 1.0 : 0.0)));
+    send (OSC_Msg_To_Send (OSC_NAME("pStop"),  (float)(isPlaying ? 0.0 : 1.0)));
+    send (OSC_Msg_To_Send (OSC_NAME("pRec"),  (float)0.0));
+} // OSC_Controller::setPbCtrlStatus
+
+
+/*******************************************************************************/
+void OSC_Controller::setProjectName(const std::string& title)
+{
+    send (OSC_Msg_To_Send (OSC_NAME("lPlaylist"), title));
+}
+
+/*******************************************************************************/
+void OSC_Controller::setTrackName (const std::string& name, size_t trackIdx)
+{
+    const std::string obj (OSC_NAME("lTrack") + std::to_string(trackIdx));
+    send (OSC_Msg_To_Send (obj, name.substr(0, 5)));
+}
+
+/*******************************************************************************/
+void OSC_Controller::setActiveTrack (int trackIdx)
+{
+    if (trackIdx >=0)
+    {
+        const size_t X (trackIdx % OSC_TRACK_NB_X);
+        const size_t Y (trackIdx / OSC_TRACK_NB_X);
+        char buff[32];
+        sprintf(buff,"/%s/mtTrackSel/%u/%u",OSC_PAGE,OSC_TRACK_NB_Y - Y,X+1);
+        send (OSC_Msg_To_Send (buff, (int32_t) 1));
+    }
+}
+
+/*******************************************************************************/
+void OSC_Controller::setFileName(const std::string& title)
+{
+    send (OSC_Msg_To_Send (OSC_NAME("lTrack"), title));
+}
+
+/*******************************************************************************/
 void OSC_Controller::send(const OSC_Msg_To_Send& msg)
 {
+    if (!m_isClientKnown)
+    {
+        m_toSend.push_back(OSC_Msg_To_Send(msg));
+        return;
+    }
 
     struct sockaddr_in addr;
 
@@ -168,9 +254,18 @@ void OSC_Controller::send(const OSC_Msg_To_Send& msg)
         printf("OSC message send failed\n");
     }
     else
-        printf("OSC message send %s to %s:%u\n",msg.m_name,
+    {
+#if DO_DEBUG
+        printf("OSC message send to %s:%u[",
                 inet_ntoa ( m_clientAddr),
                 m_cfg.portOut);
+        for (size_t i(0); i < msg.m_len; ++i)
+        {
+            printf("%02X ",((unsigned char*) msg.m_data)[i]);
+        }
+        printf("] => %s\n",msg.m_name);
+#endif
+    }
 }
 /*******************************************************************************/
 void OSC_Controller::body(void)
@@ -202,12 +297,18 @@ void OSC_Controller::body(void)
             {
                 printf("OSC received FAILED(%d)\n",n);
                 sleep(1);
+                continue;
             }
-            else
+            m_clientAddr = cliaddr.sin_addr;
+            processMsg(buffer, n);
+            m_isClientKnown = true;
+
+            for (auto it(m_toSend.begin()); it != m_toSend.end(); it++)
             {
-                m_clientAddr = cliaddr.sin_addr;
-                processMsg(buffer, n);
+                OSC_Msg_To_Send& msg (*it);
+                send(msg);
             }
+            m_toSend.clear();
         }
     }
     catch (...)
@@ -219,38 +320,105 @@ void OSC_Controller::body(void)
 /*******************************************************************************/
 void OSC_Controller::processMsg(const void* buff, const size_t len)
 {
-    const char* name((const char*)buff);
-    const size_t nameLen(4 + (strlen(name) & ~3));
-    const std::string type(nameLen < len ? &name[nameLen] : "");
+    const char* cbuff((const char*)buff);
+    const std::string name(cbuff);
+    const size_t nameLen(4 + (name.length() & ~3));
+    const std::string type(nameLen < len ? &cbuff[nameLen] : "");
+
+    const uint32_t* le ((const uint32_t*)(&cbuff[nameLen+4]));
+    const uint32_t be (htonl(*le));
+    float paramF (0.0);
+    uint32_t paramI (0);
+    std::string paramS("");
+
+    if (cbuff[0] != '/') return;
 
     if (type == ",f")
     {
-        const uint32_t* le ((const uint32_t*)&name[nameLen+4]);
-        const uint32_t be (htonl(*le));
-        const float*f ((const float*) &be);
-        m_receiver.onFloatEvent(name, *f);
+        paramF = *((const float*)&be);
+#if DO_DEBUG
+        printf("OSC received FLOAT event <%s> => <%f>\n",name.c_str(),paramF);
+#endif
     }
     else if (type == ",i")
     {
-        const uint32_t*f ((uint32_t*) &name[nameLen+4]);
-        printf("OSC received INT event <%s> => <%u>\n",name,*f);
+        paramI = *((uint32_t*) &be);
+        (void)paramI;
+#if DO_DEBUG
+        printf("OSC received INT event <%s> => <%u>\n",name.c_str(),paramI);
+#endif
     }
     else if (type == ",s")
     {
-        printf("OSC received STR event <%s> => <%s>\n",name,&name[nameLen+4]);
+        paramS = &name[nameLen+4];
+#if DO_DEBUG
+        printf("OSC received STR event <%s> => <%s>\n",name.c_str(),paramS.c_str());
+#endif
     }
     else if (type == ",")
     {
-        m_receiver.onNoValueEvent(name);
+        //
     }
     else
     {
+#if DO_DEBUG
         printf("OSC received <%s> type <%s>:",
-                name, type.c_str());
+                name.c_str(), type.c_str());
         printf("[");
         for (size_t i(0); i < len ; i++) printf("%02X ",((const uint8_t*)buff)[i]);
         printf("]\n");
+#endif
     }
+
+    std::string s(&cbuff[1]);
+    const std::string cmd1 (::splitStringPath(s));
+    const std::string cmd2 (::splitStringPath(s));
+    const std::string cmd3 (::splitStringPath(s));
+    const std::string cmd4 (::splitStringPath(s));
+
+    if (cmd1 == "ping")
+    {
+        static const OSC::OSC_Msg_To_Send pingMsg("/ping");
+        send(pingMsg);
+        return;
+    }
+
+    if (cmd1 != "4") return;
+
+    if (paramF > 0.01)
+    {
+        if (cmd2 == "pPlay")
+        {
+            m_receiver.onPlayEvent();
+        }
+        else if (cmd2 == "pStop")
+        {
+            m_receiver.onStopEvent();
+
+        }
+        else if (cmd2 == "pRefresh")
+        {
+            // refresh all
+            m_receiver.forceRefresh();
+        }
+        else if (cmd2 == "mtTrackSel")
+        {
+            try {
+                const int y(OSC_TRACK_NB_Y - std::atoi (cmd3.c_str()));
+                const int x(std::atoi (cmd4.c_str()) - 1);
+                m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
+            } catch (...) {
+                printf("Invalid parameters in mtTrackSel.IGNORED\n");
+            }
+
+        }
+    }
+#if DO_DEBUG
+    printf("cmd= <%s>/<%s>/<%s>/<%s> \n",cmd1.c_str(),
+            cmd2.c_str(),
+            cmd3.c_str(),
+            cmd4.c_str());
+#endif
 
 } // OSC_Controller::processMsg
 

@@ -96,6 +96,8 @@ public:
     void stopReading (void);
     void startReading (void);
     void setProjectTitle (const std::string& title);
+    void setTrackName (const std::string& name, size_t trackIdx);
+    void forceRefresh(void);
 private:
     DisplayManager(void);
     ~DisplayManager(void);

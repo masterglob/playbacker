@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "pbkr_display.h"
+#include "pbkr_osc.h"
 
 // commands
 #define LCD_CLEARDISPLAY 0x01
@@ -314,13 +315,21 @@ void DisplayManager::refresh(void)
         {
             l1 ="Info:";
             if (m_printIdx >= INFO_DISPLAY_SEC)
+            {
                 m_warning = "";
+                if (OSC::p_osc_instance)
+                    OSC::p_osc_instance->sendLabelMessage("");
+            }
         }
         else
         {
             l1 ="Error:";
             if (m_printIdx >= WARNING_DISPLAY_SEC)
+            {
                 m_warning = "";
+                if (OSC::p_osc_instance)
+                    OSC::p_osc_instance->sendLabelMessage("");
+            }
         }
     }
     else if (m_reading)
@@ -377,6 +386,8 @@ void DisplayManager::info (const std::string& msg)
     m_warning = msg;
     m_isInfo = true;
     m_printIdx = 0;
+    if (OSC::p_osc_instance)
+        OSC::p_osc_instance->sendLabelMessage(std::string ("Info:" + msg));
     refresh();
 
     m_mutex.unlock();
@@ -391,9 +402,31 @@ void DisplayManager::warning (const std::string& msg)
     m_warning = msg;
     m_isInfo = false;
     m_printIdx = 0;
+    if (OSC::p_osc_instance)
+        OSC::p_osc_instance->sendLabelMessage(std::string ("Warning:" + msg));
     refresh();
     m_mutex.unlock();
 } // DisplayManager::warning
+
+/*******************************************************************************/
+void  DisplayManager::setTrackName (const std::string& name, size_t trackIdx)
+{
+    if (OSC::p_osc_instance)
+    {
+        OSC::p_osc_instance->setTrackName(name, trackIdx);
+    }
+} // DisplayManager::setTrackName
+
+/*******************************************************************************/
+void DisplayManager::forceRefresh(void)
+{
+    if (OSC::p_osc_instance)
+    {
+        OSC::p_osc_instance->setProjectName(m_title);
+        OSC::p_osc_instance->setFileName(m_filename);
+        OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
+    }
+}
 
 /*******************************************************************************/
 void DisplayManager::onEvent (const Event e, const std::string& param)
@@ -405,6 +438,17 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         display.backlight();
         display.noBlink();
         display.noCursor();
+        if (OSC::p_osc_instance)
+        {
+            OSC::p_osc_instance->setProjectName("");
+            OSC::p_osc_instance->setFileName("");
+            OSC::p_osc_instance->sendLabelMessage("Connected!");
+            OSC::p_osc_instance->setPbCtrlStatus(false);
+            if (OSC::p_osc_instance)
+                OSC::p_osc_instance->setActiveTrack(-1);
+            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+                OSC::p_osc_instance->setTrackName("", i);
+        }
         m_title = "No project";
         m_event = "Starting...";
         m_filename = "";
@@ -415,6 +459,17 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         display.noBacklight();
         display.noDisplay();
         display.noCursor();
+        if (OSC::p_osc_instance)
+        {
+            OSC::p_osc_instance->sendLabelMessage("Disconnected...");
+            OSC::p_osc_instance->setProjectName("");
+            OSC::p_osc_instance->setFileName("");
+            OSC::p_osc_instance->setPbCtrlStatus(false);
+            if (OSC::p_osc_instance)
+                OSC::p_osc_instance->setActiveTrack(-1);
+            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+                OSC::p_osc_instance->setTrackName("", i);
+        }
         m_title = "";
         m_event = "Exiting...";
         m_filename = "";
@@ -426,6 +481,13 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_title = "";
         m_event = "Reading USB...";
         m_filename = "";
+        if (OSC::p_osc_instance)
+        {
+            OSC::p_osc_instance->setProjectName("...reading USB...");
+            OSC::p_osc_instance->setFileName("...reading USB...");
+            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+                OSC::p_osc_instance->setTrackName("", i);
+        }
         break;
     case evUsbOut:
         m_title = "No USB key";
@@ -433,29 +495,47 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_filename = "";
         m_trackCount = "";
         m_trackIdx = "";
+        if (OSC::p_osc_instance) OSC::p_osc_instance->setProjectName("No USB Key...");
+        for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+            OSC::p_osc_instance->setTrackName("", i);
         break;
     case evProjectTitle:
         m_title = param;
+        if (OSC::p_osc_instance)
+            OSC::p_osc_instance->setProjectName(m_title);
         break;
     case evTrack:
         m_trackIdx = param;
+        try
+        {
+            if (OSC::p_osc_instance)
+                OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
+        } catch (...) {}
         break;
     case evPlay:
         m_event = "Reading...";
         m_reading = true;
+        if (OSC::p_osc_instance) OSC::p_osc_instance->setPbCtrlStatus(true);
         break;
     case evStop:
         m_event = "Stopped...";
         m_reading = false;
+
+        if (OSC::p_osc_instance)
+            OSC::p_osc_instance->setPbCtrlStatus(false);
         break;
     case evFile:
         m_event = std::string ("Reading ") + param;
         m_filename = param;
+        if (OSC::p_osc_instance)
+            OSC::p_osc_instance->setFileName(m_filename);
         break;
     default:
         break;
     }
     m_warning = "";
+    if (OSC::p_osc_instance)
+        OSC::p_osc_instance->sendLabelMessage("");
     m_printIdx = 0;
     refresh();
     m_mutex.unlock();

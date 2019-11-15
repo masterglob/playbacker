@@ -142,10 +142,10 @@ float Console::volume(void)
 
 static Console console;
 void intHandler(int dummy) {
+    PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
     keepRunning = 0;
     console.exitreq = true;
     led.off();
-    PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
 }
 
 class MIDI_Input_Mgr;
@@ -329,29 +329,16 @@ class OSC_Event : public OSC::OSC_Event
 {
 public:
     virtual ~OSC_Event(void){}
-    virtual void onNoValueEvent (const std::string& name);
-    virtual void onFloatEvent (const std::string& name, float f)
-    {
-        printf("OSC EVENT: %s = %.03f\n",name.c_str(), f);
-    }
+    virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
+    virtual void onPlayEvent    (void){manager.startReading ();}
+    virtual void onStopEvent    (void){manager.stopReading ();}
+    virtual void onChangeTrack  (const uint32_t idx){manager.selectIndex(idx);}
 };
 static OSC_Event oscEvent;
 
 static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
 static OSC::OSC_Controller osc(oscCfg,oscEvent);
 
-void OSC_Event::onNoValueEvent (const std::string& name)
-{
-    if (name == "/ping")
-    {
-        static const OSC::OSC_Msg_To_Send pingMsg("/ping");
-        osc.send(pingMsg);
-    }
-    else
-    {
-        printf("OSC EVENT: %s\n",name.c_str());
-    }
-}
 } // namsepace
 
 /*******************************************************************************
@@ -445,6 +432,7 @@ int main (int argc, char**argv)
 			}
 		}
 		printf("Button pressed!\n");
+        PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
 		intHandler(0);
 	}
 	catch( const std::exception& e ) {

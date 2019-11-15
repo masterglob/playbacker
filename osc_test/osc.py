@@ -2,7 +2,7 @@ import socket
 import sys
 from binascii import unhexlify
 
-UDP_IP = "192.168.1.62"
+UDP_IP = "192.168.22.100"
 UDP_PORT_IN = 8000
 UDP_PORT_OUT = 9000
 
@@ -64,7 +64,6 @@ if __name__ == "__main__":
     else:
         x +=  align_str (b",s")
         x +=  align_str (bytes(sys.argv[2],'latin-1'))
-        
         
     
     sock.sendto(x, (UDP_IP, UDP_PORT_OUT))

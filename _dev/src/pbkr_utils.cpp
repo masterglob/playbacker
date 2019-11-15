@@ -1,6 +1,8 @@
 #include "pbkr_utils.h"
 #include "pbkr_display.h"
 #include "pbkr_wav.h"
+#include "pbkr_osc.h"
+
 #include <stdio.h>
 
 #include <unistd.h>
@@ -43,7 +45,6 @@ static std::string getStrAttr(xmlNode * n,const char* attrName)
     }
     throw std::range_error("Attribute not found");
 }
-
 
 } // namespace
 
@@ -220,6 +221,7 @@ XMLConfig::XMLConfig(const char* filename)
                 TrackNode t (trackNode);
                 _trackVect.push_back(t);
                 printf("Track %d (%s :%s)\n",t.id,t.title.c_str(),t.filename.c_str());
+                display.setTrackName(t.filename,t.id - 1);
             }
         }
     }
@@ -424,7 +426,7 @@ MIDI_Event* MIDI_Decoder::pop (void)
 FileManager::FileManager (const char* path):
         Thread(),
         _path(path),
-        _indexPlaying(0),
+        m_indexPlaying(0),
         m_nbFiles(0),
         _file(NULL),
         _reading(false),
@@ -489,12 +491,14 @@ void FileManager::on_disconnect(void)
 void FileManager::on_connect(void)
 {
     display.onEvent(DISPLAY::DisplayManager::evUsbIn);
+
     printf("USB connected!\n");
 
     // search for compatible files
     DIR *dir;
     struct dirent *ent;
     m_nbFiles = 0;
+    m_indexPlaying = 0;
     if ((dir = opendir (_path.c_str())) != NULL)
     {
         // using  std::regex is reaaly too long for compile time!
@@ -508,7 +512,7 @@ void FileManager::on_connect(void)
                     strcmp (end,".wav") == 0)
             {
                 printf ("%s\n", ent->d_name);
-                _files[m_nbFiles] =ent->d_name;
+                m_files[m_nbFiles] =ent->d_name;
                 m_nbFiles++;
             }
         }
@@ -534,12 +538,17 @@ void FileManager::on_connect(void)
 
     //sleep(1);
     display.onEvent(DISPLAY::DisplayManager::evProjectTitle, _title);
+    selectIndex(0);
 
 } // FileManager::on_connect
 
 
 void FileManager::startReading(void)
 {
+    if (!_file)
+    {
+        selectIndex (m_indexPlaying);
+    }
     if (_file)
     {
         if (_reading)
@@ -547,6 +556,9 @@ void FileManager::startReading(void)
             _reading = false;
             printf("Stop reading\n");
             display.onEvent(DISPLAY::DisplayManager::evStop);
+            if (_file) delete (_file);
+            _file=NULL;
+
         }
         else
         {
@@ -564,12 +576,7 @@ void FileManager::startReading(void)
 
 void FileManager::stopReading(void)
 {
-    printf("Stop reading\n");
-    if (_file) delete (_file);
-    _file=NULL;
-    display.onEvent(DISPLAY::DisplayManager::evStop);
-    _reading = false;
-
+    if (_file && _reading) startReading();
 } // FileManager::stopReading
 
 #if USE_MIDI_AS_TRACK
@@ -647,13 +654,13 @@ void FileManager::startup(void)
 
 std::string FileManager::filename(size_t idx)const
 {
-    if (idx > sizeof(_files)/sizeof(*_files)) return "";
-    return _files[idx];
+    if (idx > sizeof(m_files)/sizeof(*m_files)) return "";
+    return m_files[idx];
 }
 
 std::string FileManager::fileTitle(size_t idx)const
 {
-    if (idx > sizeof(_files)/sizeof(*_files)) return "";
+    if (idx > sizeof(m_files)/sizeof(*m_files)) return "";
     if (_pConfig == NULL) return "";
     const XMLConfig::TrackNode & tn (_pConfig->_trackVect[idx]);
     return tn.title;
@@ -661,30 +668,30 @@ std::string FileManager::fileTitle(size_t idx)const
 
 void FileManager::nextTrack(void)
 {
-    printf("nextTrack %d %d \n",m_nbFiles, _indexPlaying);
-    if (m_nbFiles > 0 && _indexPlaying + 1 < m_nbFiles )
-        selectIndex(_indexPlaying+1);
+    printf("nextTrack %d %d \n",m_nbFiles, m_indexPlaying);
+    if (m_nbFiles > 0 && m_indexPlaying + 1 < m_nbFiles )
+        selectIndex(m_indexPlaying+1);
 }
 
 void FileManager::prevTrack(void)
 {
-    printf("prevTrack %d %d \n",m_nbFiles, _indexPlaying);
-    if (m_nbFiles > 0 && _indexPlaying > 0 )
-        selectIndex(_indexPlaying - 1);
+    printf("prevTrack %d %d \n",m_nbFiles, m_indexPlaying);
+    if (m_nbFiles > 0 && m_indexPlaying > 0 )
+        selectIndex(m_indexPlaying - 1);
 }
 
 void FileManager::selectIndex(const size_t i)
 {
-    if (i > m_nbFiles)
+    if (i >= m_nbFiles)
     {
         display.warning(std::string("No track #") + std::to_string(i+1));
         return;
     }
     stopReading();
-    _indexPlaying = i;
+    m_indexPlaying = i;
     try
     {
-        _file = new WavFileLRC ( std::string (_path) , _files[_indexPlaying]);
+        _file = new WavFileLRC ( std::string (_path) , m_files[m_indexPlaying]);
     }
     catch (...) {
         printf("Open cancelled, file badly formatted\n");
@@ -697,21 +704,19 @@ void FileManager::selectIndex(const size_t i)
     {
         printf("Opened %s\n",_file->_filename.c_str());
 
-        if (_pConfig && _indexPlaying < _pConfig->_trackVect.size())
+        std::string title(m_files[m_indexPlaying]);
+        std::string trackIdx(std::to_string(m_indexPlaying+1));
+        if (_pConfig && m_indexPlaying < _pConfig->_trackVect.size())
         {
-            const XMLConfig::TrackNode & tn (_pConfig->_trackVect[_indexPlaying]);
-            display.onEvent(DISPLAY::DisplayManager::evFile,tn.title);
+            const XMLConfig::TrackNode & tn (_pConfig->_trackVect[m_indexPlaying]);
+            title = tn.title;
         }
-        else
-        {
-            display.onEvent(DISPLAY::DisplayManager::evFile, _files[_indexPlaying]);
-        }
-        display.onEvent(DISPLAY::DisplayManager::evTrack, std::to_string(_indexPlaying+1));
-
+        display.onEvent(DISPLAY::DisplayManager::evFile, title);
+        display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);
     }
     else
     {
-        printf("Failed to open <%s>\n",_files[_indexPlaying].c_str());
+        printf("Failed to open <%s>\n",m_files[m_indexPlaying].c_str());
     }
 
 } // FileManager::playIndex
