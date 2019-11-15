@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include <fstream>
+#include <sstream>
 
 namespace
 {
@@ -224,6 +226,193 @@ WebSrv::~WebSrv(void)
     }
     close(m_sockfd);
 }
+
+/*******************************************************************************
+ * BasicWebSrv (exemple)
+ *******************************************************************************/
+/*******************************************************************************/
+BasicWebSrv::BasicWebSrv(FileManager& manager, MIDI::MIDI_Controller_Mgr &midiMgr)
+:
+        WebSrv(80,4),
+        m_manager(manager),
+        m_midiMgr(midiMgr)
+{}
+/*******************************************************************************/
+BasicWebSrv::~BasicWebSrv(void){}
+
+/*******************************************************************************/
+std::string BasicWebSrv::onGET (const std::string& page, const WEB::ParamVect& params)
+{
+    printf("PAge requested:%s\n",page.c_str());
+    if (page == "/")
+        return pageRoot(params);
+    if (page == "/midi")
+        return pageMIDI(params);
+    if (page == "/test")
+        return pageTEST(params);
+    if (page == "/play")
+        return pagePLAY(params);
+    // otherwise just check files!
+    try
+    {
+        static const std::string WWW_HOME ("/home/tc/www");
+        const std::string filename (WWW_HOME + page + ".html");
+        printf("Checking for file %s\n",filename.c_str());
+        std::ifstream inFile(filename);
+        std::stringstream strStream;
+        strStream << inFile.rdbuf(); //read the file
+        return strStream.str();
+    }
+    catch (...) {
+        return "";
+    }
+}
+
+/*******************************************************************************/
+std::string BasicWebSrv::pageRoot(const WEB::ParamVect& params)
+{
+    std::ifstream inFile("/home/tc/www/index.html");
+    std::stringstream strStream;
+    strStream << inFile.rdbuf(); //read the file
+    return strStream.str();
+}
+
+/*******************************************************************************/
+std::string BasicWebSrv::pageMIDI(const WEB::ParamVect& params)
+{
+    std::string res(WEB::toTitle1("MIDI configuration."));
+    res += WEB::toLink("Return to main page", "/");
+    res += WEB::newline();
+    res += WEB::toLink("Refresh", "/midi");
+    res += WEB::newline();
+
+    for (auto it = params.begin();it != params.end();it++)
+    {
+        const WEB::HTMLParam& p(*it);
+        if(p.name == "dev")
+        {
+            const std::string s (configureMIDI(p.value));
+            res +=s;
+            return res;
+        }
+    }
+
+    res += "MIDI devices:<BR>";
+    const MIDI::MIDI_Ctrl_Cfg_Vect vect(m_midiMgr.getControllers());
+    for (auto it (vect.begin()); it != vect.end();it++)
+    {
+        const MIDI::MIDI_Ctrl_Cfg& cfg(*it);
+        res += "<a href='/midi&dev=";
+        res += cfg.device;
+        res += "'> Configure <B>";
+        res += cfg.name;
+        res += "</B></a>";
+        res += "<BR>";
+    }
+    return res;
+}
+
+/*******************************************************************************/
+std::string BasicWebSrv::configureMIDI(const std::string& dev)
+{
+    using namespace std;
+    string res;
+    const MIDI::MIDI_Ctrl_Cfg_Vect vect(m_midiMgr.getControllers());
+    for (auto it (vect.begin()); it != vect.end();it++)
+    {
+        const MIDI::MIDI_Ctrl_Cfg& cfg(*it);
+        if (dev == cfg.device)
+        {
+            string t1 ("Configuration of MIDI input:");
+            t1 += cfg.name;
+            res += WEB::toTitle2(t1);
+        }
+    }
+    return res;
+}
+
+/*******************************************************************************/
+std::string BasicWebSrv::pagePLAY(const WEB::ParamVect& params)
+{
+    using namespace std;
+
+    const std::string idx(findParamValue(params,"idx"));
+    if (idx != "")
+    {
+        try {
+            const unsigned int trackid (std::stoi(idx));
+            m_manager.selectIndex(trackid);
+        } catch (...) {}
+    }
+    const std::string playpause(findParamValue(params,"playpause"));
+    if (playpause != "")
+    {
+        m_manager.startReading();
+    }
+
+    std::string res(WEB::toTitle1("Active playlist."));
+    res += WEB::toLink("Return to main page", "/");
+    res += WEB::newline();
+    res += WEB::toLink("Refresh", "/play");
+    res += WEB::newline();
+
+    const size_t nbFiles(m_manager.nbFiles());
+    res += "<table border='1' bgcolor='silver'><thead><tr><th colspan='2'>";
+    res += WEB::toTitle2(string ("Playlist :") + m_manager.title() +
+            "(" + to_string(nbFiles) + " files)");
+
+    res += "</th></tr></thead><tbody>";
+    for (size_t i(0); i < nbFiles;i++)
+    {
+        res += "<tr><td>";
+        res += WEB::toLink(m_manager.fileTitle(i),
+                string("/play&idx=")+to_string(i));
+        res += "</td></tr>";
+    }
+
+    res += "</tbody></table><BR>";
+
+    if (m_manager.indexPlaying() < m_manager.nbFiles())
+    {
+        res += "Selected:";
+        const std::string title (m_manager.fileTitle(m_manager.indexPlaying()));
+        res += WEB::toBold(title);
+        res += WEB::newline();
+        res += WEB::toBold(WEB::toLink("Play/Pause","/play&playpause=1"));
+    }
+    return res;
+} // pagePLAY
+
+/*******************************************************************************/
+std::string BasicWebSrv::pageTEST(const WEB::ParamVect& params)
+{
+    std::string res("TEST Page.\n");
+    res += "Params=";
+    for (auto it = params.begin(); it != params.end();it++)
+    {
+        const WEB::HTMLParam& p (*it);
+        res += "[";
+        res += p.name;
+        res += "/";
+        res += p.value;
+        res += "]";
+    }
+    return res;
+}
+
+/*******************************************************************************/
+std::string BasicWebSrv::findParamValue(
+        const WEB::ParamVect& params,
+        const std::string & name)
+{
+    for (auto it = params.begin(); it != params.end();it++)
+    {
+        const WEB::HTMLParam& p (*it);
+        if (name == p.name) return p.value;
+    }
+    return "";
+}
+
 
 /*******************************************************************************
  * UTILS

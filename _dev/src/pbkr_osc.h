@@ -39,7 +39,38 @@ struct OSC_Event
     virtual void onFloatEvent (const std::string& name, float f) = 0;
 };
 
+/**
+ * Common OSC header for OSC_Msg_To_Send
+ */
+struct OSC_Msg_Hdr
+{
+protected:
+    OSC_Msg_Hdr(const std::string& name,const std::string&typeName,const size_t valLen);
+    virtual ~OSC_Msg_Hdr(void);
+    const size_t m_nameLen;
+    const size_t m_typeLen;
+    const size_t m_valLen;
+public :
+    const size_t m_len;
+    void* const m_data;
+    char* const m_name;
+    char* const m_type;
+protected:
+    uint8_t* const m_value;
+};
 
+/**
+ * A message to OSC
+ */
+struct OSC_Msg_To_Send : public OSC_Msg_Hdr
+{
+    OSC_Msg_To_Send(const std::string& name);
+    OSC_Msg_To_Send(const std::string& name,const std::string& strVal);
+    OSC_Msg_To_Send(const std::string& name,const float fltVal);
+    OSC_Msg_To_Send(const std::string& name,const int32_t i32Val);
+    size_t len(void)const{return m_len;}
+    const void* data(void)const{return m_data;}
+};
 
 /*******************************************************************************
  * OSC CONTROLLER
@@ -50,10 +81,9 @@ class OSC_Controller : private Thread
 public:
     OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver);
     virtual ~OSC_Controller(void);
-    void sendPing(void);
+    void send(const OSC_Msg_To_Send& msg);
 private:
     virtual void body(void);
-    void send(const void* buff, const size_t len);
     void processMsg(const void* buff, const size_t len);
     OSC_Event & m_receiver;
     const OSC_Ctrl_Cfg m_cfg;

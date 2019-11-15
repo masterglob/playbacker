@@ -324,174 +324,6 @@ void print_help(const char* name)
     printf(" -i  Use interactive keyboard console:\n");
 }
 
-class WebSrv : public WEB::WebSrv
-{
-public:
-    WebSrv(): WEB::WebSrv(80,4){}
-    virtual ~WebSrv(void){}
-    virtual std::string onGET (const std::string& page, const WEB::ParamVect& params)
-    {
-        printf("PAge requested:%s\n",page.c_str());
-        if (page == "/")
-            return pageRoot(params);
-        if (page == "/midi")
-            return pageMIDI(params);
-        if (page == "/test")
-            return pageTEST(params);
-        if (page == "/play")
-            return pagePLAY(params);
-        // otherwise just check files!
-        try
-        {
-            static const std::string WWW_HOME ("/home/tc/www");
-            const std::string filename (WWW_HOME + page + ".html");
-            printf("Checking for file %s\n",filename.c_str());
-            std::ifstream inFile(filename);
-            std::stringstream strStream;
-            strStream << inFile.rdbuf(); //read the file
-            return strStream.str();
-        }
-        catch (...) {
-            return "";
-        }
-    }
-    std::string pageRoot(const WEB::ParamVect& params)
-    {
-        std::ifstream inFile("/home/tc/www/index.html");
-        std::stringstream strStream;
-        strStream << inFile.rdbuf(); //read the file
-        return strStream.str();
-    }
-    std::string pageMIDI(const WEB::ParamVect& params)
-    {
-        std::string res(WEB::toTitle1("MIDI configuration."));
-        res += WEB::toLink("Return to main page", "/");
-        res += WEB::newline();
-        res += WEB::toLink("Refresh", "/midi");
-        res += WEB::newline();
-
-        for (auto it = params.begin();it != params.end();it++)
-        {
-            const WEB::HTMLParam& p(*it);
-            if(p.name == "dev")
-            {
-                const std::string s (configureMIDI(p.value));
-                res +=s;
-                return res;
-            }
-        }
-
-        res += "MIDI devices:<BR>";
-        const MIDI::MIDI_Ctrl_Cfg_Vect vect(midiMgr.getControllers());
-        for (auto it (vect.begin()); it != vect.end();it++)
-        {
-            const MIDI::MIDI_Ctrl_Cfg& cfg(*it);
-            res += "<a href='/midi&dev=";
-            res += cfg.device;
-            res += "'> Configure <B>";
-            res += cfg.name;
-            res += "</B></a>";
-            res += "<BR>";
-        }
-        return res;
-    }
-    std::string configureMIDI(const std::string& dev)
-    {
-        using namespace std;
-        string res;
-        const MIDI::MIDI_Ctrl_Cfg_Vect vect(midiMgr.getControllers());
-        for (auto it (vect.begin()); it != vect.end();it++)
-        {
-            const MIDI::MIDI_Ctrl_Cfg& cfg(*it);
-            if (dev == cfg.device)
-            {
-                string t1 ("Configuration of MIDI input:");
-                t1 += cfg.name;
-                res += WEB::toTitle2(t1);
-            }
-        }
-        return res;
-    }
-
-    std::string pagePLAY(const WEB::ParamVect& params)
-    {
-        using namespace std;
-
-        const std::string idx(findParamValue(params,"idx"));
-        if (idx != "")
-        {
-            try {
-                const unsigned int trackid (std::stoi(idx));
-                manager.selectIndex(trackid);
-            } catch (...) {}
-        }
-        const std::string playpause(findParamValue(params,"playpause"));
-        if (playpause != "")
-        {
-            manager.startReading();
-        }
-
-        std::string res(WEB::toTitle1("Active playlist."));
-        res += WEB::toLink("Return to main page", "/");
-        res += WEB::newline();
-        res += WEB::toLink("Refresh", "/play");
-        res += WEB::newline();
-
-        const size_t nbFiles(manager.nbFiles());
-        res += "<table border='1' bgcolor='silver'><thead><tr><th colspan='2'>";
-        res += WEB::toTitle2(string ("Playlist :") + manager.title() +
-                "(" + to_string(nbFiles) + " files)");
-
-        res += "</th></tr></thead><tbody>";
-        for (size_t i(0); i < nbFiles;i++)
-        {
-            res += "<tr><td>";
-            res += WEB::toLink(manager.fileTitle(i),
-                    string("/play&idx=")+to_string(i));
-            res += "</td></tr>";
-        }
-
-        res += "</tbody></table><BR>";
-
-        if (manager.indexPlaying() < manager.nbFiles())
-        {
-            res += "Selected:";
-            const std::string title (manager.fileTitle(manager.indexPlaying()));
-            res += WEB::toBold(title);
-            res += WEB::newline();
-            res += WEB::toBold(WEB::toLink("Play/Pause","/play&playpause=1"));
-        }
-        return res;
-    } // pagePLAY
-
-    std::string pageTEST(const WEB::ParamVect& params)
-    {
-        std::string res("TEST Page.\n");
-        res += "Params=";
-        for (auto it = params.begin(); it != params.end();it++)
-        {
-            const WEB::HTMLParam& p (*it);
-            res += "[";
-            res += p.name;
-            res += "/";
-            res += p.value;
-            res += "]";
-        }
-        return res;
-    }
-    static std::string findParamValue(
-            const WEB::ParamVect& params,
-            const std::string & name)
-    {
-        for (auto it = params.begin(); it != params.end();it++)
-        {
-            const WEB::HTMLParam& p (*it);
-            if (name == p.name) return p.value;
-        }
-        return "";
-    }
-};
-
 
 class OSC_Event : public OSC::OSC_Event
 {
@@ -512,7 +344,8 @@ void OSC_Event::onNoValueEvent (const std::string& name)
 {
     if (name == "/ping")
     {
-        osc.sendPing();
+        static const OSC::OSC_Msg_To_Send pingMsg("/ping");
+        osc.send(pingMsg);
     }
     else
     {
@@ -526,7 +359,7 @@ void OSC_Event::onNoValueEvent (const std::string& name)
  *******************************************************************************/
 int main (int argc, char**argv)
 {
-    WebSrv srv;
+    WEB::BasicWebSrv srv(manager, midiMgr);
 
 
     using namespace PBKR;

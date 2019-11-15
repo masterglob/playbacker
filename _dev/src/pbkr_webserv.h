@@ -13,6 +13,7 @@
 
 #include "pbkr_config.h"
 #include "pbkr_utils.h"
+#include "pbkr_midi.h"
 
 namespace PBKR
 {
@@ -62,6 +63,33 @@ private:
     size_t m_nb_clients;
     struct sockaddr_in m_serv_addr;
     SockListener** m_listeners;
+};
+
+
+/*******************************************************************************
+ * BasicWebSrv (exemple)
+ *******************************************************************************/
+
+class BasicWebSrv : public WEB::WebSrv
+{
+public:
+    BasicWebSrv(FileManager& manager,
+            MIDI::MIDI_Controller_Mgr &midiMgr);
+    virtual ~BasicWebSrv(void);
+    virtual std::string onGET (const std::string& page, const WEB::ParamVect& params);
+    std::string pageRoot(const WEB::ParamVect& params);
+    std::string pageMIDI(const WEB::ParamVect& params);
+    std::string configureMIDI(const std::string& dev);
+
+    std::string pagePLAY(const WEB::ParamVect& params);
+
+    std::string pageTEST(const WEB::ParamVect& params);
+    static std::string findParamValue(
+            const WEB::ParamVect& params,
+            const std::string & name);
+private:
+    FileManager& m_manager;
+    MIDI::MIDI_Controller_Mgr& m_midiMgr;
 };
 
 

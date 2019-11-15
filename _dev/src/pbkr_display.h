@@ -15,7 +15,7 @@ namespace PBKR
 {
 namespace DISPLAY
 {
-static const int WARNING_DISPLAY_SEC(4);
+static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
 
 /*******************************************************************************

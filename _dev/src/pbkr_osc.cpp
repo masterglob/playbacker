@@ -14,6 +14,17 @@
  *******************************************************************************/
 namespace
 {
+static size_t oscLen(const std::string& s){ return (s.length() +4) & ~3;}
+static const std::string osc_noType(",");
+static const std::string osc_intType(",i");
+static const std::string osc_stringType(",s");
+static const std::string osc_floatType(",f");
+inline void* MALLOC(size_t len)
+{
+    void*res(malloc(len));
+    if(!res) throw PBKR::EXCEPTION ("OOM!");
+    return res;
+}
 
 } // namespace
 
@@ -26,6 +37,74 @@ namespace PBKR
 namespace OSC
 {
 
+
+/*******************************************************************************
+ * OSC_Msg_Hdr
+ *******************************************************************************/
+/*******************************************************************************/
+OSC_Msg_Hdr::OSC_Msg_Hdr(const std::string& name, const std::string& typeName,const size_t valLen):
+                                m_nameLen(oscLen(name)),
+                                m_typeLen(oscLen(typeName)),
+                                m_valLen(valLen),
+                                m_len(m_nameLen + m_typeLen + m_valLen),
+                                m_data(::MALLOC(m_len)),
+                                m_name((char*)m_data),
+                                m_type(((char*)m_data) + m_nameLen),
+                                m_value(((uint8_t*)m_type) + m_typeLen)
+{
+    memset(m_data, 0, m_len);
+    strcpy(m_name, name.c_str());
+    strcpy(m_type, typeName.c_str());
+} // OSC_Msg_Hdr constructor
+
+/*******************************************************************************/
+OSC_Msg_Hdr::~OSC_Msg_Hdr(void)
+{
+    free(m_data);
+} // OSC_Msg_Hdr destructor
+
+/*******************************************************************************
+ * OSC_Msg_To_Send
+ *******************************************************************************/
+/*******************************************************************************/
+OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name)
+:
+        OSC_Msg_Hdr(name, osc_noType, 0)
+{
+} // empty constructor
+
+/*******************************************************************************/
+OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const std::string& strVal)
+:
+        OSC_Msg_Hdr(name, osc_stringType, oscLen(strVal))
+{
+    strcpy((char*)m_value, strVal.c_str());
+} // string constructor
+
+/*******************************************************************************/
+OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const float fltVal)
+:
+        OSC_Msg_Hdr(name, osc_floatType, sizeof(float))
+{
+    uint32_t& le=*((uint32_t *)&fltVal);  // hold "native" value
+    uint32_t& be=*((uint32_t *)m_value);  // hold "big-endian" value
+
+    be = htonl(le);
+} // float constructor
+/*******************************************************************************/
+OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
+:
+        OSC_Msg_Hdr(name, osc_intType, sizeof(uint32_t))
+{
+    uint32_t& le=*((uint32_t *)&i32Val);  // hold "native" value
+    uint32_t& be=*((uint32_t *)m_value);  // hold "big-endian" value
+
+    be = htonl(le);
+} // int constructor
+
+/*******************************************************************************
+ * OSC CONTROLLER
+ *******************************************************************************/
 
 /*******************************************************************************/
 OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
@@ -70,7 +149,7 @@ OSC_Controller::~OSC_Controller(void)
 } // MIDI_Controller::~MIDI_Controller
 
 /*******************************************************************************/
-void OSC_Controller::send(const void* buff, const size_t len)
+void OSC_Controller::send(const OSC_Msg_To_Send& msg)
 {
 
     struct sockaddr_in addr;
@@ -82,27 +161,17 @@ void OSC_Controller::send(const void* buff, const size_t len)
     addr.sin_addr = m_clientAddr;
     addr.sin_port = htons(m_cfg.portOut);
 
-    const int n (sendto (m_outSockfd,buff,len,
+    const int n (sendto (m_outSockfd,msg.m_data,msg.m_len,
             MSG_CONFIRM,(const struct sockaddr *) &addr, sizeof(addr)));
     if (n <0 )
     {
         printf("OSC message send failed\n");
     }
     else
-        printf("OSC message send %s to %s:%u\n",(const char*)buff,
+        printf("OSC message send %s to %s:%u\n",msg.m_name,
                 inet_ntoa ( m_clientAddr),
                 m_cfg.portOut);
 }
-
-/*******************************************************************************/
-void OSC_Controller::sendPing(void)
-{
-    static const char* buffer ("/ping\0\0\0,\0\0\0\0");
-    send((const void*)buffer, 12u);
-
-
-} // MIDI_Controller::sendPing
-
 /*******************************************************************************/
 void OSC_Controller::body(void)
 {

@@ -309,6 +309,7 @@ void DisplayManager::refresh(void)
     const uint32_t idx(m_printIdx%10);
     if (m_warning != "")
     {
+        l2 = m_warning;
         if (m_isInfo)
         {
             l1 ="Info:";
@@ -321,7 +322,6 @@ void DisplayManager::refresh(void)
             if (m_printIdx >= WARNING_DISPLAY_SEC)
                 m_warning = "";
         }
-        l2 = m_warning;
     }
     else if (m_reading)
     {
