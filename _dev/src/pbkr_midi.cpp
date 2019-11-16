@@ -178,6 +178,7 @@ MIDI_Msg::~MIDI_Msg (void){ free ((void*)m_msg);}
 /*******************************************************************************/
 MIDI_Controller::MIDI_Controller(const MIDI_Ctrl_Cfg& cfg, MIDI_Event& receiver):
         m_midiin(NULL),
+        m_midiout(NULL),
         m_receiver(receiver),
         m_cfg(cfg)
 {
@@ -207,7 +208,7 @@ void MIDI_Controller::body(void)
     try
     {
         static const int mode = SND_RAWMIDI_SYNC;
-        if ((status = snd_rawmidi_open(&m_midiin, NULL, m_cfg.device.c_str(), mode)) < 0) {
+        if ((status = snd_rawmidi_open(&m_midiin, &m_midiout, m_cfg.device.c_str(), mode)) < 0) {
             throw EXCEPTION(std::string ("Failed to open ") + m_cfg.name +
                     "(" + m_cfg.device + ")");
         }

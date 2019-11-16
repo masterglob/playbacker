@@ -17,6 +17,7 @@ namespace DISPLAY
 {
 static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
+static const int MAX_NB_TRACKS (64);
 
 /*******************************************************************************
  *
@@ -119,6 +120,7 @@ private:
     bool m_reading;
     std::mutex m_mutex;
     std::thread m_thread;
+    std::string m_trackNames[MAX_NB_TRACKS];
 }; // class
 extern DisplayManager displayManager;
 

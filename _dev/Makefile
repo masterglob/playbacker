@@ -30,6 +30,9 @@ all:prepare compile link_pbkr
 main:
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+midi:
+	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 osc:
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 

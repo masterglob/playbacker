@@ -380,6 +380,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     {
         static const OSC::OSC_Msg_To_Send pingMsg("/ping");
         send(pingMsg);
+        m_receiver.forceRefresh();
         return;
     }
 

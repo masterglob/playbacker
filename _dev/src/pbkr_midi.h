@@ -59,6 +59,7 @@ public:
 private:
     virtual void body(void);
     snd_rawmidi_t* m_midiin;
+    snd_rawmidi_t* m_midiout;
     MIDI_Event & m_receiver;
     const MIDI_Ctrl_Cfg m_cfg;
 }; // class MIDI_Controller

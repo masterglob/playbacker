@@ -411,9 +411,13 @@ void DisplayManager::warning (const std::string& msg)
 /*******************************************************************************/
 void  DisplayManager::setTrackName (const std::string& name, size_t trackIdx)
 {
-    if (OSC::p_osc_instance)
+    if (trackIdx < MAX_NB_TRACKS)
     {
-        OSC::p_osc_instance->setTrackName(name, trackIdx);
+            m_trackNames[trackIdx] = name;
+        if (OSC::p_osc_instance)
+        {
+            OSC::p_osc_instance->setTrackName(name, trackIdx);
+        }
     }
 } // DisplayManager::setTrackName
 
@@ -425,6 +429,10 @@ void DisplayManager::forceRefresh(void)
         OSC::p_osc_instance->setProjectName(m_title);
         OSC::p_osc_instance->setFileName(m_filename);
         OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            OSC::p_osc_instance->setTrackName(m_trackNames[i], i);
+        }
     }
 }
 
@@ -448,6 +456,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
                 OSC::p_osc_instance->setActiveTrack(-1);
             for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
                 OSC::p_osc_instance->setTrackName("", i);
+        }
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            m_trackNames[i] = "";
         }
         m_title = "No project";
         m_event = "Starting...";
@@ -473,6 +485,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_title = "";
         m_event = "Exiting...";
         m_filename = "";
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            m_trackNames[i] = "";
+        }
         break;
     case evProjectTrackCount:
         m_trackCount = param;
@@ -481,6 +497,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_title = "";
         m_event = "Reading USB...";
         m_filename = "";
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            m_trackNames[i] = "";
+        }
         if (OSC::p_osc_instance)
         {
             OSC::p_osc_instance->setProjectName("...reading USB...");
@@ -495,6 +515,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_filename = "";
         m_trackCount = "";
         m_trackIdx = "";
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            m_trackNames[i] = "";
+        }
         if (OSC::p_osc_instance) OSC::p_osc_instance->setProjectName("No USB Key...");
         for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
             OSC::p_osc_instance->setTrackName("", i);
