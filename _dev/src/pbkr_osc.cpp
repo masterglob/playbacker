@@ -432,46 +432,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     {
         if (paramF > 0.01)
         {
-            static std::string input;
-            static std::string output;
-            if (cmd2.length() == 1)
-            {
-                input += cmd2;
-            }
-            else if (cmd2 == "Enter")
-            {
-                output = input;
-                input = "";
-            }
-            else if (cmd2 == "DEL")
-            {
-                if (input.length() > 0)
-                {
-                    input.pop_back();
-                }
-            }
-            else if (cmd2 == "Slash")
-            {
-                input += "/";
-            }
-            else if (cmd2 == "BSlash")
-            {
-                input += "\\";
-            }
-            else if (cmd2 == "Comma")
-            {
-                input += ",";
-            }
-            else if (cmd2 == "Excl")
-            {
-                input += "!";
-            }
-            else if (cmd2 == "SemiColon")
-            {
-                input += ";";
-            }
-            send (OSC_Msg_To_Send ("/kbd/InputFB", input));
-            send (OSC_Msg_To_Send ("/kbd/Output1", output));
+            processKbd(cmd2);
         }
     } // OSC keyboard
 #if DO_DEBUG_IN
@@ -482,6 +443,55 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
 #endif
 
 } // OSC_Controller::processMsg
-
+void OSC_Controller::processKbd(const std::string key)
+{
+    static std::string input;
+    static std::string output1;
+    static std::string output2;
+    if (key.length() == 1)
+    {
+        input += key;
+    }
+    else if (key == "Enter")
+    {
+        output2 = output1;
+        output1 = m_receiver.onKeyboardCmd(input);
+        input = "";
+        send (OSC_Msg_To_Send ("/kbd/Output1", output1));
+        send (OSC_Msg_To_Send ("/kbd/Output2", output2));
+    }
+    else if (key == "DEL")
+    {
+        if (input.length() > 0)
+        {
+            input.pop_back();
+        }
+    }
+    else if (key == "Slash")
+    {
+        input += "/";
+    }
+    else if (key == "BSlash")
+    {
+        input += "\\";
+    }
+    else if (key == "Comma")
+    {
+        input += ",";
+    }
+    else if (key == "Excl")
+    {
+        input += "!";
+    }
+    else if (key == "SemiColon")
+    {
+        input += ";";
+    }
+    else if (key == "Space")
+    {
+        input += " ";
+    }
+    send (OSC_Msg_To_Send ("/kbd/InputFB", input + "|"));
+}// OSC_Controller::processKbd
 } // namespace OSC
 } // namespace PBKR

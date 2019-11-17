@@ -35,7 +35,8 @@ const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
 static FileManager manager (MOUNT_POINT);
 static void intHandler(int dummy);
-static void setClicVolume  (const float& v);
+static inline void setClicVolume  (const float& v);
+static inline std::string onKeyboardCmd  (const std::string& msg);
 
 class Console:public Thread
 {
@@ -338,6 +339,18 @@ void setClicVolume  (const float& v)
         OSC::p_osc_instance->setClicVolume(v);
 }
 
+std::string onKeyboardCmd  (const std::string& msg)
+{
+    static const std::string badCmd ("Unknown Command :");
+    static bool logged (false);
+    if (msg == "/R")
+    {
+        keepRunning = 0;
+        return "Reboot command OK";
+    }
+    return badCmd + msg;
+}
+
 class OSC_Event : public OSC::OSC_Event
 {
 public:
@@ -347,6 +360,7 @@ public:
     virtual void onStopEvent    (void){manager.stopReading ();}
     virtual void onChangeTrack  (const uint32_t idx){manager.selectIndex(idx);}
     virtual void setClicVolume  (const float& v){::setClicVolume(v);}
+    virtual std::string onKeyboardCmd  (const std::string& msg){return ::onKeyboardCmd(msg);}
 };
 static OSC_Event oscEvent;
 

@@ -46,6 +46,7 @@ struct OSC_Event
     virtual void setClicVolume  (const float& v) = 0;
     virtual void forceRefresh    (void) = 0;
     virtual void onChangeTrack  (const uint32_t idx) = 0;
+    virtual std::string onKeyboardCmd  (const std::string& msg) = 0;
 };
 
 /**
@@ -103,6 +104,7 @@ public:
 private:
     virtual void body(void);
     void processMsg(const void* buff, const size_t len);
+    void processKbd(const std::string key);
     OSC_Event & m_receiver;
     const OSC_Ctrl_Cfg m_cfg;
     int m_inSockfd;
