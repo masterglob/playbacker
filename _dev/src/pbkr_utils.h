@@ -42,6 +42,9 @@ class WavFileLRC;
  * THREADS
  *******************************************************************************/
 
+void setLowPriority(void);
+void setRealTimePriority(void);
+
 class Thread
 {
 public:

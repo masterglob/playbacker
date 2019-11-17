@@ -76,6 +76,7 @@ public:
     void loop(void);
     virtual ~MIDI_Controller_Mgr(void){}
     virtual void onInputConnect (const MIDI_Ctrl_Cfg& cfg) = 0;
+    virtual void onInputDisconnect (const MIDI_Ctrl_Cfg& cfg) = 0;
     void onDisconnect (const char* device);
     const MIDI_Ctrl_Cfg_Vect getControllers(void);
 private:

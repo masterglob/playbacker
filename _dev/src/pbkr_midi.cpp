@@ -286,6 +286,7 @@ void MIDI_Controller_Mgr::onDisconnect (const char* device)
         const MIDI_Ctrl_Cfg& cfg (*it);
         if (cfg.device == device)
         {
+            onInputDisconnect (cfg);
             m_InputControllers.erase(it);
             break;
         }

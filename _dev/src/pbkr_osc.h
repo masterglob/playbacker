@@ -43,6 +43,7 @@ struct OSC_Event
     virtual ~OSC_Event(void){}
     virtual void onPlayEvent    (void) = 0;
     virtual void onStopEvent    (void) = 0;
+    virtual void setClicVolume  (const float& v) = 0;
     virtual void forceRefresh    (void) = 0;
     virtual void onChangeTrack  (const uint32_t idx) = 0;
 };
@@ -98,6 +99,7 @@ public:
     void setActiveTrack (int trackIdx);
     void sendLabelMessage(const std::string& msg);
     void setPbCtrlStatus(const bool isPlaying);
+    void setClicVolume  (const float& v);
 private:
     virtual void body(void);
     void processMsg(const void* buff, const size_t len);

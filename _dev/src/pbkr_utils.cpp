@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <iostream>
 #include <fstream>
+#include <sched.h>
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -88,6 +89,26 @@ void* Thread::real_start(void* param)
 		thr -> body ();
 	}
 	return NULL;
+}
+
+void setLowPriority(void)
+{
+    sched_param sch;
+    sch.__sched_priority = 0;
+    if(pthread_setschedparam(pthread_self(), SCHED_OTHER, &sch))
+    {
+        throw EXCEPTION("Failed to set Thread scheduling : setLowPriority");
+    }
+}
+
+void setRealTimePriority(void)
+{
+    sched_param sch;
+    sch.__sched_priority = 80;
+    if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch))
+    {
+        throw EXCEPTION("Failed to set Thread scheduling : setRealTimePriority");
+    }
 }
 
 /*******************************************************************************

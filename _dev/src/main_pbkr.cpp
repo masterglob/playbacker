@@ -35,6 +35,7 @@ const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
 static FileManager manager (MOUNT_POINT);
 static void intHandler(int dummy);
+static void setClicVolume  (const float& v);
 
 class Console:public Thread
 {
@@ -59,6 +60,7 @@ public:
             case 'q':
             case 'Q':
                 printf("Exit requested\n");
+                PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
                 exitreq = true;
                 break;
                 // Sine on/off
@@ -188,7 +190,12 @@ private:
     {
         printf("Found: %s (%s)\n", cfg.name.c_str(), cfg.device.c_str());
         MIDI::MIDI_Controller* midi_ctrl(new MIDI::MIDI_Controller (cfg, m_evt));
+        DISPLAY::DisplayManager::instance().info(cfg.name + " connected.");
         (void)midi_ctrl;
+    }
+    virtual void onInputDisconnect (const MIDI::MIDI_Ctrl_Cfg& cfg)
+    {
+        DISPLAY::DisplayManager::instance().info(cfg.name + " disconnected.");
     }
 };
 static MIDI_Input_Mgr midiMgr;
@@ -286,9 +293,7 @@ void Evt::onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice)
                     msg.m_msg[2] == 0x7F && msg.m_msg[3] == 0x04 &&
                     msg.m_msg[4] == 0x01 && msg.m_msg[5] == 0x00)
             {
-                console.changeVolume(msg.m_msg[6] / 128.0,0.01);
-                DISPLAY::DisplayManager::instance().info(
-                        std::string("Clic Vol:") + std::to_string((100*msg.m_msg[6]) / 128) + "%");
+                setClicVolume(msg.m_msg[6] / 128.0);
                 return;
             }
             if (msg.m_len == 11 && msg.m_msg[1] == 0x42 &&
@@ -324,6 +329,14 @@ void print_help(const char* name)
     printf(" -i  Use interactive keyboard console:\n");
 }
 
+void setClicVolume  (const float& v)
+{
+    console.changeVolume(v,0.01);
+    DISPLAY::DisplayManager::instance().info(
+            std::string("Clic Vol:") + std::to_string((int)(100*v)) + "%");
+    if (OSC::p_osc_instance)
+        OSC::p_osc_instance->setClicVolume(v);
+}
 
 class OSC_Event : public OSC::OSC_Event
 {
@@ -333,6 +346,7 @@ public:
     virtual void onPlayEvent    (void){manager.startReading ();}
     virtual void onStopEvent    (void){manager.stopReading ();}
     virtual void onChangeTrack  (const uint32_t idx){manager.selectIndex(idx);}
+    virtual void setClicVolume  (const float& v){::setClicVolume(v);}
 };
 static OSC_Event oscEvent;
 
@@ -395,7 +409,7 @@ int main (int argc, char**argv)
 		SOUND::SoundPlayer playerHifi (hifidac);
 		SOUND::SoundPlayer playerLofi (lofidac);
 
-
+		setRealTimePriority();
 
 		while (keepRunning)
 		{

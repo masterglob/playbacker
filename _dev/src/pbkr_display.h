@@ -122,7 +122,6 @@ private:
     std::thread m_thread;
     std::string m_trackNames[MAX_NB_TRACKS];
 }; // class
-extern DisplayManager displayManager;
 
 }  // namespace DISPLAY
 }

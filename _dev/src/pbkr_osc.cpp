@@ -9,7 +9,8 @@
 #include <string>
 #include <stdexcept>
 
-#define DO_DEBUG 0
+#define DO_DEBUG_IN 0
+#define DO_DEBUG_OUT 0
 
 #define OSC_PAGE "4"
 #define OSC_NAME(x) "/" OSC_PAGE "/" x
@@ -142,6 +143,9 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
         m_cfg(cfg),
         m_isClientKnown(false)
 {
+
+    setLowPriority();
+
     if (p_osc_instance)
         throw EXCEPTION(std::string ("OSC_Controller : Cannot create several instances!"));
     // Creating socket file descriptor
@@ -196,6 +200,11 @@ void OSC_Controller::setPbCtrlStatus(const bool isPlaying)
     send (OSC_Msg_To_Send (OSC_NAME("pRec"),  (float)0.0));
 } // OSC_Controller::setPbCtrlStatus
 
+/*******************************************************************************/
+void OSC_Controller::setClicVolume  (const float& v)
+{
+    send (OSC_Msg_To_Send (OSC_NAME("clicVolume"), v));
+} // OSC_Controller::setClicVolume
 
 /*******************************************************************************/
 void OSC_Controller::setProjectName(const std::string& title)
@@ -255,7 +264,7 @@ void OSC_Controller::send(const OSC_Msg_To_Send& msg)
     }
     else
     {
-#if DO_DEBUG
+#if DO_DEBUG_OUT
         printf("OSC message send to %s:%u[",
                 inet_ntoa ( m_clientAddr),
                 m_cfg.portOut);
@@ -336,7 +345,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     if (type == ",f")
     {
         paramF = *((const float*)&be);
-#if DO_DEBUG
+#if DO_DEBUG_IN
         printf("OSC received FLOAT event <%s> => <%f>\n",name.c_str(),paramF);
 #endif
     }
@@ -344,14 +353,14 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     {
         paramI = *((uint32_t*) &be);
         (void)paramI;
-#if DO_DEBUG
+#if DO_DEBUG_IN
         printf("OSC received INT event <%s> => <%u>\n",name.c_str(),paramI);
 #endif
     }
     else if (type == ",s")
     {
         paramS = &name[nameLen+4];
-#if DO_DEBUG
+#if DO_DEBUG_IN
         printf("OSC received STR event <%s> => <%s>\n",name.c_str(),paramS.c_str());
 #endif
     }
@@ -361,7 +370,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     }
     else
     {
-#if DO_DEBUG
+#if DO_DEBUG_IN
         printf("OSC received <%s> type <%s>:",
                 name.c_str(), type.c_str());
         printf("[");
@@ -384,37 +393,88 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
         return;
     }
 
-    if (cmd1 != "4") return;
-
-    if (paramF > 0.01)
+    if (cmd1 == "4")
     {
-        if (cmd2 == "pPlay")
+        if (paramF > 0.01)
         {
-            m_receiver.onPlayEvent();
-        }
-        else if (cmd2 == "pStop")
-        {
-            m_receiver.onStopEvent();
+            if (cmd2 == "pPlay")
+            {
+                m_receiver.onPlayEvent();
+            }
+            else if (cmd2 == "pStop")
+            {
+                m_receiver.onStopEvent();
 
-        }
-        else if (cmd2 == "pRefresh")
-        {
-            // refresh all
-            m_receiver.forceRefresh();
-        }
-        else if (cmd2 == "mtTrackSel")
-        {
-            try {
-                const int y(OSC_TRACK_NB_Y - std::atoi (cmd3.c_str()));
-                const int x(std::atoi (cmd4.c_str()) - 1);
-                m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
-            } catch (...) {
-                printf("Invalid parameters in mtTrackSel.IGNORED\n");
+            }
+            else if (cmd2 == "pRefresh")
+            {
+                // refresh all
+                m_receiver.forceRefresh();
+            }
+            else if (cmd2 == "mtTrackSel")
+            {
+                try {
+                    const int y(OSC_TRACK_NB_Y - std::atoi (cmd3.c_str()));
+                    const int x(std::atoi (cmd4.c_str()) - 1);
+                    m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
+                } catch (...) {
+                    printf("Invalid parameters in mtTrackSel.IGNORED\n");
+                }
+            }
+            else if (cmd2 == "clicVolume")
+            {
+                m_receiver.setClicVolume(paramF);
             }
 
         }
-    }
-#if DO_DEBUG
+    } // Page 4
+    else if (cmd1 == "kbd")
+    {
+        if (paramF > 0.01)
+        {
+            static std::string input;
+            static std::string output;
+            if (cmd2.length() == 1)
+            {
+                input += cmd2;
+            }
+            else if (cmd2 == "Enter")
+            {
+                output = input;
+                input = "";
+            }
+            else if (cmd2 == "DEL")
+            {
+                if (input.length() > 0)
+                {
+                    input.pop_back();
+                }
+            }
+            else if (cmd2 == "Slash")
+            {
+                input += "/";
+            }
+            else if (cmd2 == "BSlash")
+            {
+                input += "\\";
+            }
+            else if (cmd2 == "Comma")
+            {
+                input += ",";
+            }
+            else if (cmd2 == "Excl")
+            {
+                input += "!";
+            }
+            else if (cmd2 == "SemiColon")
+            {
+                input += ";";
+            }
+            send (OSC_Msg_To_Send ("/kbd/InputFB", input));
+            send (OSC_Msg_To_Send ("/kbd/Output1", output));
+        }
+    } // OSC keyboard
+#if DO_DEBUG_IN
     printf("cmd= <%s>/<%s>/<%s>/<%s> \n",cmd1.c_str(),
             cmd2.c_str(),
             cmd3.c_str(),
