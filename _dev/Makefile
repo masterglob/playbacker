@@ -27,6 +27,9 @@ link_display:
 compile:
 	@for i in $$(cd src && ls -1 *.c[p]*); do make obj FILE=$$i --no-print-directory || exit 1; done
 all:prepare compile link_pbkr
+test:
+	$(Q)make obj FILE=main_test.cpp --no-print-directory 
+	$(Q)make link TARGET=test --no-print-directory 
 main:
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
