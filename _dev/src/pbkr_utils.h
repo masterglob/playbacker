@@ -75,17 +75,17 @@ public:
     private:
         xmlNode *_n;
     public:
-        const int id;
+        const size_t id;
         const std::string title;
         const std::string filename;
     private:
         const int   getIntAttr(const char* attrName);
     };
     typedef std::vector<TrackNode,std::allocator<TrackNode>> TrackVect;
-    TrackVect _trackVect;
-    const std::string& getTitle(void)const{return _title;}
+    TrackVect trackVect;
+    const std::string& getTitle(void)const{return m_title;}
 private:
-    std::string _title;
+    std::string m_title;
 
 
 };

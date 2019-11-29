@@ -210,7 +210,7 @@ VirtualTime::Time VirtualTime::inS(float s)
 
 XMLConfig::XMLConfig(const char* filename)
 {
-    _trackVect.clear();
+    trackVect.clear();
     LIBXML_TEST_VERSION
 
     xmlDocPtr doc; /* the resulting document tree */
@@ -234,7 +234,7 @@ XMLConfig::XMLConfig(const char* filename)
     }
     if (pbkrNode)
     {
-        _title = ::getStrAttr(pbkrNode, "title");
+        m_title = ::getStrAttr(pbkrNode, "title");
 
         xmlNode *trackNode = NULL;
         for (trackNode = pbkrNode->children; trackNode; trackNode = trackNode->next) {
@@ -242,7 +242,7 @@ XMLConfig::XMLConfig(const char* filename)
             {
                 // process node!
                 TrackNode t (trackNode);
-                _trackVect.push_back(t);
+                trackVect.push_back(t);
                 printf("Track %d (%s :%s)\n",t.id,t.title.c_str(),t.filename.c_str());
                 display.setTrackName(t.filename,t.id - 1);
             }
@@ -415,6 +415,7 @@ FileManager::FileManager (const char* path):
 FileManager::~FileManager (void)
 {
     if (_file) delete (_file);
+    if (_pConfig) delete _pConfig;
 }
 
 void FileManager::body(void)
@@ -471,10 +472,11 @@ void FileManager::on_connect(void)
     printf("USB connected!\n");
 
     // search for compatible files
-    DIR *dir;
-    struct dirent *ent;
     m_nbFiles = 0;
     m_indexPlaying = 0;
+    /*
+    DIR *dir;
+    struct dirent *ent;
     if ((dir = opendir (_path.c_str())) != NULL)
     {
         // using  std::regex is reaaly too long for compile time!
@@ -493,8 +495,7 @@ void FileManager::on_connect(void)
             }
         }
         closedir (dir);
-    }
-    display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
+    }*/
 
     // search for TITLE
     if (_pConfig) delete _pConfig;
@@ -507,12 +508,24 @@ void FileManager::on_connect(void)
     {
         _pConfig = new XMLConfig (path.c_str());
         _title = _pConfig->getTitle();
+        m_nbFiles = 0;
+        for (size_t i(0); i < sizeof(m_files)/sizeof(*m_files); ++i)
+        {
+            m_files[i] = "";
+        }
+        for (auto it (_pConfig->trackVect.begin()); it != _pConfig->trackVect.end(); it++)
+        {
+            const XMLConfig::TrackNode& tn(*it);
+            if (tn.id >= m_nbFiles) m_nbFiles = tn.id + 1;
+            m_files[tn.id - 1] = tn.filename;
+        }
     }
     catch (...) {
         _pConfig = NULL;
     }
 
     //sleep(1);
+    display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
     display.onEvent(DISPLAY::DisplayManager::evProjectTitle, _title);
     selectIndex(0);
 
@@ -589,7 +602,7 @@ std::string FileManager::fileTitle(size_t idx)const
 {
     if (idx > sizeof(m_files)/sizeof(*m_files)) return "";
     if (_pConfig == NULL) return "";
-    const XMLConfig::TrackNode & tn (_pConfig->_trackVect[idx]);
+    const XMLConfig::TrackNode & tn (_pConfig->trackVect[idx]);
     return tn.title;
 }
 
@@ -609,7 +622,7 @@ void FileManager::prevTrack(void)
 
 void FileManager::selectIndex(const size_t i)
 {
-    if (i >= m_nbFiles)
+    if (i >= m_nbFiles || m_files[i] == "")
     {
         display.warning(std::string("No track #") + std::to_string(i+1));
         return;
@@ -633,9 +646,9 @@ void FileManager::selectIndex(const size_t i)
 
         std::string title(m_files[m_indexPlaying]);
         std::string trackIdx(std::to_string(m_indexPlaying+1));
-        if (_pConfig && m_indexPlaying < _pConfig->_trackVect.size())
+        if (_pConfig && m_indexPlaying < _pConfig->trackVect.size())
         {
-            const XMLConfig::TrackNode & tn (_pConfig->_trackVect[m_indexPlaying]);
+            const XMLConfig::TrackNode & tn (_pConfig->trackVect[m_indexPlaying]);
             title = tn.title;
         }
         display.onEvent(DISPLAY::DisplayManager::evFile, title);
