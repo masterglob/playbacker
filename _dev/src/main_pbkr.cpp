@@ -342,7 +342,7 @@ void setClicVolume  (const float& v)
 std::string onKeyboardCmd  (const std::string& msg)
 {
     static const std::string badCmd ("Unknown Command :");
-    static bool logged (false);
+    // static bool logged (false);
     if (msg == "/R")
     {
         keepRunning = 0;
@@ -385,6 +385,7 @@ int main (int argc, char**argv)
      */
     int argi(1);
     bool interactive_console(false);
+    const char* hifidac = "hw:0";
     while (argi < argc)
     {
         const char* const cmd(argv[argi++]);
@@ -393,13 +394,16 @@ int main (int argc, char**argv)
             print_help(argv[0]);
             return 0;
         }
-        if (strcmp(cmd,"-i") == 0)
+        else if (strcmp(cmd,"-i") == 0)
         {
             interactive_console = true;
         }
+        else
+        {
+            hifidac = cmd;
+            break;
+        }
     }
-    static const char* hifidac(argc>argi ? argv[argi++]: "hw:0");
-    static const char* lofidac(argc>argi ? argv[argi++]: "hw:1");
 
 	GPIOs::GPIO::begin();
 
@@ -421,7 +425,6 @@ int main (int argc, char**argv)
         float volume2(0.90);
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
 		SOUND::SoundPlayer playerHifi (hifidac);
-		SOUND::SoundPlayer playerLofi (lofidac);
 
 		setRealTimePriority();
 
@@ -448,8 +451,8 @@ int main (int argc, char**argv)
             phase += phasestep;
             if (phase > TWO_PI) phase -=TWO_PI;
 
-			playerLofi.write_sample(l2,r2);
 			playerHifi.write_sample(l,r);
+			// TODO : send serail to WEMOS!
 
 			if (ledFader->update())
 			{

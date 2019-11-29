@@ -324,7 +324,7 @@ void MIDI_Controller_Mgr::loop(void)
             do {
                 status = snd_ctl_rawmidi_next_device(ctl, &device);
                 if (status < 0) {
-                    printf("cannot determine device number: %s\n", snd_strerror(status));
+                    // printf("cannot determine device number for card %d: %s\n", card, snd_strerror(status));
                     break;
                 }
                 if (device >= 0) {
