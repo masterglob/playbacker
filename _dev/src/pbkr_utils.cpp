@@ -17,6 +17,8 @@
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
 
+#define DEBUG_MIDI 0
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -334,112 +336,65 @@ float Fader::position (void)
 	return result;
 }
 
-#if USE_MIDI_AS_TRACK
-/*******************************************************************************
- * MIDI Event
- *******************************************************************************/
-MIDI_Event::MIDI_Event(uint16_t event):
-        _type(event >> 8),
-        _val(event & 0xFF)
-{}
-
-bool MIDI_Event::isProgChange(void)
-{
-    return _type == 0x00;
-} // MIDI_Event::isProgChange
-
-void MIDI_Event::getProgChange(uint8_t& prg, bool& firstChannel)
-{
-    firstChannel = !(_val & 0x80);
-    prg = _val & 0x7F;
-} // MIDI_Event::getProgChange
-
-bool MIDI_Event::isSoundEvent(void)
-{
-    return _type == 0xFF;
-} // MIDI_Event::isSoundEvent
-
-void MIDI_Event::getSoundEvent(uint8_t& sndId)
-{
-    sndId = _val;
-}
- // MIDI_Event::getSoundEvent
-
-bool MIDI_Event::isCtrlChange(void)
-{
-    return (_type > 0) && (_type < 0xFF);
-} // MIDI_Event::isCtrlChange
-
-void MIDI_Event::getCtrlChange(uint8_t& ctrl, uint8_t& val, bool& firstChannel)
-{
-    firstChannel = !(_type & 0x80);
-    ctrl = _type & 0x7F;
-    val = _val ;
-} // MIDI_Event::getCtrlChange
-
 /*******************************************************************************
  * MIDI Decoder
  *******************************************************************************/
-/*
-    COMMANDS:
-    All commands are 2 bytes-encoded in WAV file:
-    - "0" level => No command in progress
-    - ">  0.01" level => bit "0"
-    - "< -0.01" level => bit "1"
-    - at least 1 "0 level" space between 2 commands
-    - For readability in WAV file, two consecutive bits in WAV have a slightly different value (*0.8)
-    - Sent order: byte 0 first, MSB bit first.
+MIDI_Decoder::MIDI_Decoder(void):m_maxLevel(0.0),m_hasBreak(false),m_oof(true),m_skip(100){}
 
-    [0b00000000 0bYXXXXXXX] => Program Change #XXXXXXX (0-127) on channel Y (0 or 1 only)
-    [0b11111111 0xXX]       => Clic Event
-                               XX = sound Id:
-                                    - 0xFF= Clic High (1st measure clic)
-                                    - 0xFE= Clic Low (other measure clics)
-                                    - 0x80 = "One"
-                                    - 0x81 = "Two"
-                                    - 0x82 = "Three"
-                                    - 0x83 = "Four"
-                                    - other => user file (in folder PBKR/EVT/<XX>.WAV
-    [0bYCCCCCCC 0xVV] => Control Change #CCCCCCC (1-126) on channel Y (0 or 1 only) with value VV
-*/
-MIDI_Decoder::MIDI_Decoder(void):_event(NULL){reset();}
-
-void MIDI_Decoder::incoming (int16_t val)
+int MIDI_Decoder::receive (int16_t val)
 {
-    if (val < -256)
+    static const float MAX_BYTE (256.0);
+    if (m_skip)
     {
-        _currCmd |= _currBit;
+        m_skip--;
+        m_oof = true;
+        val = 0;
     }
-    else if (val < 256)
+    if (val < 0)
     {
-        reset();
-        return;
-    }
-
-    _currBit >>=1;
-    if (_currBit == 0)
-    {
-        if (_event)
+        if (val > -(MAX_BYTE*2))
         {
-            delete _event;
+            printf("Serial encoding error :insufficient level (%f)!\n",m_maxLevel);
         }
-        printf("Evt=%04X\n",_currCmd);
-        _event = new MIDI_Event(_currCmd);
-        reset();
+        m_maxLevel = -val;
+        m_hasBreak = true;
+        m_oof = true;
+#if DEBUG_MIDI
+        DEBUG_MIDI("MIDI break: %d (%f)\n",val, m_maxLevel);
+#endif
     }
-}
-
-MIDI_Event* MIDI_Decoder::pop (void)
-{
-    MIDI_Event* res(_event);
-    if (_event)
+    else if (m_hasBreak)
     {
-        _event = NULL;
+        m_hasBreak = false;
+        m_oof = (val == 0);
+#if DEBUG_MIDI
+        DEBUG_MIDI("MIDI OOF=%d (%d)\n",m_oof, val);
+#endif
     }
-    return res;
-} // MIDI_Decoder::pop
 
-#endif // USE_MIDI_AS_TRACK
+    if (m_oof) return -1;
+
+    const int b ((MAX_BYTE * val) / m_maxLevel);
+#if DEBUG_MIDI
+    static int maxLog(500);
+    if (maxLog-- > 0)
+    {
+        const int dNext((b+1) * m_maxLevel /MAX_BYTE);
+        const int dCurr((b) * m_maxLevel /MAX_BYTE);
+        DEBUG_MIDI("MIDI B=0x%02X (%d), err= %d%%)\n",
+                b,val, (b-dCurr) / dNext);
+    }
+#endif
+    if (b >= MAX_BYTE)
+    {
+        printf("Serial encoding error, MAX=(%f), b=%d\n",m_maxLevel,b);
+        m_skip = 100;
+        m_hasBreak = false;
+        m_maxLevel = 0.0;
+    }
+    return b;
+} // MIDI_Decoder::receive
+
 
 /*******************************************************************************
  * FILE MANAGER
@@ -600,72 +555,23 @@ void FileManager::stopReading(void)
     if (_file && _reading) startReading();
 } // FileManager::stopReading
 
-#if USE_MIDI_AS_TRACK
-void FileManager::process_midi(const int16_t& midi,float& l, float & r)
+void FileManager::getSample(float& l, float & r, int& midiB)
 {
-    _midiDecoder.incoming(midi);
-    MIDI_Event* e (_midiDecoder.pop());
-    if (e != NULL)
-    {
-        bool firstChannel;
-        if (e->isProgChange())
-        {
-            uint8_t prg;
-            e->getProgChange(prg, firstChannel);
-            printf("Prog change %u on chann %d\n",prg, firstChannel);
-        }
-        if (e->isCtrlChange())
-        {
-            uint8_t ctrl;
-            uint8_t val;
-            e->getCtrlChange(ctrl, val, firstChannel);
-            printf("Ctrl change %u->%u on chann %d\n",ctrl, val, firstChannel);
-        }
-        if (e->isSoundEvent())
-        {
-            uint8_t sndId;
-            e->getSoundEvent(sndId);
-            printf("Sound %02X\n", sndId);
-        }
-        // TODO!
-        l = 0.0;
-        r = 0.0;
-        delete (e);
-    }
-    else
-    {
-        l = 0.0;
-        r = 0.0;
-    }
-
-} // FileManager::process_midi
-#endif // USE_MIDI_AS_TRACK
-
-void FileManager::getSample(float& l, float & r, float& l2, float &r2)
-{
+    midiB = -1;
     if (_reading && _file)
     {
-        MIDI_Sample midi(0);
-        if (not _file->getNextSample(l ,r, midi))
+        int16_t midiIn;
+        if (not _file->getNextSample(l ,r, midiIn))
         {
             stopReading();
         }
 
-#if USE_MIDI_AS_TRACK
-        process_midi(midi,l2, r2);
-#else
-        // 3rd track is raw WAV mono file
-        l2 = midi;
-        r2 = l2;
-#endif // USE_MIDI_AS_TRACK
-
+        midiB = _midiDecoder.receive(midiIn);
         return;
     }
 
     l = _lastL;
     r = _lastR;
-    l2 = 0.0;
-    r2 = 0.0;
 } // FileManager::getSample
 
 void FileManager::startup(void)

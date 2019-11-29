@@ -15,13 +15,19 @@
  +5V => MIDI #4 (via R220), I2S, Ext_Alim
 
  Ext_Alim required, otherwise there may be not enough power from USB.
- 
- 
+
+ MIDI preset:
+ 24  = click H
+ 25  = click L
+ Other = ignored
  */
 /**
  * Sine test duration (seconds)
  */
 #define DEBUG_LRC_SINE_TEST 2
+
+// 1 to debug serial input
+#define DEBUG_SERIAL_IN 1
 
 /**
  * I2S output frequency: 44100 or 22050

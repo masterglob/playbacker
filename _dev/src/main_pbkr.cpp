@@ -9,6 +9,9 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <termios.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "pbkr_config.h"
 #include "pbkr_gpio.h"
@@ -26,6 +29,41 @@
 using namespace PBKR;
 using namespace std;
 
+/*******************************************************************************
+ * Serial link
+ *******************************************************************************/
+namespace
+{
+class SerialOutput
+{
+public:
+    SerialOutput(const char* filename):
+        m_handle (open (filename, O_WRONLY)){
+        if (m_handle < 0) {
+            throw EXCEPTION("Failed to open serial port\n");
+        }
+#if 0 // To change settings
+        struct termios tty;
+        memset(&tty, 0, sizeof tty);
+        if(tcgetattr(m_handle, &tty) != 0) {
+            throw EXCEPTION("Error from tcgetattr for serial port\n");
+        }
+#endif
+    }
+    ~SerialOutput(void){close(m_handle);}
+    inline void put(const uint8_t c)const
+    {
+        write(m_handle, &c, 1);
+    }
+private:
+    int m_handle;
+};
+static const SerialOutput serialOutput("/dev/ttyAMA0");
+}
+
+/*******************************************************************************
+ *
+ *******************************************************************************/
 
 namespace
 {
@@ -44,8 +82,7 @@ public:
     Console(void): Thread(),
     exitreq(false),
     doSine(false),
-    _volume(0.11),
-    _fader(NULL)
+    _volume(0.11)
 {}
     virtual ~Console(void){}
     virtual void body(void)
@@ -109,7 +146,6 @@ public:
 private:
     static const float volumeFaderDurationS;
     float _volume;
-    Fader* _fader;
 };
 const float Console::volumeFaderDurationS (0.1);
 
@@ -118,28 +154,16 @@ void Console::changeVolume (float v, const float duration)
 {
     if (v > 1.0) v = 1.0;
     if (v < 0.0) v = 0.0;
-    // printf("New volume : %d%%\n",(int)(_volume*100));
-    const float v0(volume()); // !! Compute volume before destroying fader!
-    if (_fader) delete (_fader);
-    _fader =  new Fader(duration,v0, v);
-    //printf("New volume = %d%%\n", (int)(_volume *100));
+    _volume = v;
+
+    const uint8_t vol8 (v * 128.0);
+    serialOutput.put(MIDI_CMD_CC | MIDI_CHANNEL_16);
+    serialOutput.put(MIDI_CC_VOLUME);
+    serialOutput.put(vol8);
 }
 
 float Console::volume(void)
 {
-    if (_fader)
-    {
-        const float f(_fader->position());
-        if (_fader->done())
-        {
-            _volume = f;
-            // printf("FADER DONE\n");
-            delete (_fader);
-            _fader=NULL;
-        }
-        else
-            return f;
-    }
     return _volume;
 }
 
@@ -419,10 +443,9 @@ int main (int argc, char**argv)
 		led.set (led_on);
 
         float l,r;
-        float l2,r2;
+        int midi;
 		float phase = 0;
         float volume(0.9);
-        float volume2(0.90);
 		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
 		SOUND::SoundPlayer playerHifi (hifidac);
 
@@ -440,11 +463,9 @@ int main (int argc, char**argv)
 			}
 			else
 			{
-			    manager.getSample(l,r,l2,r2);
+			    manager.getSample(l,r,midi);
                 l *=  volume;
                 r *=  volume;
-                l2 *= volume2 * (console.volume() + 0.1);
-                r2 *= volume2 * (console.volume() + 0.1);
 			}
 
 			VirtualTime::elapseSample();
@@ -452,7 +473,11 @@ int main (int argc, char**argv)
             if (phase > TWO_PI) phase -=TWO_PI;
 
 			playerHifi.write_sample(l,r);
-			// TODO : send serail to WEMOS!
+			if (midi >=0)
+			{
+			    // printf("TODO : MIDI byte to send: %02X\n",midi);
+			    serialOutput.put(midi);
+			}
 
 			if (ledFader->update())
 			{

@@ -6,7 +6,7 @@
 #include <i2s_reg.h>
 #include "slave_consts.h"
 
-#define DEBUG_LRC_I2C true
+#define DEBUG_LRC_I2C false
 
 extern void commmgt_rcv(const uint8_t c);
 
@@ -43,13 +43,13 @@ static int notePlayingLen(0);
 void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity)
 {
   //Serial.printf("Play note %d at level %d\n",noteNum, velocity); // TODO remove log
-  if (noteNum == 30)
+  if (noteNum == 24)
   {
     notePlayingLen = sizeof(SAMPLES_Clic1) /sizeof(*SAMPLES_Clic1);
     notePlayingPtr = SAMPLES_Clic1;
     volume = velocity / 128.0;
   }
-  if (noteNum == 31)
+  if (noteNum == 25)
   {
     notePlayingLen = sizeof(SAMPLES_Clic2) /sizeof(*SAMPLES_Clic2);
     notePlayingPtr = SAMPLES_Clic2;
@@ -69,8 +69,11 @@ void setup() {
 
   
   delay (100);
-  //Serial.begin(SERIAL_BAUDRATE);
+#if DEBUG_SERIAL_IN
+  Serial.begin(SERIAL_BAUDRATE);
+#else
   Serial.begin(MIDI_BAUD_RATE);
+#endif
   SerialRx.begin(RX_PRG_BAUDRATE);
   pinMode(I2S_PIN_BCK, OUTPUT);
   pinMode(I2S_PIN_LRCK, OUTPUT);
@@ -81,11 +84,13 @@ void setup() {
   delay (200);
   i2s_begin();
   i2s_set_rate(I2S_HZ_FREQ);
-  //Serial.printf("");
-  //Serial.printf("F=");
+#if DEBUG_SERIAL_IN
+  Serial.printf("");
+  Serial.printf("F=");
   const String s (static_cast<int>(i2s_get_real_rate()));
-  //Serial.printf(s.c_str());
-  //Serial.printf(" Hz\n");
+  Serial.printf(s.c_str());
+  Serial.printf(" Hz\n");
+#endif
 
   secPrec = (millis()/1000);
 
@@ -108,6 +113,9 @@ void loop() {
   if (SerialRx.available() > 0)
   {
     const uint8_t c = uint8_t (SerialRx.read());
+#if DEBUG_SERIAL_IN
+    printf("\nRcv 0x%02X\n",c);
+#endif    
     commmgt_rcv(c);
   }
   

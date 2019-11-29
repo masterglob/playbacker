@@ -162,7 +162,7 @@ WavFileLRC::is_open(void)
 
 /*******************************************************************************/
 bool
-WavFileLRC::getNextSample(float & l, float & r, MIDI_Sample& midi)
+WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
     Buffer* b(&_buffers[_bufferIdx]);
@@ -178,29 +178,21 @@ WavFileLRC::getNextSample(float & l, float & r, MIDI_Sample& midi)
             // underrun from input (EOF)?
             l = 0.0;
             r = 0.0;
-            midi = 0;
+            midi = -1;
             return false;
         }
     }
     LRC_Sample& sample (b->_data[b->_pos++]);
     l = ((float)sample.l) * READ_VOLUME;
     r = ((float)sample.r) * READ_VOLUME;
-#if USE_MIDI_AS_TRACK
+
     midi = sample.midi;
-#else
-    midi = ((float)sample.midi) * READ_VOLUME;
-#endif
-    /*printf("Sample = %d / %d\n",sample.l, sample.r);
-    sleep (1.0);*/
+
     if (_bof)
     {
         const float fadevol(_bof->position());
         l *= fadevol;
         r *= fadevol;
-#if USE_MIDI_AS_TRACK
-#else
-        midi *= fadevol;
-#endif
         if (_bof->done())
         {
             delete _bof;

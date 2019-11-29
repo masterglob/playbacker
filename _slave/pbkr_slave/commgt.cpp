@@ -44,12 +44,15 @@ static HardwareSerial& midiTx(Serial);
  *******************************************************************************/
 MIDI_SysEx::MIDI_SysEx(void)
 {
-  //Serial.println ("SYSEX msg BEGIN");
+#if DEBUG_SERIAL_IN
+  Serial.println ("SYSEX msg BEGIN");
+#endif
 }
 MIDI_SysEx::~MIDI_SysEx(void)
 {
-  // TODO!
-  //Serial.println ("SYSEX msg END");
+#if DEBUG_SERIAL_IN
+  Serial.println ("SYSEX msg END");
+#endif
 }
 
 void MIDI_SysEx::rcv(const uint8_t c)
@@ -81,8 +84,10 @@ void MIDI_Msg::midi_event(void)
   }
   else
   {
+#if DEBUG_SERIAL_IN == 0
     // forward on serial link
     midiTx.write((const uint8_t *)buff, len);
+#endif
   }
 }
 

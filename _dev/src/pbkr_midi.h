@@ -13,6 +13,10 @@
 
 #include <stdexcept>
 
+#define MIDI_CMD_CC 0xB0
+#define MIDI_CHANNEL_16 0x0F
+#define MIDI_CC_VOLUME 0x07
+
 namespace PBKR
 {
 namespace MIDI

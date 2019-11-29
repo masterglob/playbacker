@@ -45,6 +45,9 @@ utils:
 web:
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+wav:
+	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 display:
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 

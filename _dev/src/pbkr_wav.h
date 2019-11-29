@@ -14,11 +14,6 @@ namespace PBKR
 static const size_t WAV_NB_BUFFERS(2);
 static const size_t WAV_BUFFER_SAMPLES(1024);
 
-#if USE_MIDI_AS_TRACK
-typedef int16_t MIDI_Sample;
-#else
-typedef float MIDI_Sample;
-#endif
 /** reading & chacking 3 track WAV file */
 class WavFileLRC
 {
@@ -35,7 +30,7 @@ public:
     /**
      * Return True if the file is still reading. false when terminated
      */
-    bool getNextSample(float & l, float & r, MIDI_Sample& midi);
+    bool getNextSample(float & l, float & r, int16_t& midi);
     void reset(void);
     const std::string _filename;
 

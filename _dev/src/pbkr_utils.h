@@ -154,6 +154,7 @@ private:
     uint8_t _type;
     uint8_t _val;
 };
+#endif // USE_MIDI_AS_TRACK
 
 /*******************************************************************************
  * MIDI Decoder
@@ -163,19 +164,17 @@ class MIDI_Decoder
 {
 public:
     MIDI_Decoder(void);
-    /* @param val: the MIDI value read from WAV stream
-     * @return a MIDI command
+    /* @param f: the MIDI value read from WAV stream
+     * @return a byte to send on erial link if >=0.
      */
-    void incoming (int16_t val);
-    MIDI_Event* pop (void);
+    int receive (int16_t val);
 private:
-    inline void reset(void){_currCmd=0;_currBit=0x8000;}
-    uint16_t _currCmd;
-    uint16_t _currBit;
-    MIDI_Event* _event;
+    float m_maxLevel;
+    bool  m_hasBreak;
+    bool  m_oof; // out of frame
+    int   m_skip;
 };
 
-#endif // USE_MIDI_AS_TRACK
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
@@ -190,7 +189,7 @@ public:
     void prevTrack(void);
     void stopReading(void);
     void startReading(void);
-    void getSample( float& l, float & r, float& l2, float &r2);
+    void getSample( float& l, float & r, int& midiB);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return _title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}
@@ -213,10 +212,7 @@ private:
     bool _reading;
     float _lastL;
     float _lastR;
-#if USE_MIDI_AS_TRACK
     MIDI_Decoder _midiDecoder;
-    void process_midi(const int16_t& midi,float& l, float & r);
-#endif // USE_MIDI_AS_TRACK
     XMLConfig* _pConfig;
 };
 
