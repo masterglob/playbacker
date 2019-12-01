@@ -60,6 +60,7 @@ static std::string getStrAttr(xmlNode * n,const char* attrName)
  *******************************************************************************/
 namespace PBKR
 {
+FileManager fileManager (MOUNT_POINT);
 
 Thread::Thread(void): _thread(-1),_attr(NULL)
 {
@@ -449,7 +450,7 @@ bool FileManager::is_connected(void)
     return false;
 }
 
-
+/*******************************************************************************/
 void FileManager::on_disconnect(void)
 {
     display.onEvent(DISPLAY::DisplayManager::evUsbOut);
@@ -465,6 +466,7 @@ void FileManager::on_disconnect(void)
     _pConfig = new XMLConfig (path.c_str());
 }
 
+/*******************************************************************************/
 void FileManager::on_connect(void)
 {
     display.onEvent(DISPLAY::DisplayManager::evUsbIn);
@@ -516,7 +518,8 @@ void FileManager::on_connect(void)
         for (auto it (_pConfig->trackVect.begin()); it != _pConfig->trackVect.end(); it++)
         {
             const XMLConfig::TrackNode& tn(*it);
-            if (tn.id >= m_nbFiles) m_nbFiles = tn.id + 1;
+            if (tn.id == 0) continue;
+            if (tn.id >= m_nbFiles) m_nbFiles = tn.id;
             m_files[tn.id - 1] = tn.filename;
         }
     }
@@ -609,23 +612,33 @@ std::string FileManager::fileTitle(size_t idx)const
 void FileManager::nextTrack(void)
 {
     printf("nextTrack %d %d \n",m_nbFiles, m_indexPlaying);
-    if (m_nbFiles > 0 && m_indexPlaying + 1 < m_nbFiles )
-        selectIndex(m_indexPlaying+1);
+    const int prev (m_indexPlaying);
+    while (m_nbFiles > 0 && m_indexPlaying + 1 < m_nbFiles )
+    {
+        m_indexPlaying ++;
+        if (selectIndex (m_indexPlaying)) return;
+    }
+    m_indexPlaying=prev;
 }
 
 void FileManager::prevTrack(void)
 {
     printf("prevTrack %d %d \n",m_nbFiles, m_indexPlaying);
-    if (m_nbFiles > 0 && m_indexPlaying > 0 )
-        selectIndex(m_indexPlaying - 1);
+    const int prev (m_indexPlaying);
+    while (m_nbFiles > 0 && m_indexPlaying > 0)
+    {
+        m_indexPlaying --;
+        if (selectIndex (m_indexPlaying)) return;
+    }
+    m_indexPlaying=prev;
 }
 
-void FileManager::selectIndex(const size_t i)
+bool FileManager::selectIndex(const size_t i)
 {
     if (i >= m_nbFiles || m_files[i] == "")
     {
         display.warning(std::string("No track #") + std::to_string(i+1));
-        return;
+        return false;
     }
     stopReading();
     m_indexPlaying = i;
@@ -638,7 +651,7 @@ void FileManager::selectIndex(const size_t i)
 
         display.warning(std::string("BAD FILE FORMAT"));
         _file = NULL;
-        return;
+        return false;
     }
     if (_file->is_open())
     {
@@ -653,11 +666,13 @@ void FileManager::selectIndex(const size_t i)
         }
         display.onEvent(DISPLAY::DisplayManager::evFile, title);
         display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);
+        return true;
     }
     else
     {
         printf("Failed to open <%s>\n",m_files[m_indexPlaying].c_str());
     }
+    return false;
 
 } // FileManager::playIndex
 

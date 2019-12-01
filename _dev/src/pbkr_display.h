@@ -26,7 +26,6 @@ class I2C_Display
 {
 public:
     I2C_Display(const int address,
-            const GPIOs::GPIO_id powPin,
             const int nb_lines = 2);
     virtual ~I2C_Display(void);
     void begin (void);
@@ -54,7 +53,6 @@ private:
     void pulseEnable(uint8_t _data);
     int _file;
     unsigned char _address;
-    GPIOs::Output _powPin;
     uint8_t _displayfunction;
     uint8_t _displaycontrol;
     uint8_t _displaymode;

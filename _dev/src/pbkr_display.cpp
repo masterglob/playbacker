@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdexcept>
 
+#include "pbkr_menu.h"
 #include "pbkr_display.h"
 #include "pbkr_osc.h"
 
@@ -65,13 +66,11 @@ namespace DISPLAY
 /*******************************************************************************
  *
  *******************************************************************************/
-static I2C_Display display( DISPLAY_I2C_ADDRESS, GPIOs::GPIO_17_PIN11);
+static I2C_Display display( DISPLAY_I2C_ADDRESS);
 
 I2C_Display::I2C_Display (const int address,
-		const GPIOs::GPIO_id powPin,
 		const int nb_lines):_file(-1),
 		_address(address),
-		_powPin (GPIOs::Output (powPin, "I2C POWER")),
 		_displayfunction(LCD_4BITMODE | LCD_5x8DOTS),
 		_displaycontrol(LCD_DISPLAYON | LCD_CURSORON | LCD_BLINKON),
 		_displaymode(LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT),
@@ -103,13 +102,11 @@ I2C_Display::I2C_Display (const int address,
 /*******************************************************************************/
 I2C_Display::~I2C_Display(void)
 {
-	_powPin.off();
 }
 
 /*******************************************************************************/
 void I2C_Display::begin (void)
 {
-	_powPin.on();
 	delay(100);
 	expanderWrite(0);	// reset expander
 	delay(500);
@@ -363,6 +360,17 @@ void DisplayManager::refresh(void)
             else
                 l2 = std::string("Track -") + "/" + m_trackCount;
         }
+    }
+
+    const std::string l1_menu(mainMenu.menul1());
+    if (l1_menu != "")
+    {
+        l1 = l1_menu;
+    }
+    const std::string l2_menu(mainMenu.menul2());
+    if (l2_menu != "")
+    {
+        l2 = l2_menu;
     }
     if (m_line1 != l1 || m_line2 != l2)
     {

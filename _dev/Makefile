@@ -42,8 +42,11 @@ osc:
 utils:
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
-web:
-	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
+menu:
+	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
+gpio:
+	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
 wav:
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
@@ -59,6 +62,7 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 

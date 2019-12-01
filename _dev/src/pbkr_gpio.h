@@ -5,6 +5,8 @@
 #include <wiringPi.h>
 #include <stdexcept>
 
+#include "pbkr_utils.h"
+
 namespace PBKR
 {
 namespace GPIOs
@@ -31,6 +33,7 @@ public:
 	BCM_id getBCM(void)const{return _bcm;};
 	PIN_id getPIN(void)const{return _pin;};
 	static GPIO_id pinToId(const PIN_id pin);
+    std::string name(void)const{return _name;};
 private:
 	static const BCM_id bcm_map[nb_ios];
 	static const PIN_id pin_map[nb_ios];
@@ -80,6 +83,7 @@ static const GPIO_id GPIO_I2S_DATA (29u);
 static const GPIO_id GPIO_17_PIN11 (GPIO::pinToId(11));
 static const GPIO_id GPIO_27_PIN13 (GPIO::pinToId(13));
 static const GPIO_id GPIO_22_PIN15 (GPIO::pinToId(15));
+static const GPIO_id GPIO_23_PIN16 (GPIO::pinToId(16));
 
 
 /*******************************************************************************
@@ -106,8 +110,28 @@ public:
 class Input: protected GPIO
 {
 public:
-	Input (const unsigned int id, const char*name="BUTTON"):GPIO(id, INPUT,name){};
-	bool pressed(void)const{return digitalRead(_gpio);}
+    Input (const unsigned int id, const char*name="INPUT"):GPIO(id, INPUT,name){};
+    bool pressed(void)const{return digitalRead(_gpio);}
+};
+
+/*******************************************************************************
+ *
+ *******************************************************************************/
+class Button: protected Input
+{
+public:
+    Button (const unsigned int id, const float & maxWait, const char*name="BUTTON"):
+        Input(id, name),m_pressed(false),
+        m_must_release(false),
+        m_t0 (VirtualTime::now()),
+        m_maxWait(maxWait){};
+    ~Button(void){}
+    bool   pressed(float& duration)const;
+private :
+    mutable bool m_pressed;
+    mutable bool m_must_release;
+    mutable VirtualTime::Time m_t0;
+    const float m_maxWait;
 };
 }
 }

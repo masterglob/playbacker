@@ -1,4 +1,5 @@
 #include "pbkr_gpio.h"
+#include "pbkr_utils.h"
 
 namespace
 {
@@ -102,6 +103,44 @@ GPIO_id GPIO::pinToId(const PIN_id pin)
 	throw std::range_error(std::string("GPIO:no GPIO on pin ")+std::to_string(pin));
 }
 
+bool Button::pressed(float& duration)const
+{
+    if (digitalRead(_gpio))
+    {
+        if (m_must_release)
+        {
+            return false;
+        }
+        if (m_pressed)
+        {
+            const float f = VirtualTime::toS(VirtualTime::now() - m_t0);
+            if (m_maxWait < f)
+            {
+                m_pressed = false;
+                duration = f;
+                m_must_release = true;
+                return true;
+            }
+        }
+        else
+        {
+            m_t0 = VirtualTime::now();
+            m_pressed = true;
+        }
+    }
+    else
+    {
+        m_must_release = false;
+        if (m_pressed)
+        {
+            m_pressed = false;
+            duration = VirtualTime::toS(VirtualTime::now() - m_t0);
+            m_must_release = true;
+            return true;
+        }
+    }
+    return false;
+}
 
 }
 }

@@ -21,6 +21,7 @@
 #include "pbkr_midi.h"
 #include "pbkr_webserv.h"
 #include "pbkr_osc.h"
+#include "pbkr_menu.h"
 
 
 /*******************************************************************************
@@ -68,10 +69,9 @@ static const SerialOutput serialOutput("/dev/ttyAMA0");
 namespace
 {
 static volatile int keepRunning = 1;
-const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
+//const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
 const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
-static FileManager manager (MOUNT_POINT);
 static void intHandler(int dummy);
 static inline void setClicVolume  (const float& v);
 static inline std::string onKeyboardCmd  (const std::string& msg);
@@ -115,10 +115,10 @@ public:
                 break;
             case 0x0A:
             case ' ':
-                if (manager.reading())
-                    manager.stopReading();
+                if (fileManager.reading())
+                    fileManager.stopReading();
                 else
-                    manager.startReading ();
+                    fileManager.startReading ();
                 break;
             case '1':
             case '2':
@@ -129,7 +129,7 @@ public:
             case '7':
             case '8':
             case '9':
-                manager.selectIndex (c - '1');
+                fileManager.selectIndex (c - '1');
                 break;
             default:
                 printf("Unknown command :(0x%02X)\n",c);
@@ -255,7 +255,7 @@ void Evt::onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice)
                 {
                     if (padId[i] == b1)
                     {
-                        manager.selectIndex (i);
+                        fileManager.selectIndex (i);
                         return;
                     }
                 }
@@ -295,16 +295,16 @@ void Evt::onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice)
                     return;
                 case PAD_PLAY:
                     // Play/pause
-                    manager.startReading ();
+                    fileManager.startReading ();
                     return;
                 case PAD_STOP:
-                    manager.stopReading();
+                    fileManager.stopReading();
                     return;
                 case PAD_PREV:
-                    manager.prevTrack();
+                    fileManager.prevTrack();
                     return;
                 case PAD_NEXT:
-                    manager.nextTrack();
+                    fileManager.nextTrack();
                     return;
                 default:
                     return;
@@ -380,9 +380,9 @@ class OSC_Event : public OSC::OSC_Event
 public:
     virtual ~OSC_Event(void){}
     virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
-    virtual void onPlayEvent    (void){manager.startReading ();}
-    virtual void onStopEvent    (void){manager.stopReading ();}
-    virtual void onChangeTrack  (const uint32_t idx){manager.selectIndex(idx);}
+    virtual void onPlayEvent    (void){fileManager.startReading ();}
+    virtual void onStopEvent    (void){fileManager.stopReading ();}
+    virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx);}
     virtual void setClicVolume  (const float& v){::setClicVolume(v);}
     virtual std::string onKeyboardCmd  (const std::string& msg){return ::onKeyboardCmd(msg);}
 };
@@ -398,8 +398,7 @@ static OSC::OSC_Controller osc(oscCfg,oscEvent);
  *******************************************************************************/
 int main (int argc, char**argv)
 {
-    WEB::BasicWebSrv srv(manager, midiMgr);
-
+    WEB::BasicWebSrv srv(fileManager, midiMgr);
 
     using namespace PBKR;
     /*
@@ -435,7 +434,7 @@ int main (int argc, char**argv)
 	try {
 	    midiMgr.start();
 	    DISPLAY::DisplayManager::instance().onEvent(DISPLAY::DisplayManager::evBegin);
-	    manager.startup();
+	    fileManager.startup();
 		printf("Press btn...!\n");
         if (interactive_console) console.start();
 		Fader* ledFader(new Fader(0.5,0,0));
@@ -453,7 +452,7 @@ int main (int argc, char**argv)
 
 		while (keepRunning)
 		{
-			if (BTN.pressed()) break;
+			// if (BTN.pressed()) break;
 
 			if (console.doSine)
 			{
@@ -463,7 +462,7 @@ int main (int argc, char**argv)
 			}
 			else
 			{
-			    manager.getSample(l,r,midi);
+			    fileManager.getSample(l,r,midi);
                 l *=  volume;
                 r *=  volume;
 			}

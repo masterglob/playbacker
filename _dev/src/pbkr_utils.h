@@ -109,7 +109,7 @@ public:
 	static void elapseSample(void);
 	static inline Time now(void){return _currTime;}
 	static Time inS(float s);
-	static inline float toS(const Time& s);
+	static float toS(const Time& s);
 	static unsigned long delta(const Time& t0, const Time& t1);
 private:
 	static Time _currTime;
@@ -184,7 +184,7 @@ public:
 	FileManager (const char* path);
 	virtual ~FileManager (void);
     void startup(void);
-    void selectIndex(const size_t i); /* @param i = track index, starting at 0 */
+    bool selectIndex(const size_t i); /* @param i = track index, starting at 0 */
     void nextTrack(void);
     void prevTrack(void);
     void stopReading(void);
@@ -215,6 +215,8 @@ private:
     MIDI_Decoder _midiDecoder;
     XMLConfig* _pConfig;
 };
+
+extern FileManager fileManager;
 
 /*******************************************************************************
  * GENERAL PURPOSE FUNCTIONSS
