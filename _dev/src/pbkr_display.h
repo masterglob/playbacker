@@ -97,6 +97,7 @@ public:
     void setProjectTitle (const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
     void forceRefresh(void);
+    uint32_t printIdx(void)const{return m_printIdx;}
 private:
     DisplayManager(void);
     ~DisplayManager(void);

@@ -6,9 +6,11 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
 
 namespace PBKR
 {
+
 /*******************************************************************************
  * MAIN MENU CONFIG
  *******************************************************************************/
@@ -17,6 +19,8 @@ struct MenuCfg
     MenuCfg(void);
     const GPIOs::Button leftGpio;
     const GPIOs::Button rightGpio;
+    const GPIOs::Button upGpio;
+    const GPIOs::Button downGpio;
     const GPIOs::Button selectGpio;
 };
 
@@ -25,14 +29,22 @@ class MainMenu;
 class MenuItem
 {
 public:
-    MenuItem(const std::string & menuName=""):
-        name(menuName){}
+    MenuItem(const std::string & title, MenuItem* parent = 0);
     virtual ~MenuItem(void){}
-    virtual void onSelPress(const float& duration){}
+    virtual void onSelPressShort(void);
+    virtual void onSelPressLong(void);
     virtual void onLeftRightPress(const bool isLeft){}
-    virtual const std::string menul1(void)const{return "";}
-    virtual const std::string menul2(void)const{return "";}
+    virtual void onUpDownPress(const bool isUp){}
+    virtual const std::string menul1(void)const{return subMenuName();}
+    virtual const std::string menul2(void)const;
+    virtual const std::string subMenuName(void)const{return name;}
     const std::string name;
+protected:
+    typedef std::vector<MenuItem*, std::allocator<MenuItem*>> MenuItemVect;
+    MenuItemVect m_subMenus;
+    MenuItem*    m_parent;
+private:
+    MenuItemVect::iterator m_iter;
 };
 
 /*******************************************************************************
@@ -51,5 +63,5 @@ private:
     MenuCfg m_cfg;
     MenuItem* m_currentMenu;
 };
-extern MainMenu &mainMenu;
+extern MainMenu &globalMenu;
 } // namespace PBKR

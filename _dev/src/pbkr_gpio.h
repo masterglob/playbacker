@@ -84,6 +84,7 @@ static const GPIO_id GPIO_17_PIN11 (GPIO::pinToId(11));
 static const GPIO_id GPIO_27_PIN13 (GPIO::pinToId(13));
 static const GPIO_id GPIO_22_PIN15 (GPIO::pinToId(15));
 static const GPIO_id GPIO_23_PIN16 (GPIO::pinToId(16));
+static const GPIO_id GPIO_24_PIN18 (GPIO::pinToId(18));
 
 
 /*******************************************************************************

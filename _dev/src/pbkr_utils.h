@@ -225,5 +225,11 @@ const char  getch(void);
 
 #define ZERO(x) memset(&(x),0, sizeof(x))
 
+extern const char* NET_DEV_WIFI;
+extern const char* NET_DEV_ETH;
+/** Return the IP address*/
+const char* getIPAddr (const char* device);
+const char* getIPNetMask (const char* device);
+
 }
 #endif // _pbkr_utils_h_

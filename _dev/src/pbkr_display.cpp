@@ -362,12 +362,12 @@ void DisplayManager::refresh(void)
         }
     }
 
-    const std::string l1_menu(mainMenu.menul1());
+    const std::string l1_menu(globalMenu.menul1());
     if (l1_menu != "")
     {
         l1 = l1_menu;
     }
-    const std::string l2_menu(mainMenu.menul2());
+    const std::string l2_menu(globalMenu.menul2());
     if (l2_menu != "")
     {
         l2 = l2_menu;

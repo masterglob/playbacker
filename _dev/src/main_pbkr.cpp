@@ -70,7 +70,7 @@ namespace
 {
 static volatile int keepRunning = 1;
 //const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
-const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
+//const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
 static void intHandler(int dummy);
 static inline void setClicVolume  (const float& v);
@@ -172,7 +172,7 @@ void intHandler(int dummy) {
     PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
     keepRunning = 0;
     console.exitreq = true;
-    led.off();
+    //led.off();
 }
 
 class MIDI_Input_Mgr;
@@ -439,7 +439,7 @@ int main (int argc, char**argv)
         if (interactive_console) console.start();
 		Fader* ledFader(new Fader(0.5,0,0));
 		bool  led_on(true);
-		led.set (led_on);
+		//led.set (led_on);
 
         float l,r;
         int midi;
@@ -483,7 +483,7 @@ int main (int argc, char**argv)
 			    delete(ledFader);
 				ledFader = new Fader(0.5,0,0);
 				led_on = not led_on;
-				led.set (led_on);
+				//led.set (led_on);
 			}
 		}
 		printf("Button pressed!\n");

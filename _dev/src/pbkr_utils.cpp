@@ -17,6 +17,11 @@
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
 
+#include <sys/types.h>
+#include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+
 #define DEBUG_MIDI 0
 
 /*******************************************************************************
@@ -704,4 +709,64 @@ const char getch(void) {
 	return (buf);
 }
 
+
+const char* NET_DEV_WIFI ("wlan0");
+const char* NET_DEV_ETH ("eth0");
+const char* getIPAddr (const char* device)
+{
+    static char ipaddr[INET_ADDRSTRLEN];
+    struct ifaddrs * ifAddrStruct=NULL;
+    struct ifaddrs * ifa=NULL;
+    void * tmpAddrPtr=NULL;
+
+    strcat(ipaddr, "\?\?\?");
+
+    getifaddrs(&ifAddrStruct);
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+           if (!ifa->ifa_addr) {
+               continue;
+           }
+           if (strcmp (ifa->ifa_name, device) != 0)
+           {
+               if (ifa->ifa_addr->sa_family == AF_INET)
+               { // check it is IP4 is a valid IP4 Address
+                   tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+                   inet_ntop(AF_INET, tmpAddrPtr, ipaddr, INET_ADDRSTRLEN);
+               }
+           }
+
+       }
+       if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+
+    return ipaddr;
+}
+
+const char* getIPNetMask (const char* device)
+{
+    static char ipaddr[INET_ADDRSTRLEN];
+    struct ifaddrs * ifAddrStruct=NULL;
+    struct ifaddrs * ifa=NULL;
+    void * tmpAddrPtr=NULL;
+
+    strcat(ipaddr, "\?\?\?");
+
+    getifaddrs(&ifAddrStruct);
+    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+           if (!ifa->ifa_netmask) {
+               continue;
+           }
+           if (strcmp (ifa->ifa_name, device) != 0)
+           {
+               if (ifa->ifa_netmask->sa_family == AF_INET)
+               { // check it is IP4 is a valid IP4 Address
+                   tmpAddrPtr=&((struct sockaddr_in *)ifa->ifa_netmask)->sin_addr;
+                   inet_ntop(AF_INET, tmpAddrPtr, ipaddr, INET_ADDRSTRLEN);
+               }
+           }
+
+       }
+       if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+
+    return ipaddr;
+}
 } // namespace PBKR
