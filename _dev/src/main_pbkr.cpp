@@ -35,31 +35,6 @@ using namespace std;
  *******************************************************************************/
 namespace
 {
-class SerialOutput
-{
-public:
-    SerialOutput(const char* filename):
-        m_handle (open (filename, O_WRONLY)){
-        if (m_handle < 0) {
-            throw EXCEPTION("Failed to open serial port\n");
-        }
-#if 0 // To change settings
-        struct termios tty;
-        memset(&tty, 0, sizeof tty);
-        if(tcgetattr(m_handle, &tty) != 0) {
-            throw EXCEPTION("Error from tcgetattr for serial port\n");
-        }
-#endif
-    }
-    ~SerialOutput(void){close(m_handle);}
-    inline void put(const uint8_t c)const
-    {
-        write(m_handle, &c, 1);
-    }
-private:
-    int m_handle;
-};
-static const SerialOutput serialOutput("/dev/ttyAMA0");
 }
 
 /*******************************************************************************
@@ -157,9 +132,12 @@ void Console::changeVolume (float v, const float duration)
     _volume = v;
 
     const uint8_t vol8 (v * 128.0);
-    serialOutput.put(MIDI_CMD_CC | MIDI_CHANNEL_16);
-    serialOutput.put(MIDI_CC_VOLUME);
-    serialOutput.put(vol8);
+    MidiOutMsg msg;
+    msg.push_back(MIDI_CMD_CC | MIDI_CHANNEL_16);
+    msg.push_back(MIDI_CC_VOLUME);
+    msg.push_back(vol8);
+    wemosControl.pushMessage(msg);
+
 }
 
 float Console::volume(void)
@@ -430,6 +408,8 @@ int main (int argc, char**argv)
 
 	GPIOs::GPIO::begin();
 
+	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos
+
 	signal(SIGINT, intHandler);
 	try {
 	    midiMgr.start();
@@ -474,9 +454,16 @@ int main (int argc, char**argv)
 			playerHifi.write_sample(l,r);
 			if (midi >=0)
 			{
-			    // printf("TODO : MIDI byte to send: %02X\n",midi);
-			    serialOutput.put(midi);
+			    midiCmdToWemos.push_back(midi);
 			}
+			else if (midiCmdToWemos.size() > 0)
+			{
+			    wemosControl.pushMessage(midiCmdToWemos);
+			    midiCmdToWemos.clear();
+			}
+
+            // printf("TODO : MIDI byte to send: %02X\n",midi);
+			wemosControl.sendByte();
 
 			if (ledFader->update())
 			{

@@ -9,6 +9,7 @@
 #define DEBUG_LRC_I2C false
 
 extern void commmgt_rcv(const uint8_t c);
+extern void set_volume(const  float & volume);
 
 ///////////////////////////////////////////////////////
 // LOCAL FUNCTIONS
@@ -22,16 +23,22 @@ extern void commmgt_rcv(const uint8_t c);
   i2s_write_sample(value);
 }
 
+
 static int secPrec;
 
 static uint8_t phase;
 static int dtMax(-1);
 static bool sineTest(false);
 static int secCnt(0);
-static float volume(0.5);
+static float s_volume(0.8);
+static float clic_volume(0.5);
 static SoftwareSerial SerialRx(SOFT_SER_RX, SOFT_SER_TX);
 String s;
 
+void set_volume(const  float & volume)
+{
+  s_volume = volume;
+}
 
 
 /*******************************************************************************
@@ -42,18 +49,18 @@ static int notePlayingLen(0);
 
 void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity)
 {
-  //Serial.printf("Play note %d at level %d\n",noteNum, velocity); // TODO remove log
+  PRINTF (("Play note %d at level %d\n",noteNum, velocity));
   if (noteNum == 24)
   {
     notePlayingLen = sizeof(SAMPLES_Clic1) /sizeof(*SAMPLES_Clic1);
     notePlayingPtr = SAMPLES_Clic1;
-    volume = velocity / 128.0;
+    clic_volume = velocity / 128.0;
   }
   if (noteNum == 25)
   {
     notePlayingLen = sizeof(SAMPLES_Clic2) /sizeof(*SAMPLES_Clic2);
     notePlayingPtr = SAMPLES_Clic2;
-    volume = velocity / 128.0;
+    clic_volume = velocity / 128.0;
   }
 }
 
@@ -63,17 +70,10 @@ void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity)
 void setup() {
   // put your setup code here, to run once:
 
-#if OVERCLOCK
-  system_update_cpu_freq(160);
-#endif
-
+  system_update_cpu_freq(CPU_FREQ);
   
   delay (100);
-#if DEBUG_SERIAL_IN
   Serial.begin(SERIAL_BAUDRATE);
-#else
-  Serial.begin(MIDI_BAUD_RATE);
-#endif
   SerialRx.begin(RX_PRG_BAUDRATE);
   pinMode(I2S_PIN_BCK, OUTPUT);
   pinMode(I2S_PIN_LRCK, OUTPUT);
@@ -84,13 +84,8 @@ void setup() {
   delay (200);
   i2s_begin();
   i2s_set_rate(I2S_HZ_FREQ);
-#if DEBUG_SERIAL_IN
-  Serial.printf("");
-  Serial.printf("F=");
   const String s (static_cast<int>(i2s_get_real_rate()));
-  Serial.printf(s.c_str());
-  Serial.printf(" Hz\n");
-#endif
+  PRINTF(("F=%s Hz\n",s.c_str()));
 
   secPrec = (millis()/1000);
 
@@ -98,9 +93,8 @@ void setup() {
   secPrec ++;
   phase = 0;
   dtMax = -1;
-  volume = 0.1;
+  s_volume = 0.5;
   sineTest = false;
-  //Serial.println("I2S SINE test");
 
 }
 
@@ -113,9 +107,7 @@ void loop() {
   if (SerialRx.available() > 0)
   {
     const uint8_t c = uint8_t (SerialRx.read());
-#if DEBUG_SERIAL_IN
-    printf("\nRcv 0x%02X\n",c);
-#endif    
+    PRINTF(("Rcv 0x%02X\n",c));
     commmgt_rcv(c);
   }
   
@@ -150,7 +142,7 @@ void loop() {
     {
       v = LRC_wavSine[phase];
     }
-    LRC_i2s_writeDAC(v*volume,v*volume);
+    LRC_i2s_writeDAC(v*clic_volume*s_volume,v*clic_volume*s_volume);
     
     phase += I2S_HZ_FREQ_DIV;
   }
@@ -158,22 +150,23 @@ void loop() {
   
   const int sec=millis()/1000;
   
-  if (t1-t0 > dtMax)
+  //if (t1-t0 > dtMax)
   {
     dtMax = t1 - t0;
     s = static_cast<int>(dtMax);
     s += "/";
     s += static_cast<int>(t2-t0);
     s += " Vol=";
-    s += volume;
+    s += s_volume;
   }
   
   if (secPrec != sec)
   {
-    //Serial.println(s.c_str());
+    PRINTLN ((s.c_str()));
     secPrec = sec;
     secCnt++;
     dtMax = -1;
+    s= "No info";
   }
   
 }

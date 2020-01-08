@@ -1,5 +1,9 @@
 #ifndef SLAVE_CONSTS_INC
 #define SLAVE_CONSTS_INC
+
+
+#include <Arduino.h>
+
 /*
  * 
  * GLOBAL PINOUT
@@ -50,7 +54,7 @@
 /**
  * Debug serial line
  */
-#define SERIAL_BAUDRATE (115200)
+#define DEBUG_BAUDRATE (115200)
 
 /**
  * Software serial. Used to receive commands frm MASTER
@@ -186,3 +190,22 @@ const int16_t SAMPLES_Clic2[] = {
     0x0007, 0x001E, 0x0027, 0x0011, 0xFF89, 0x0070, 0xFFEF, 0xFFE4, 0x0012, 0xFFF6,
 };
 #endif //SLAVE_CONSTS_INC
+
+#if DEBUG_SERIAL_IN
+#define PRINTLN(x) Serial.println x
+#define PRINTF(x) Serial.printf x
+#define MIDI_SEND(data,len)
+#define SERIAL_BAUDRATE DEBUG_BAUDRATE
+#else
+#define PRINT(x)
+#define PRINTF(x)
+#define MIDI_SEND(data,len) Serial.write((data),(len)
+#define SERIAL_BAUDRATE MIDI_BAUD_RATE
+#endif
+
+
+#if OVERCLOCK
+#define CPU_FREQ  160
+#else
+#define CPU_FREQ  80
+#endif

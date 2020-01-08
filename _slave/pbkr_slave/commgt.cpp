@@ -4,6 +4,8 @@
 #include "slave_consts.h"
 
 extern void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity);
+extern void set_volume(const  float & volume);
+
 /**
  * Manage reception from serial line
  * - Receive on channel 16
@@ -13,6 +15,14 @@ extern void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity);
  * - Program samples
  */
 
+#define MIDI_SYSEX_CLIC1_LVL    1       // Not implemented
+#define MIDI_SYSEX_CLIC2_LVL    2       // Not implemented
+#define MIDI_SYSEX_CLIC1_NOTE   3       // Not implemented
+#define MIDI_SYSEX_CLIC2_NOTE   4       // Not implemented
+#define MIDI_SYSEX_MIDI_CHANN   5       // Not implemented
+#define MIDI_SYSEX_VOLUME       6
+#define MIDI_SYSEX_UPLOAD       0x80    // Not implemented
+
 /*******************************************************************************
  *         DEFINITIONS
  *******************************************************************************/
@@ -21,6 +31,10 @@ struct MIDI_SysEx
   MIDI_SysEx(void);
   ~MIDI_SysEx(void);
   void rcv(const uint8_t c);
+private:
+  uint16_t m_idx;
+  uint8_t m_cmd;
+  bool    m_ignore;
 };
 
 struct MIDI_Msg
@@ -37,27 +51,74 @@ struct MIDI_Msg
   void midi_event(void);
 };
 
-static HardwareSerial& midiTx(Serial);
-
 /*******************************************************************************
  *         MIDI_SysEx
  *******************************************************************************/
-MIDI_SysEx::MIDI_SysEx(void)
+MIDI_SysEx::MIDI_SysEx(void):
+        m_idx(0),
+        m_cmd(0),
+        m_ignore(false)
 {
-#if DEBUG_SERIAL_IN
-  Serial.println ("SYSEX msg BEGIN");
-#endif
+PRINTLN (("SYSEX msg BEGIN"));
 }
 MIDI_SysEx::~MIDI_SysEx(void)
 {
-#if DEBUG_SERIAL_IN
-  Serial.println ("SYSEX msg END");
-#endif
+PRINTLN (("SYSEX msg END"));
 }
 
 void MIDI_SysEx::rcv(const uint8_t c)
 {
-  // TODO!
+    static const char * sys_id="CMM";
+    if (m_ignore) return;
+    if (m_idx < 3)
+    {
+        if ((const char)c != sys_id[m_idx])
+        {    
+          m_ignore = true;
+        }
+    }
+    else if (m_idx == 3)
+    {
+        // Command type
+        m_cmd = c;
+    }
+    else
+    {
+        switch (m_cmd) {
+        case MIDI_SYSEX_CLIC1_LVL:
+            // TODO
+            break;
+        case MIDI_SYSEX_CLIC2_LVL:
+            // TODO
+            break;
+        case MIDI_SYSEX_CLIC1_NOTE:
+            // TODO
+            break;
+        case MIDI_SYSEX_CLIC2_NOTE:
+            // TODO
+            break;
+        case MIDI_SYSEX_MIDI_CHANN:
+            // TODO
+            break;
+        case MIDI_SYSEX_VOLUME:
+        {
+            if (m_idx == 4)
+            {
+                const float level (((float)c) / 128.0);
+                PRINTF (("New global volume level:%f\n",level));
+                set_volume (level);
+            }
+            break;
+        }
+        case MIDI_SYSEX_UPLOAD:
+            // TODO
+            break;
+        default:
+            break;
+        }
+    }
+    m_idx++;
+    // TODO!
 }
       
 
@@ -84,10 +145,8 @@ void MIDI_Msg::midi_event(void)
   }
   else
   {
-#if DEBUG_SERIAL_IN == 0
     // forward on serial link
-    midiTx.write((const uint8_t *)buff, len);
-#endif
+    MIDI_SEND((const uint8_t *)buff, len);
   }
 }
 
@@ -98,6 +157,7 @@ void MIDI_Msg::rcv(const uint8_t c)
     if (c == 0xF7)
     {
       delete sysex;
+      sysex = NULL;
     }
     else
     {

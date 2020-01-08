@@ -68,15 +68,14 @@ namespace DISPLAY
  *******************************************************************************/
 static I2C_Display display( DISPLAY_I2C_ADDRESS);
 
-I2C_Display::I2C_Display (const int address,
-		const int nb_lines):_file(-1),
+I2C_Display::I2C_Display (const int address):_file(-1),
 		_address(address),
 		_displayfunction(LCD_4BITMODE | LCD_5x8DOTS),
 		_displaycontrol(LCD_DISPLAYON | LCD_CURSORON | LCD_BLINKON),
 		_displaymode(LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT),
 		_backlightval(LCD_NOBACKLIGHT),
 		_currLine(0),
-		_nb_lines(nb_lines),
+		_nb_lines(DISPLAY_NB_LINES),
 		_sda (GPIOs::GPIO(GPIO_I2C1_SDA,RESERVED_MODE,"I2C SDA")),
 		_scl (GPIOs::GPIO(GPIO_I2C1_SCL,RESERVED_MODE,"I2C SCL"))
 {

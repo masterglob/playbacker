@@ -769,4 +769,59 @@ const char* getIPNetMask (const char* device)
 
     return ipaddr;
 }
+
+/*******************************************************************************
+ * SEND MESSAGES TO WEMOS
+ *******************************************************************************/
+WemosControl::WemosControl(const char* filename):
+    m_current(0),
+    m_handle (open (filename, O_WRONLY))
+{
+    if (m_handle < 0) {
+        throw EXCEPTION("Failed to open serial port\n");
+    }
+}
+
+WemosControl::~WemosControl(void)
+{
+    close(m_handle);
+    if (m_current) delete m_current;
+}
+
+void WemosControl::pushMessage(const MidiOutMsg& msg)
+{
+    m_mutex.lock();
+    m_msgs.push_back(msg);
+    m_mutex.unlock();
+}
+
+void WemosControl::sendByte(void)
+{
+    if (m_current)
+    {
+        if (m_current->size() > 0)
+        {
+            const uint8_t byte (m_current->front());
+            m_current->pop_front();
+            write(m_handle, &byte, 1);
+        }
+        else
+        {
+            delete m_current;
+            m_current = 0;
+        }
+    }
+    else
+    {
+        if (not m_msgs.empty())
+        {
+            m_mutex.lock();
+            m_current = new MidiOutMsg (m_msgs.front());
+            m_msgs.pop_front();
+            m_mutex.unlock();
+        }
+    }
+}
+
+WemosControl wemosControl("/dev/ttyAMA0");
 } // namespace PBKR

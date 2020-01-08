@@ -1,3 +1,7 @@
+/**
+ * This package is only intended to manage input MIDI devices for controlling the playback
+ */
+
 #ifndef I_pbkr_midi_h_I
 #define I_pbkr_midi_h_I
 

@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
+#include <deque>
 
 namespace PBKR
 {
@@ -33,18 +33,18 @@ public:
     virtual ~MenuItem(void){}
     virtual void onSelPressShort(void);
     virtual void onSelPressLong(void);
-    virtual void onLeftRightPress(const bool isLeft){}
+    virtual void onLeftRightPress(const bool isLeft);
     virtual void onUpDownPress(const bool isUp){}
-    virtual const std::string menul1(void)const{return subMenuName();}
+    virtual const std::string menul1(void)const;
     virtual const std::string menul2(void)const;
     virtual const std::string subMenuName(void)const{return name;}
     const std::string name;
 protected:
-    typedef std::vector<MenuItem*, std::allocator<MenuItem*>> MenuItemVect;
-    MenuItemVect m_subMenus;
+    typedef std::deque<MenuItem*, std::allocator<MenuItem*>> MenuItemQueue;
+    MenuItemQueue m_subMenus;
     MenuItem*    m_parent;
 private:
-    MenuItemVect::iterator m_iter;
+    MenuItemQueue::iterator m_iter;
 };
 
 /*******************************************************************************

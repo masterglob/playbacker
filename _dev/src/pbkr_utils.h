@@ -6,7 +6,9 @@
 #include <stdexcept>
 #include <exception>
 #include <string.h>
+#include <deque>
 #include <vector>
+#include <mutex>
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
@@ -219,7 +221,29 @@ private:
 extern FileManager fileManager;
 
 /*******************************************************************************
- * GENERAL PURPOSE FUNCTIONSS
+ * SEND MESSAGES TO WEMOS
+ *******************************************************************************/
+typedef std::deque<uint8_t, std::allocator<uint8_t>> MidiOutMsg;
+
+class WemosControl
+{
+public:
+    explicit WemosControl(const char* filename);
+    ~WemosControl();
+
+    void pushMessage(const MidiOutMsg& msg);
+    void sendByte(void);
+private:
+    typedef std::deque<MidiOutMsg, std::allocator<MidiOutMsg>> MsgQueue;
+    MsgQueue m_msgs;
+    std::mutex m_mutex;
+    MidiOutMsg* m_current;
+    int m_handle;
+};
+extern WemosControl wemosControl;
+
+/*******************************************************************************
+ * GENERAL PURPOSE FUNCTIONS
  *******************************************************************************/
 const char  getch(void);
 

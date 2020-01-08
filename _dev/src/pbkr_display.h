@@ -19,14 +19,15 @@ static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
 static const int MAX_NB_TRACKS (64);
 
+static const int DISPLAY_NB_LINES (2);
+static const int DISPLAY_WIDTH (16);
 /*******************************************************************************
  *
  *******************************************************************************/
 class I2C_Display
 {
 public:
-    I2C_Display(const int address,
-            const int nb_lines = 2);
+    I2C_Display(const int address);
     virtual ~I2C_Display(void);
     void begin (void);
     void noDisplay();
