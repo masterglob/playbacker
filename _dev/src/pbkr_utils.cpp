@@ -3,6 +3,7 @@
 #include "pbkr_wav.h"
 #include "pbkr_osc.h"
 
+#include <math.h>
 #include <stdio.h>
 
 #include <unistd.h>
@@ -22,7 +23,8 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 
-#define DEBUG_MIDI 0
+// #define DEBUG_MIDI printf
+#define DEBUG_MIDI(...)
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -365,32 +367,31 @@ int MIDI_Decoder::receive (int16_t val)
         m_maxLevel = -val;
         m_hasBreak = true;
         m_oof = true;
-#if DEBUG_MIDI
         DEBUG_MIDI("MIDI break: %d (%f)\n",val, m_maxLevel);
-#endif
     }
     else if (m_hasBreak)
     {
         m_hasBreak = false;
         m_oof = (val == 0);
-#if DEBUG_MIDI
         DEBUG_MIDI("MIDI OOF=%d (%d)\n",m_oof, val);
-#endif
     }
 
     if (m_oof) return -1;
 
-    const int b ((MAX_BYTE * val) / m_maxLevel);
-#if DEBUG_MIDI
+    const float f ((MAX_BYTE * val) / m_maxLevel);
+    const int b (round (f));
+    /*
     static int maxLog(500);
     if (maxLog-- > 0)
     {
-        const int dNext((b+1) * m_maxLevel /MAX_BYTE);
-        const int dCurr((b) * m_maxLevel /MAX_BYTE);
-        DEBUG_MIDI("MIDI B=0x%02X (%d), err= %d%%)\n",
-                b,val, (b-dCurr) / dNext);
+
+        const int vAccurate ((b * m_maxLevel) /MAX_BYTE);
+        const int vInaccurate (((b+1) * m_maxLevel) /MAX_BYTE);
+        DEBUG_MIDI("MIDI B=0x%02X (%d), accurate would be %d, err = %d %%)\n",
+                b,val, vAccurate, abs(100 * (val - vAccurate)/(vInaccurate - vAccurate)));
+
     }
-#endif
+     */
     if (b >= MAX_BYTE)
     {
         printf("Serial encoding error, MAX=(%f), b=%d\n",m_maxLevel,b);

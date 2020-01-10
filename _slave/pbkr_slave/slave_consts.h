@@ -31,7 +31,7 @@
 #define DEBUG_LRC_SINE_TEST 2
 
 // 1 to debug serial input
-#define DEBUG_SERIAL_IN 1
+#define DEBUG_SERIAL_IN 0
 
 /**
  * I2S output frequency: 44100 or 22050
@@ -76,7 +76,8 @@
  * MIDI_BAUD_RATENEL = 31250
  * MIDI pinout = TX (GPIO1)
  */
-#define MIDI_CHANNEL (16)
+#define MIDI_CHANNEL1 (16)
+#define MIDI_CHANNEL2 (15)
 #define MIDI_BAUD_RATE (31250)
 
 const int16_t LRC_wavSine[256] = {
@@ -197,9 +198,9 @@ const int16_t SAMPLES_Clic2[] = {
 #define MIDI_SEND(data,len)
 #define SERIAL_BAUDRATE DEBUG_BAUDRATE
 #else
-#define PRINT(x)
+#define PRINTLN(x)
 #define PRINTF(x)
-#define MIDI_SEND(data,len) Serial.write((data),(len)
+#define MIDI_SEND(data,len) Serial.write((data),(len))
 #define SERIAL_BAUDRATE MIDI_BAUD_RATE
 #endif
 

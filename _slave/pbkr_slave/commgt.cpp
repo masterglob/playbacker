@@ -3,7 +3,7 @@
 #include <HardwareSerial.h>
 #include "slave_consts.h"
 
-extern void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity);
+extern void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity, const bool onChannel1);
 extern void set_volume(const  float & volume);
 
 /**
@@ -128,8 +128,8 @@ void MIDI_SysEx::rcv(const uint8_t c)
 void MIDI_Msg::midi_event(void)
 {
   
-  const uint8_t channel (buff[0] & 0xF);
-  if (channel == (MIDI_CHANNEL - 1))
+  const uint8_t channel (1 + (buff[0] & 0xF));
+  if (channel == MIDI_CHANNEL1 || channel == MIDI_CHANNEL2)
   {
     const uint8_t event (buff[0] >> 4);
     if (event == 0x9)
@@ -139,7 +139,7 @@ void MIDI_Msg::midi_event(void)
        const uint8_t vel (buff[2]);
        if (vel > 0)
        {
-         on_MIDI_note (note,vel);
+         on_MIDI_note (note,vel, channel == MIDI_CHANNEL1);
        }
     }
   }

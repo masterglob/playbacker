@@ -22,7 +22,8 @@ extern void set_volume(const  float & volume);
   *pval = rightData;
   i2s_write_sample(value);
 }
-
+struct SoundPlay;
+inline int16_t advanceSound (SoundPlay& snd);
 
 static int secPrec;
 
@@ -44,22 +45,32 @@ void set_volume(const  float & volume)
 /*******************************************************************************
  *        EXTERNAL FUNCTIONS
  *******************************************************************************/
-static const int16_t* notePlayingPtr(NULL);
-static int notePlayingLen(0);
-
-void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity)
+struct SoundPlay
 {
-  PRINTF (("Play note %d at level %d\n",noteNum, velocity));
+  const int16_t* playingPtr;
+  int playingLen;
+  SoundPlay(void):playingPtr(NULL),playingLen(0){}
+};
+static SoundPlay channel1Sound;
+static SoundPlay channel2Sound;
+
+/*******************************************************************************
+ *        on_MIDI_note
+ *******************************************************************************/
+void on_MIDI_note(const uint8_t noteNum, const uint8_t velocity, const bool onChannel1)
+{
+  PRINTF (("Play note %d (ch %d) at level %d\n",noteNum, (onChannel1? 1: 2),velocity));
+  SoundPlay& snd = (onChannel1 ? channel1Sound : channel2Sound);
   if (noteNum == 24)
   {
-    notePlayingLen = sizeof(SAMPLES_Clic1) /sizeof(*SAMPLES_Clic1);
-    notePlayingPtr = SAMPLES_Clic1;
+    snd.playingLen = sizeof(SAMPLES_Clic1) /sizeof(*SAMPLES_Clic1);
+    snd.playingPtr = SAMPLES_Clic1;
     clic_volume = velocity / 128.0;
   }
   if (noteNum == 25)
   {
-    notePlayingLen = sizeof(SAMPLES_Clic2) /sizeof(*SAMPLES_Clic2);
-    notePlayingPtr = SAMPLES_Clic2;
+    snd.playingLen = sizeof(SAMPLES_Clic2) /sizeof(*SAMPLES_Clic2);
+    snd.playingPtr = SAMPLES_Clic2;
     clic_volume = velocity / 128.0;
   }
 }
@@ -101,16 +112,40 @@ void setup() {
 /*******************************************************************************
  *        LOOP
  *******************************************************************************/
+inline int16_t advanceSound (SoundPlay& snd)
+{
+   int16_t res= 0;
+    if (snd.playingPtr)
+    {
+      res = *(snd.playingPtr);
+      snd.playingPtr += I2S_HZ_FREQ_DIV;
+      snd.playingLen -= I2S_HZ_FREQ_DIV;
+      if(snd.playingLen <= 0)
+      {
+        snd.playingPtr = NULL;
+      }
+    }
+    return res;
+}
+
+static bool hasSerialRcv(false);
+inline void process_MIDI_in(void)
+{
+  hasSerialRcv = SerialRx.available();
+  if (hasSerialRcv > 0)
+  {
+    const uint8_t c = uint8_t (SerialRx.read());
+    //PRINTF(("Rcv 0x%02X\n",c));
+    commmgt_rcv(c);
+  }
+}
 
 void loop() {
 
-  if (SerialRx.available() > 0)
+  do
   {
-    const uint8_t c = uint8_t (SerialRx.read());
-    PRINTF(("Rcv 0x%02X\n",c));
-    commmgt_rcv(c);
-  }
-  
+    process_MIDI_in();
+  } while (hasSerialRcv);
   if (digitalRead(BTN_TEST))
   {
     sineTest = true;
@@ -118,7 +153,7 @@ void loop() {
   }
   
   // put your main code here, to run repeatedly:
-  if (sineTest == false && notePlayingPtr == NULL) return;
+  if (sineTest == false && channel1Sound.playingPtr == NULL && channel2Sound.playingPtr == NULL) return;
   
   if (secCnt>=DEBUG_LRC_SINE_TEST) sineTest = false;
 
@@ -126,47 +161,27 @@ void loop() {
   while (i2s_is_full()){yield();}
   const int t1(micros()/10);
   while (!i2s_is_full()){
-    int16_t v (0);
+
+    unsigned int nb_ech;
     
-    if (notePlayingPtr)
+    if (sineTest)
     {
-      v=* (notePlayingPtr);
-      notePlayingPtr += I2S_HZ_FREQ_DIV;
-      notePlayingLen -= I2S_HZ_FREQ_DIV;
-      if(notePlayingLen <= 0)
+      const int16_t v = LRC_wavSine[phase];
+      LRC_i2s_writeDAC(v*clic_volume*s_volume,v*clic_volume*s_volume);
+      phase += I2S_HZ_FREQ_DIV;
+    }
+    else
+    {
+      // process a minimum samples to avoid underflow,
+      // but allows MIDI management
+      for (nb_ech = 20 ; nb_ech -- ; (!i2s_is_full()) && nb_ech > 0)
       {
-        notePlayingPtr = NULL;
+        const int16_t v1 = advanceSound (channel1Sound);
+        const int16_t v2 = advanceSound (channel2Sound);
+        LRC_i2s_writeDAC(v1*clic_volume*s_volume,v2*clic_volume*s_volume);
       }
+      process_MIDI_in();
     }
-    else if (sineTest)
-    {
-      v = LRC_wavSine[phase];
-    }
-    LRC_i2s_writeDAC(v*clic_volume*s_volume,v*clic_volume*s_volume);
-    
-    phase += I2S_HZ_FREQ_DIV;
   }
   const int t2(micros()/10);
-  
-  const int sec=millis()/1000;
-  
-  //if (t1-t0 > dtMax)
-  {
-    dtMax = t1 - t0;
-    s = static_cast<int>(dtMax);
-    s += "/";
-    s += static_cast<int>(t2-t0);
-    s += " Vol=";
-    s += s_volume;
-  }
-  
-  if (secPrec != sec)
-  {
-    PRINTLN ((s.c_str()));
-    secPrec = sec;
-    secCnt++;
-    dtMax = -1;
-    s= "No info";
-  }
-  
 }

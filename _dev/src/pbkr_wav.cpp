@@ -205,10 +205,6 @@ WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
         const float fadevol(_eof->position());
         l *= fadevol;
         r *= fadevol;
-#if USE_MIDI_AS_TRACK
-#else
-        midi *= fadevol;
-#endif
         if (_eof->done()) return false;
     }
     return true;
