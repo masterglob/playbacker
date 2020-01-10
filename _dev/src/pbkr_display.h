@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "pbkr_gpio.h"
+#include "pbkr_utils.h"
 
 namespace PBKR
 {
@@ -80,7 +81,7 @@ private:
  *       - No Track selected
  *       -
  */
-class DisplayManager
+class DisplayManager : Thread
 {
 public:
     static DisplayManager& instance(void);
@@ -101,9 +102,9 @@ public:
     uint32_t printIdx(void)const{return m_printIdx;}
 private:
     DisplayManager(void);
-    ~DisplayManager(void);
+    virtual ~DisplayManager(void);
     void refresh(void);
-    void incrementTime(void);
+    virtual void body(void);
     bool m_running;
     bool m_ready;
     volatile uint32_t m_printIdx;
@@ -119,7 +120,6 @@ private:
     std::string m_trackCount;
     bool m_reading;
     std::mutex m_mutex;
-    std::thread m_thread;
     std::string m_trackNames[MAX_NB_TRACKS];
 }; // class
 

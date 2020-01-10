@@ -43,7 +43,6 @@ namespace
 
 namespace
 {
-static volatile int keepRunning = 1;
 //const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
 //const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
 
@@ -54,8 +53,7 @@ static inline std::string onKeyboardCmd  (const std::string& msg);
 class Console:public Thread
 {
 public:
-    Console(void): Thread(),
-    exitreq(false),
+    Console(void): Thread("Console"),
     doSine(false),
     _volume(0.11)
 {}
@@ -63,7 +61,7 @@ public:
     virtual void body(void)
     {
         printf("Console Ready\n");
-        while (not exitreq)
+        while (not isExitting())
         {
             printf("> ");
             fflush(stdout);
@@ -74,7 +72,7 @@ public:
             case 'Q':
                 printf("Exit requested\n");
                 PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
-                exitreq = true;
+                doExit();
                 break;
                 // Sine on/off
             case 's':doSine = not doSine;
@@ -112,9 +110,8 @@ public:
             }
         }
         printf("Console Exiting\n");
-        keepRunning = 0;
+        Thread::doExit();
     }
-    bool exitreq;
     bool doSine;
     float volume(void);
     void changeVolume (float v, const float duration = volumeFaderDurationS);
@@ -148,8 +145,7 @@ float Console::volume(void)
 static Console console;
 void intHandler(int dummy) {
     PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
-    keepRunning = 0;
-    console.exitreq = true;
+    Thread::doExit();
     //led.off();
 }
 
@@ -180,11 +176,17 @@ private:
     Evt m_evt;
     struct M_Thread : public Thread
     {
-        M_Thread(MIDI_Input_Mgr* mgr):m_mgr(mgr){start();}
+        M_Thread(MIDI_Input_Mgr* mgr):
+            Thread("M_Thread"),
+                m_mgr(mgr){}
         virtual void body(void)
         {
             printf("MIDI_Input_Mgr:loop()\n");
-            m_mgr->loop();
+            while (!isExitting())
+            {
+                m_mgr->loop();
+                usleep(100 * 1000);
+            }
         };
         MIDI_Input_Mgr* m_mgr;
     };
@@ -347,7 +349,7 @@ std::string onKeyboardCmd  (const std::string& msg)
     // static bool logged (false);
     if (msg == "/R")
     {
-        keepRunning = 0;
+        Thread::doExit();
         return "Reboot command OK";
     }
     return badCmd + msg;
@@ -370,6 +372,13 @@ static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
 static OSC::OSC_Controller osc(oscCfg,oscEvent);
 
 } // namsepace
+
+void  ALARMhandler(int sig)
+{
+  signal(SIGALRM, SIG_IGN);          /* ignore this signal       */
+  printf("Failed to exit cleany. Force exit 1\n");
+  exit (1);
+}
 
 /*******************************************************************************
  *
@@ -430,7 +439,7 @@ int main (int argc, char**argv)
 
 		setRealTimePriority();
 
-		while (keepRunning)
+		while (!Thread::isExitting())
 		{
 			// if (BTN.pressed()) break;
 
@@ -473,14 +482,17 @@ int main (int argc, char**argv)
 				//led.set (led_on);
 			}
 		}
-		printf("Button pressed!\n");
         PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
 		intHandler(0);
 	}
 	catch( const std::exception& e ) {
 		printf("Exception : %s\n", e.what());
-		return 1;
 	}
+
+	signal(SIGALRM, ALARMhandler);
+	alarm(2);
+	Thread::join_all();
+
 	return 0;
 }
 

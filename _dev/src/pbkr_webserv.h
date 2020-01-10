@@ -25,7 +25,7 @@ namespace WEB
  *******************************************************************************/
 class WebSrv;
 
-class SockListener : std :: thread
+class SockListener : Thread
 {
 public:
     SockListener(WebSrv* srv, int id);
@@ -34,9 +34,10 @@ public:
     void do_listen(int id);
 private:
     void process_request(const std::string& req);
+    virtual void body(void);
     WebSrv* m_srv;
     int m_fd;
-    std::thread m_thread;
+    int m_id;
 };
 
 

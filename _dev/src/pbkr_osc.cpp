@@ -139,6 +139,7 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
 
 /*******************************************************************************/
 OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
+        Thread("OSC_Controller"),
         m_receiver(receiver),
         m_cfg(cfg),
         m_isClientKnown(false)
@@ -173,6 +174,12 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
     m_outSockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_outSockfd < 0 )
         throw EXCEPTION(std::string ("OSC_Controller : Failed to CREATE socket2! "));
+
+
+    struct timeval read_timeout;
+    read_timeout.tv_sec = 0;
+    read_timeout.tv_usec = 1000;
+    setsockopt(m_inSockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
 
     start();
     p_osc_instance = this;
@@ -290,7 +297,7 @@ void OSC_Controller::body(void)
 
         printf("OSC_Controller started (In %d, out %d\n)", m_cfg.portIn, m_cfg.portOut);
 
-        while (true)
+        while (not isExitting())
         {
 
 
@@ -304,8 +311,8 @@ void OSC_Controller::body(void)
                         &len);
             if (n < 0)
             {
-                printf("OSC received FAILED(%d)\n",n);
-                sleep(1);
+                // timeout
+                // usleep(10*1000);
                 continue;
             }
             m_clientAddr = cliaddr.sin_addr;

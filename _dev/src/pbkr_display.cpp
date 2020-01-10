@@ -259,6 +259,7 @@ DisplayManager& DisplayManager::instance(void)
 }
 
 DisplayManager::DisplayManager(void):
+        Thread("DisplayManager"),
         m_running(true),
         m_ready(false),
         m_printIdx(0),
@@ -269,17 +270,16 @@ DisplayManager::DisplayManager(void):
         m_filename(""),
         m_trackIdx(""),
         m_trackCount(""),
-        m_reading(false),
-        m_thread([this](){this->incrementTime();})
+        m_reading(false)
 {
+    Thread::start();
 }
 DisplayManager::~DisplayManager(void)
 {
     m_running = false;
-    m_thread.join();
 }
 
-void DisplayManager::incrementTime(void)
+void DisplayManager::body(void)
 {
     while (m_running)
     {

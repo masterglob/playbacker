@@ -177,6 +177,7 @@ MIDI_Msg::~MIDI_Msg (void){ free ((void*)m_msg);}
 
 /*******************************************************************************/
 MIDI_Controller::MIDI_Controller(const MIDI_Ctrl_Cfg& cfg, MIDI_Event& receiver):
+        Thread(std::string("MIDI_Controller:") + cfg.name),
         m_midiin(NULL),
         m_midiout(NULL),
         m_receiver(receiver),
@@ -207,14 +208,14 @@ void MIDI_Controller::body(void)
 
     try
     {
-        static const int mode = SND_RAWMIDI_SYNC;
+        static const int mode = SND_RAWMIDI_SYNC | SND_RAWMIDI_NONBLOCK;
         if ((status = snd_rawmidi_open(&m_midiin, &m_midiout, m_cfg.device.c_str(), mode)) < 0) {
             throw EXCEPTION(std::string ("Failed to open ") + m_cfg.name +
                     "(" + m_cfg.device + ")");
         }
         printf("Opened MIDI device: %s\n",m_cfg.device.c_str());
 
-        while (true)
+        while (not isExitting())
         {
             pos = 0;
             sysex = false;
@@ -224,9 +225,17 @@ void MIDI_Controller::body(void)
             {
                 uint8_t& c (buffer[pos]);
 
-                if ((status = snd_rawmidi_read(m_midiin, (char*)&c, 1)) < 0) {
-                    throw EXCEPTION(std::string ("Problem reading MIDI input:")+
-                            snd_strerror(status));
+                while ((status = snd_rawmidi_read(m_midiin, (char*)&c, 1)) < 0)
+                {
+                    if (isExitting())
+                        throw EXCEPTION("Exit required");
+                    if (status == -EAGAIN)
+                    {
+                        usleep (1000);
+                        continue;
+                    }
+                    printf("%s MIDI status = %d\n",m_cfg.device.c_str(), status);
+                    throw EXCEPTION("Disconnected");
                 }
 
                 pos++;
@@ -297,68 +306,64 @@ void MIDI_Controller_Mgr::onDisconnect (const char* device)
 void MIDI_Controller_Mgr::loop(void)
 {
     // check presence of MIDI devices.
-    while (true)
-    {
-        sleep(1);
-        MIDI_Ctrl_Cfg_Vect newMIDIs;
-        newMIDIs.clear();
-        int status;
-        int card = -1;
-        if ((status = snd_card_next(&card)) < 0){
-            printf("cannot determine card number: %s\n", snd_strerror(status));
-            continue;
+    MIDI_Ctrl_Cfg_Vect newMIDIs;
+    newMIDIs.clear();
+    int status;
+    int card = -1;
+    if ((status = snd_card_next(&card)) < 0){
+        printf("cannot determine card number: %s\n", snd_strerror(status));
+        return;
+    }
+    if (card < 0) card = -1;
+
+    while (card >= 0) {
+        int device = -1;
+        snd_ctl_t *ctl;
+        char name[32];
+        sprintf(name, "hw:%d", card);
+        if ((status = snd_ctl_open(&ctl, name, 0)) < 0)
+        {
+            printf("cannot open control for card %d: %s\n",
+                    card, snd_strerror(status));
+            break;
         }
-        if (card < 0) card = -1;
-
-        while (card >= 0) {
-            int device = -1;
-            snd_ctl_t *ctl;
-            char name[32];
-            sprintf(name, "hw:%d", card);
-            if ((status = snd_ctl_open(&ctl, name, 0)) < 0)
-            {
-                  printf("cannot open control for card %d: %s\n",
-                          card, snd_strerror(status));
-                  break;
-            }
-            do {
-                status = snd_ctl_rawmidi_next_device(ctl, &device);
-                if (status < 0) {
-                    // printf("cannot determine device number for card %d: %s\n", card, snd_strerror(status));
-                    break;
-                }
-                if (device >= 0) {
-                    insert_subdevice_list(ctl, card, device,newMIDIs);
-                }
-            } while (device >= 0);
-            snd_ctl_close(ctl);
-
-            if ((status = snd_card_next(&card)) < 0) {
-                printf("cannot determine card number: %s\n", snd_strerror(status));
+        do {
+            status = snd_ctl_rawmidi_next_device(ctl, &device);
+            if (status < 0) {
+                // printf("cannot determine device number for card %d: %s\n", card, snd_strerror(status));
                 break;
             }
-        }
-
-        for (MIDI_Ctrl_Cfg_Vect::const_iterator it (newMIDIs.begin()); it != newMIDIs.end(); it++)
-        {
-            const MIDI_Ctrl_Cfg& cfg (*it);
-            if (cfg.isInput)
-            {
-                m_mutex.lock();
-                bool found(false);
-                // Was it already present?
-                for (MIDI_Ctrl_Cfg_Vect::const_iterator jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
-                {
-                    const MIDI_Ctrl_Cfg& prev (*jt);
-                    if (cfg.device == prev.device) found = true;
-                }
-                if (not found)
-                {
-                    m_InputControllers.push_back(cfg);
-                    onInputConnect (cfg);
-                }
-                m_mutex.unlock();
+            if (device >= 0) {
+                insert_subdevice_list(ctl, card, device,newMIDIs);
             }
+        } while (device >= 0);
+        snd_ctl_close(ctl);
+
+        if ((status = snd_card_next(&card)) < 0) {
+            printf("cannot determine card number: %s\n", snd_strerror(status));
+            break;
+        }
+    }
+
+    for (MIDI_Ctrl_Cfg_Vect::const_iterator it (newMIDIs.begin()); it != newMIDIs.end(); it++)
+    {
+        const MIDI_Ctrl_Cfg& cfg (*it);
+        if (cfg.isInput)
+        {
+            m_mutex.lock();
+            bool found(false);
+            // Was it already present?
+                    for (MIDI_Ctrl_Cfg_Vect::const_iterator jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
+                    {
+                        const MIDI_Ctrl_Cfg& prev (*jt);
+                        if (cfg.device == prev.device) found = true;
+                    }
+                    if (not found)
+                    {
+                        m_InputControllers.push_back(cfg);
+                        onInputConnect (cfg);
+                    }
+                    m_mutex.unlock();
         }
     }
 

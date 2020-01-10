@@ -50,15 +50,30 @@ void setRealTimePriority(void);
 class Thread
 {
 public:
-	Thread(void);
+	Thread(const std::string& name);
 	virtual ~Thread(void);
 	void start(void);
-	void* join(void);
 	virtual void body(void) =0;
+    static void join_all(void);
+    static void doExit(void);
+    static bool isExitting(void);
+protected:
 private:
+    struct ThrInfo
+    {
+        pthread_t pid;
+        std::string name;
+        const std::string toStr(void)const
+        {return std::string("THREAD ") + name+"(" + std::to_string(pid) + ")";}
+    };
+    typedef std::vector<ThrInfo,std::allocator<ThrInfo>> ThreadVect;
+    static ThreadVect mVect;
 	static void* real_start(void* param);
+	static bool m_isExitting;
+	static std::mutex m_mutex;
 	pthread_t _thread;
 	pthread_attr_t* _attr;
+	const std::string m_name;
 };
 
 /*******************************************************************************

@@ -69,7 +69,7 @@ namespace PBKR
 {
 FileManager fileManager (MOUNT_POINT);
 
-Thread::Thread(void): _thread(-1),_attr(NULL)
+Thread::Thread(const std::string& name): _thread(-1),_attr(NULL),m_name(name)
 {
 }
 
@@ -80,14 +80,14 @@ Thread::~Thread(void)
 void Thread::start()
 {
 	DEBUG("Thread::start\n");
+    m_mutex.lock();
 	pthread_create (&_thread, _attr,Thread::real_start, (void*)this);
-}
-
-void* Thread::join()
-{
-	void* returnVal;
-	pthread_join(_thread, &returnVal);
-	return returnVal;
+	ThrInfo info;
+	info.name = m_name;
+	info.pid = _thread;
+    mVect.push_back(info);
+    m_mutex.unlock();
+    printf("[THREAD] start %s\n", info.name.c_str());
 }
 
 void* Thread::real_start(void* param)
@@ -99,6 +99,27 @@ void* Thread::real_start(void* param)
 		thr -> body ();
 	}
 	return NULL;
+}
+
+bool Thread::m_isExitting(false);
+Thread::ThreadVect Thread::mVect;
+std::mutex Thread::m_mutex;
+void Thread::doExit(void){m_isExitting = true;}
+bool Thread::isExitting(void){return m_isExitting;}
+void Thread::join_all(void)
+{
+    m_mutex.lock();
+    for (auto it = mVect.begin() ; it != mVect.end(); it++)
+    {
+        ThrInfo& info (*it);
+        void* returnVal;
+        printf("[THREAD] joining %s...\n", info.toStr().c_str());
+        pthread_join(info.pid, &returnVal);
+        printf("[OK]\n");
+    }
+    mVect.clear();
+    m_mutex.unlock();
+    m_isExitting = true;
 }
 
 void setLowPriority(void)
@@ -407,7 +428,7 @@ int MIDI_Decoder::receive (int16_t val)
  * FILE MANAGER
  *******************************************************************************/
 FileManager::FileManager (const char* path):
-        Thread(),
+        Thread("FileManager"),
         _path(path),
         m_indexPlaying(0),
         m_nbFiles(0),
@@ -430,15 +451,17 @@ void FileManager::body(void)
     printf("FileManager::body(%s)!\n",_path.c_str());
     on_disconnect();
 
-    while (1)
+    while (not isExitting())
     {
         do
         {
+            if (isExitting()) return;
             usleep(10 * 1000);
         } while (not is_connected());
         on_connect();
         do
         {
+            if (isExitting()) return;
             usleep(10 * 1000);
         } while (is_connected());
         on_disconnect();

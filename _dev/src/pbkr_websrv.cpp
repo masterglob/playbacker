@@ -35,25 +35,46 @@ namespace WEB
 {
 
 /*******************************************************************************/
-SockListener::SockListener(WebSrv* srv, int id):m_srv(srv),
-        m_fd(-1)
+SockListener::SockListener(WebSrv* srv, int id):
+        Thread("SockListener"),
+        m_srv(srv),
+        m_fd(-1),
+        m_id(id)
 {
-    m_thread=std::thread ([this,id](){this->do_listen(id);});
+    Thread::start();
 }
 
 /*******************************************************************************/
 SockListener::~SockListener(void)
 {
 }
-
+ void SockListener::body(void)
+ {
+     do_listen(m_id);
+ }
 
 /*******************************************************************************/
 void SockListener::do_listen(int id)
 {
-    while (1)
+    while (not isExitting())
     {
         struct sockaddr_in cli_addr;
         socklen_t clilen (sizeof(cli_addr));
+
+        // do accept
+        {
+            fd_set setReads;
+            timeval timeout = {.tv_sec = 0, .tv_usec = 20000 };
+            FD_SET(m_srv->sockfd(), &setReads);
+            int selectResult = select(m_srv->sockfd() + 1, &setReads, nullptr, nullptr, &timeout);
+            if (selectResult == 0)
+            {
+                continue;
+            }
+            else if (selectResult < 0)
+                throw EXCEPTION(std::string ("Failed to ACCEPT socket! "));
+        }
+
         m_fd = accept(m_srv->sockfd(),
                 (struct sockaddr *) &cli_addr, &clilen);
         if (m_fd < 0)

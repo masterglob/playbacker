@@ -467,7 +467,7 @@ MenuCfg::MenuCfg(void):
 
 /*******************************************************************************/
 MainMenu::MainMenu(void):
-        Thread(),
+        Thread("MainMenu"),
         m_cfg (MenuCfg()),
         m_currentMenu(&::playMenuItem)
 {
@@ -491,7 +491,7 @@ void MainMenu::setMenu(MenuItem* menu)
 /*******************************************************************************/
 void MainMenu::body(void)
 {
-    while (1)
+    while (not isExitting())
     {
         float duration(0.0);
         usleep(100*1000);
