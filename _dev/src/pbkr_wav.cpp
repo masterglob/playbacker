@@ -65,6 +65,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
     ZERO(wavHdr);
     ZERO(audioHdr);
     ZERO(addHdr);
+    printf("opened file %s, len =%d\n",_filename.c_str(), _len);
     readFile((char*)&wavHdr, sizeof(wavHdr));
     CHECK_FIELD("File truncated1", _f.gcount(), sizeof(wavHdr));
 
@@ -127,6 +128,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
 WavFileLRC::~WavFileLRC (void)
 {
     if (_eof) delete(_eof);
+    _f.close();
     printf("Closed %s\n", _filename.c_str());
 }
 

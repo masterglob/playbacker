@@ -22,6 +22,7 @@
 #include "pbkr_webserv.h"
 #include "pbkr_osc.h"
 #include "pbkr_menu.h"
+#include "pbkr_cfg.h"
 
 
 /*******************************************************************************
@@ -410,7 +411,7 @@ int main (int argc, char**argv)
         }
         else
         {
-            hifidac = cmd;
+            hifidac = cmd; // TODO : autodetect "sndrpihifiberry"
             break;
         }
     }
@@ -459,6 +460,9 @@ int main (int argc, char**argv)
 			VirtualTime::elapseSample();
             phase += phasestep;
             if (phase > TWO_PI) phase -=TWO_PI;
+
+            l = leftLatency.putSample(l);
+            r = rightLatency.putSample (r);
 
 			playerHifi.write_sample(l,r);
 			if (midi >=0)

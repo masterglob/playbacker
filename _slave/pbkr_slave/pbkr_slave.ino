@@ -91,6 +91,8 @@ void setup() {
   pinMode(I2S_PIN_DATA, OUTPUT);
   digitalWrite(I2S_PIN_DATA,0);
   pinMode(BTN_TEST, INPUT);
+  pinMode(LED_OUT,OUTPUT);
+  digitalWrite(LED_OUT,LOW);
   
   delay (200);
   i2s_begin();
@@ -148,8 +150,13 @@ void loop() {
   } while (hasSerialRcv);
   if (digitalRead(BTN_TEST))
   {
+    //PRINTLN(("BTN pressed"));
     sineTest = true;
     secCnt = 0;
+  }
+  else
+  {
+    sineTest = false;
   }
   
   // put your main code here, to run repeatedly:

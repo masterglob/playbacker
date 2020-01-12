@@ -12,6 +12,7 @@
  RX = I2S DATA
  D2  = Serial IN (from RPI3)
  D4 = I2S LRCK
+ D6 = LED
  D7 = Input test btn
  D8 = I2S BCK
 
@@ -31,7 +32,7 @@
 #define DEBUG_LRC_SINE_TEST 2
 
 // 1 to debug serial input
-#define DEBUG_SERIAL_IN 0
+#define DEBUG_SERIAL_IN 1
 
 /**
  * I2S output frequency: 44100 or 22050
@@ -65,10 +66,15 @@
 #define RX_PRG_BAUDRATE (115200 /(1+OVERCLOCK)) // DO NOT EDIT
 
 /*
+ * RED led
+ */
+#define LED_OUT (D6)
+
+/*
  * External button.
  * launches 2s sine test when pressed
  */
-#define BTN_TEST (D7)
+#define BTN_TEST (D5)
 
 /**
  * MIDI config

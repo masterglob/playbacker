@@ -54,5 +54,6 @@ wlan0     Link encap:Ethernet  HWaddr B8:27:EB:DD:B7:A4
 
  */
 
-#define MOUNT_POINT ("/mnt/usb/PBKR/")
+#define MOUNT_POINT "/mnt/usb/PBKR"
+#define DATA_PATH "/mnt/mmcblk0p2"
 #endif

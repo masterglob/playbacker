@@ -198,7 +198,7 @@ private:
 class FileManager: protected Thread
 {
 public:
-	FileManager (const char* path);
+	FileManager (std::string path);
 	virtual ~FileManager (void);
     void startup(void);
     bool selectIndex(const size_t i); /* @param i = track index, starting at 0 */
@@ -236,6 +236,24 @@ private:
 extern FileManager fileManager;
 
 /*******************************************************************************
+ * LATENCY MANAGER
+ *******************************************************************************/
+class Latency
+{
+public:
+    Latency(void);
+    ~Latency(void);
+    void setMs(uint8_t latency);
+    float putSample(float & newSample); // return a latency over newSample
+private:
+    size_t m_pos;
+    size_t m_size;
+    float* m_buffer;
+};
+extern Latency leftLatency;
+extern Latency rightLatency;
+
+/*******************************************************************************
  * SEND MESSAGES TO WEMOS
  *******************************************************************************/
 typedef std::deque<uint8_t, std::allocator<uint8_t>> MidiOutMsg;
@@ -247,6 +265,7 @@ public:
     ~WemosControl();
 
     void pushMessage(const MidiOutMsg& msg);
+    void pushSysExMessage(const uint8_t cmd, const MidiOutMsg& msg);
     void sendByte(void);
 private:
     typedef std::deque<MidiOutMsg, std::allocator<MidiOutMsg>> MsgQueue;

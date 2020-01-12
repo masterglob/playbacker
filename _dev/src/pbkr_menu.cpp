@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include "pbkr_menu.h"
+#include "pbkr_cfg.h"
 #include "pbkr_display.h"
 
 namespace
@@ -28,6 +29,26 @@ static const std::string addVertArrow(const std::string& title)
     result[i++] = 0;
     return result;
 }
+
+struct NumParam
+{
+    NumParam (const std::string& name, const std::string& unit,
+                        const int max_val,const int min_val,const int inc_val, const int val):
+            m_name(name), m_unit(unit),
+            m_max_val(max_val), m_min_val(min_val), m_inc_val(inc_val),m_val(val) {}
+    const std::string m_name;
+    const std::string m_unit;
+    const int m_max_val;
+    const int m_min_val;
+    const int m_inc_val;
+    int m_val;
+    bool canEdit(void)const{return m_min_val < m_max_val;}
+};
+struct FixedNumParam :NumParam
+{
+    FixedNumParam (const std::string& name,const std::string& unit,const int val):
+            NumParam(name,unit, val,val,val,val){}
+};
 
 /*******************************************************************************
  * SUB MENUS
@@ -75,21 +96,30 @@ struct ClicSettingsMenuItem : ListMenuItem
 {
     ClicSettingsMenuItem(const std::string & title, MenuItem* parent);
     virtual ~ClicSettingsMenuItem(void){}
+    virtual void onSelPressShort(void);
     virtual void onUpDownPress(const bool isUp);
     virtual const std::string menul1(void)const;
     virtual const std::string menul2(void)const;
 private:
+    static int paramToVolume(const int param){return (param * 127) /100;}
+    void sendVolume(void);
+    void setLatency(void);
     typedef enum {
         ID_VOLUME = 0,
+        ID_LATENCY,
         ID_CHANN_L,
         ID_CHANN_R,
         ID_PRIM_NOTE,
         ID_SECN_NOTE,
         ID_COUNT
     } ItemId;
-    uint32_t m_upDownIdx;
-    uint32_t m_upDownIdxMax;
-    uint32_t m_volume;
+    NumParam m_pVolume;
+    NumParam m_pLatency;
+    NumParam m_pChannL;
+    NumParam m_pChannR;
+    NumParam m_pPriNote;
+    NumParam m_pSecNote;
+    NumParam* m_param[ID_COUNT];
 };
 ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
 
@@ -266,53 +296,75 @@ const std::string NetShowMenuItem::menul2(void)const
 ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem* parent)
 :
         ListMenuItem(title, parent, ID_COUNT),
-        m_upDownIdx(0),
-        m_upDownIdxMax(3),
-        m_volume(80)
-{}
+         m_pVolume(NumParam("Volume", "", 100, 10, 10, 90)),
+         m_pLatency(NumParam("Latency", "ms", 30, 0, 2, 2)),
+         m_pChannL(FixedNumParam ("Left Chann.", "", 15)),
+         m_pChannR(FixedNumParam ("Right Chann.", "", 15)),
+         m_pPriNote(FixedNumParam ("Primary Note", "", 24)),
+         m_pSecNote(FixedNumParam ("Second. Note", "", 25)),
+        m_param{&m_pVolume, &m_pLatency,&m_pChannL,&m_pChannR, &m_pPriNote,&m_pSecNote}
+{
+    m_pVolume.m_val = Config::instance().loadInt("MIDI_VOLUME", 90);
+    sendVolume ();
+    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", 2));
+    setLatency ();
+}
+
+void ClicSettingsMenuItem::onSelPressShort(void)
+{
+    onSelPressLong();
+}
+
+void  ClicSettingsMenuItem::sendVolume(void)
+{
+    const uint8_t vol8 (paramToVolume(m_pVolume.m_val));
+
+    MidiOutMsg msg;
+    msg.push_back(vol8); // Volume value
+    wemosControl.pushSysExMessage(0x06, msg);
+}
+
+
+void  ClicSettingsMenuItem::setLatency(void)
+{
+    leftLatency.setMs(m_pLatency.m_val);
+    rightLatency.setMs(m_pLatency.m_val);
+}
 
 void ClicSettingsMenuItem::onUpDownPress(const bool isUp)
 {
+    if (! m_param[m_lrIdx]) return;
+    NumParam& param(* m_param[m_lrIdx]);
+    int& value (param.m_val);
+
+    // update param
+    if (isUp)
+    {
+        if (value + param.m_inc_val >= param.m_max_val)
+            value = param.m_max_val;
+        else
+            value += param.m_inc_val;
+    }
+    else
+    {
+        if (value <= param.m_min_val + param.m_inc_val)
+            value = param.m_min_val;
+        else
+            value -= param.m_inc_val;
+    }
+
+    // Processing
     switch (m_lrIdx)
     {
     case ID_VOLUME:
     {
-        static const size_t increment (10);
-        static const size_t min_vol (10);
-        if (isUp)
-        {
-            if (m_volume + increment >= 100)
-                m_volume = 100;
-            else
-                m_volume +=increment;
-        }
-        else
-        {
-            if (m_volume <= min_vol + increment)
-                m_volume = min_vol;
-            else
-                m_volume -= increment;
-        }
-        const uint8_t vol8 ((m_volume * 127) /100);
-
-        MidiOutMsg msg; // TODO : encapsulate!
-        msg.push_back(0xF0);
-        msg.push_back(0x43);
-        msg.push_back(0x4D);
-        msg.push_back(0x4D);
-        msg.push_back(0x06); // Volume command
-        msg.push_back(vol8); // Volume value
-        msg.push_back(0xF7);
-        wemosControl.pushMessage(msg);
+        Config::instance().saveInt("MIDI_VOLUME", value);
+        sendVolume ();
         break;
     }
-    case ID_CHANN_L:
-        break;
-    case ID_CHANN_R:
-        break;
-    case ID_PRIM_NOTE:
-        break;
-    case ID_SECN_NOTE:
+    case ID_LATENCY:
+        Config::instance().saveInt("MIDI_LATENCY", value);
+        setLatency();
         break;
     default:
         break;
@@ -321,30 +373,17 @@ void ClicSettingsMenuItem::onUpDownPress(const bool isUp)
 
 const std::string ClicSettingsMenuItem::menul1(void)const
 {
-    const char* labels[ID_COUNT] = {
-            "Volume", "Left Channel", "Right Channel", "Primary Note", "Second. Note"
-    };
-    return (m_lrIdx < ID_COUNT ? addVertArrow (labels[m_lrIdx]) : label_empty);
+    NumParam* param( m_param[m_lrIdx]);
+    if (!param) return label_empty;
+    return (m_lrIdx < ID_COUNT ? addVertArrow (param->m_name) : label_empty);
 }
 
 const std::string ClicSettingsMenuItem::menul2(void)const
 {
-    switch (m_lrIdx)
-    {
-    case ID_VOLUME:
-        return edit_me + std::to_string(m_volume) + "%";
-    case ID_CHANN_L:
-        return "15";
-    case ID_CHANN_R:
-        return "16";
-    case ID_PRIM_NOTE:
-        return "24";
-    case ID_SECN_NOTE:
-        return "25";
-    default:
-        break;
-    }
-    return label_empty;
+    NumParam* param( m_param[m_lrIdx]);
+    if (!param) return label_empty;
+    return (param->canEdit() ? edit_me : std::string (""))
+            + std::to_string(param->m_val) + param->m_unit;
 }
 /*******************************************************************************
  *

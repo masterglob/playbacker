@@ -427,9 +427,9 @@ int MIDI_Decoder::receive (int16_t val)
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
-FileManager::FileManager (const char* path):
+FileManager::FileManager (std::string path):
         Thread("FileManager"),
-        _path(path),
+        _path(path + "/"),
         m_indexPlaying(0),
         m_nbFiles(0),
         _file(NULL),
@@ -491,7 +491,7 @@ void FileManager::on_disconnect(void)
     _pConfig = NULL;
 
     std::string path (MOUNT_POINT);
-    path += "pbkr.xml";
+    path += "/pbkr.xml";
     _pConfig = new XMLConfig (path.c_str());
 }
 
@@ -532,7 +532,7 @@ void FileManager::on_connect(void)
     if (_pConfig) delete _pConfig;
 
     std::string path (MOUNT_POINT);
-    path += "pbkr.xml";
+    path += "/pbkr.xml";
 
     _title= "Untitled project";
     try
@@ -818,6 +818,19 @@ void WemosControl::pushMessage(const MidiOutMsg& msg)
     m_msgs.push_back(msg);
     m_mutex.unlock();
 }
+void WemosControl::pushSysExMessage(const uint8_t cmd, const MidiOutMsg& msg)
+{
+    MidiOutMsg sysMsg;
+    m_mutex.lock();
+    sysMsg.push_back(0xF0);
+    sysMsg.push_back(0x43);
+    sysMsg.push_back(0x4D);
+    sysMsg.push_back(0x4D);
+    sysMsg.push_back(cmd);
+    sysMsg.push_back(0xF7);
+    m_msgs.push_back(msg);
+    m_mutex.unlock();
+}
 
 void WemosControl::sendByte(void)
 {
@@ -846,6 +859,52 @@ void WemosControl::sendByte(void)
         }
     }
 }
+
+/*******************************************************************************
+ * LATENCY MANAGER
+ *******************************************************************************/
+
+Latency::Latency(void):m_pos(0),m_size(0),m_buffer(NULL){}
+Latency::~Latency(void)
+{
+    if (m_buffer) delete m_buffer;
+}
+
+void Latency::setMs(uint8_t latency)
+{
+    // how many samples? 1000 ms => 44100u
+    const size_t newSize ((441*latency) / 10);
+    m_pos = 0;
+    m_size = newSize;
+    if (m_size == 0 && m_buffer)
+    {
+        delete m_buffer;
+        m_buffer = NULL;
+    }
+
+    if (newSize > m_size)
+    {
+        if (m_buffer) delete m_buffer;
+        m_buffer = (float*) malloc (m_size * sizeof(float));
+        if (m_buffer)
+            memset (m_buffer, 0, m_size);
+    }
+    printf("Changed latency to %d ms = %d samples\n", latency,newSize);
+}
+
+float Latency::putSample(float & newSample)
+{
+    if (!m_buffer) return newSample;
+
+    float& ref (m_buffer[m_pos]);
+    const float res (ref);
+    ref = newSample;
+    m_pos ++;
+    if (m_pos >= m_size) m_pos = 0;
+    return res;
+}
+Latency leftLatency;
+Latency rightLatency;
 
 WemosControl wemosControl("/dev/ttyAMA0");
 } // namespace PBKR

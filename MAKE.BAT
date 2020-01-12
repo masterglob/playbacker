@@ -1,4 +1,3 @@
-
 cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
 @CALL COPY
 
