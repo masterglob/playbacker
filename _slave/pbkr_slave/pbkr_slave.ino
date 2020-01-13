@@ -91,8 +91,10 @@ void setup() {
   pinMode(I2S_PIN_DATA, OUTPUT);
   digitalWrite(I2S_PIN_DATA,0);
   pinMode(BTN_TEST, INPUT);
+#ifdef LED_OUT
   pinMode(LED_OUT,OUTPUT);
   digitalWrite(LED_OUT,LOW);
+#endif
   
   delay (200);
   i2s_begin();
@@ -130,6 +132,7 @@ inline int16_t advanceSound (SoundPlay& snd)
     return res;
 }
 
+static int last_rcv(0);
 static bool hasSerialRcv(false);
 inline void process_MIDI_in(void)
 {
@@ -139,6 +142,7 @@ inline void process_MIDI_in(void)
     const uint8_t c = uint8_t (SerialRx.read());
     //PRINTF(("Rcv 0x%02X\n",c));
     commmgt_rcv(c);
+    last_rcv = millis();
   }
 }
 
@@ -148,6 +152,25 @@ void loop() {
   {
     process_MIDI_in();
   } while (hasSerialRcv);
+
+#ifdef LED_OUT
+  const int ms (millis());
+  const int dms (ms - last_rcv);
+  
+  if (last_rcv == 0 || dms < 25)
+  {
+      digitalWrite(LED_OUT,(ms % 2 ? HIGH : LOW));
+  }
+  else if (dms > 5000)
+  {
+      digitalWrite(LED_OUT,HIGH);
+  }
+  else
+  {
+      digitalWrite(LED_OUT,LOW);
+  }
+#endif
+
   if (digitalRead(BTN_TEST))
   {
     //PRINTLN(("BTN pressed"));

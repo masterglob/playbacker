@@ -332,14 +332,30 @@ const int XMLConfig::TrackNode::getIntAttr(const char* attrName)
  *******************************************************************************/
 
 Fader::Fader(float dur_s, float initVal, float finalVal):
+                m_dur_s(dur_s),
 				_initTime(VirtualTime::now()),
-				_finalTime(_initTime+ VirtualTime::inS(dur_s)),
+				_finalTime(_initTime+ VirtualTime::inS(m_dur_s)),
 				_initVal(initVal),
 				_finalVal(finalVal),
 				_duration(VirtualTime::toS(_finalTime-_initTime)),
 				_factor((initVal-finalVal)/_duration),
 				_done(false)
 {}
+
+void Fader::debug(void)
+{
+    printf("Timer (init= %f, end = %f, now = %f) (%d)\n",
+            VirtualTime::toS(_initTime),
+            VirtualTime::toS(_finalTime),
+            VirtualTime::toS(VirtualTime::now()),update());
+}
+
+void Fader::restart(void)
+{
+    _initTime = VirtualTime::now();
+    _finalTime = _initTime+ VirtualTime::inS(m_dur_s);
+    _done = false;
+}
 
 bool Fader::update(void)
 {
@@ -799,7 +815,8 @@ const char* getIPNetMask (const char* device)
  *******************************************************************************/
 WemosControl::WemosControl(const char* filename):
     m_current(0),
-    m_handle (open (filename, O_WRONLY))
+    m_handle (open (filename, O_WRONLY)),
+    m_keepAlive(2, 0.0, 0.0)
 {
     if (m_handle < 0) {
         throw EXCEPTION("Failed to open serial port\n");
@@ -818,7 +835,7 @@ void WemosControl::pushMessage(const MidiOutMsg& msg)
     m_msgs.push_back(msg);
     m_mutex.unlock();
 }
-void WemosControl::pushSysExMessage(const uint8_t cmd, const MidiOutMsg& msg)
+void WemosControl::pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& msg)
 {
     MidiOutMsg sysMsg;
     m_mutex.lock();
@@ -826,9 +843,14 @@ void WemosControl::pushSysExMessage(const uint8_t cmd, const MidiOutMsg& msg)
     sysMsg.push_back(0x43);
     sysMsg.push_back(0x4D);
     sysMsg.push_back(0x4D);
-    sysMsg.push_back(cmd);
+    sysMsg.push_back((uint8_t) cmd);
+    for (auto it = msg.begin(); it != msg.end(); it++ )
+    {
+        const uint8_t& byte(*it);
+        sysMsg.push_back(byte);
+    }
     sysMsg.push_back(0xF7);
-    m_msgs.push_back(msg);
+    m_msgs.push_back(sysMsg);
     m_mutex.unlock();
 }
 
@@ -846,6 +868,8 @@ void WemosControl::sendByte(void)
         {
             delete m_current;
             m_current = 0;
+
+            m_keepAlive.restart();
         }
     }
     else
@@ -856,6 +880,13 @@ void WemosControl::sendByte(void)
             m_current = new MidiOutMsg (m_msgs.front());
             m_msgs.pop_front();
             m_mutex.unlock();
+        }
+
+        if (m_keepAlive.update())
+        {
+            m_keepAlive.restart();
+            MidiOutMsg msg;
+            pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
         }
     }
 }

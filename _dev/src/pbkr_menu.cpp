@@ -321,7 +321,7 @@ void  ClicSettingsMenuItem::sendVolume(void)
 
     MidiOutMsg msg;
     msg.push_back(vol8); // Volume value
-    wemosControl.pushSysExMessage(0x06, msg);
+    wemosControl.pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
 }
 
 

@@ -142,8 +142,11 @@ public:
 	Fader(float dur_s, float initVal, float finalVal);
 	float position (void);
 	bool update(void); // Return true if fader is done
+    void restart(void);
+    void debug(void);
 	inline bool done (void)const{return _done;}
 private:
+	float m_dur_s;
 	VirtualTime::Time _initTime;
 	VirtualTime::Time _finalTime;
 	float _initVal;
@@ -262,17 +265,23 @@ class WemosControl
 {
 public:
     explicit WemosControl(const char* filename);
-    ~WemosControl();
-
+    virtual ~WemosControl();
+    enum Sysex_Command
+    {
+        SYSEX_COMMAND_KEEP_ALIVE = 0,
+        SYSEX_COMMAND_VOLUME = 6,
+    };
     void pushMessage(const MidiOutMsg& msg);
-    void pushSysExMessage(const uint8_t cmd, const MidiOutMsg& msg);
+    void pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& msg);
     void sendByte(void);
+    void check(void);
 private:
     typedef std::deque<MidiOutMsg, std::allocator<MidiOutMsg>> MsgQueue;
     MsgQueue m_msgs;
     std::mutex m_mutex;
     MidiOutMsg* m_current;
     int m_handle;
+    Fader m_keepAlive;
 };
 extern WemosControl wemosControl;
 

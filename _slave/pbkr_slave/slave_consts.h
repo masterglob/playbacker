@@ -66,7 +66,7 @@
 #define RX_PRG_BAUDRATE (115200 /(1+OVERCLOCK)) // DO NOT EDIT
 
 /*
- * RED led
+ * RED led ( not used if undefined)
  */
 #define LED_OUT (D6)
 
