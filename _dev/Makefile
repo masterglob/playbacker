@@ -48,6 +48,9 @@ menu:
 gpio:
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+projects:
+	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 wav:
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
@@ -61,14 +64,15 @@ pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory 
-	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
 clean:
 	rm -f src/* .build/*

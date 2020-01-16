@@ -10,7 +10,7 @@
 
 namespace
 {
-static const std::string dataPath(std::string (DATA_PATH) + "/pbkr.config");
+static const std::string dataPath(std::string (INTERNAL_MOUNT_POINT) + "/pbkr.config");
 
     static bool isMounted(const char* path)
     {
@@ -59,13 +59,13 @@ void Config::prepare (void)
     m_ready = true;
 
     // check that DATA_PATH is mounted
-    if (! ::isMounted(DATA_PATH))
+    if (! ::isMounted(INTERNAL_MOUNT_POINT))
     {
         // partition not mounted. Try to do it
-        ::doMount (DATA_PATH);
-        if (! ::isMounted(DATA_PATH))
+        ::doMount (INTERNAL_MOUNT_POINT);
+        if (! ::isMounted(INTERNAL_MOUNT_POINT))
         {
-            printf("Failed to mount SAVE path : " DATA_PATH "\n");
+            printf("Failed to mount SAVE path : " INTERNAL_MOUNT_POINT "\n");
             m_error = true;
             return;
         }
@@ -112,5 +112,28 @@ int Config::loadInt(const std::string& name, const int defaultValue)
 
     return value;
 } // Config::loadInt
+
+string Config::loadStr(const string& name, const string& defaultValue)
+{
+    if (m_error) return defaultValue;
+    string value(defaultValue);
+    std::ifstream myfile (toSavePath(name));
+    try
+    {
+        getline( myfile, value );
+    }
+    catch(...){}
+    myfile.close();
+    return value;
+} // Config::loadStr
+
+void Config::saveStr(const std::string& name, const string& value)
+{
+    if (m_error) return;
+    std::ofstream myfile;
+    myfile.open (toSavePath(name));
+    myfile << value;
+    myfile.close();
+} // Config::saveStr
 
 } // namespace PBKR

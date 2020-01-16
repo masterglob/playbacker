@@ -26,6 +26,9 @@
 // #define DEBUG_MIDI printf
 #define DEBUG_MIDI(...)
 
+// #define DEBUG_THREADS printf
+#define DEBUG_THREADS(...)
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -33,28 +36,7 @@ namespace
 {
 using namespace PBKR;
 static DISPLAY::DisplayManager& display (DISPLAY::DisplayManager::instance());
-static bool strEqual (const xmlChar* a, const char* b)
-{
-    return strcmp((const char*)a, b) == 0;
-}
 
-static std::string getStrAttr(xmlNode * n,const char* attrName)
-{
-    xmlAttr* attribute = n->properties;
-    while(attribute && attribute->name && attribute->children)
-    {
-        xmlChar* value = xmlNodeListGetString(n->doc, attribute->children, 1);
-        if (::strEqual (attribute->name,attrName))
-        {
-            std::string res(std::string((const char*)value));
-            xmlFree(value);
-            return res;
-        }
-        xmlFree(value);
-        attribute = attribute->next;
-    }
-    throw std::range_error("Attribute not found");
-}
 
 } // namespace
 
@@ -67,19 +49,22 @@ static std::string getStrAttr(xmlNode * n,const char* attrName)
  *******************************************************************************/
 namespace PBKR
 {
-FileManager fileManager (MOUNT_POINT);
+FileManager fileManager;
 
+/*******************************************************************************/
 Thread::Thread(const std::string& name): _thread(-1),_attr(NULL),m_name(name)
 {
 }
 
+/*******************************************************************************/
 Thread::~Thread(void)
 {
 }
 
+/*******************************************************************************/
 void Thread::start()
 {
-	DEBUG("Thread::start\n");
+    DEBUG_THREADS("Thread::start\n");
     m_mutex.lock();
 	pthread_create (&_thread, _attr,Thread::real_start, (void*)this);
 	ThrInfo info;
@@ -87,12 +72,13 @@ void Thread::start()
 	info.pid = _thread;
     mVect.push_back(info);
     m_mutex.unlock();
-    printf("[THREAD] start %s\n", info.name.c_str());
+    DEBUG_THREADS("[THREAD] start %s\n", info.name.c_str());
 }
 
+/*******************************************************************************/
 void* Thread::real_start(void* param)
 {
-	DEBUG("Thread::real_start\n");
+    DEBUG_THREADS("Thread::real_start\n");
 	Thread* thr((Thread*)param);
 	if (thr)
 	{
@@ -113,15 +99,16 @@ void Thread::join_all(void)
     {
         ThrInfo& info (*it);
         void* returnVal;
-        printf("[THREAD] joining %s...\n", info.toStr().c_str());
+        DEBUG_THREADS("[THREAD] joining %s...\n", info.toStr().c_str());
         pthread_join(info.pid, &returnVal);
-        printf("[OK]\n");
+        DEBUG_THREADS("[OK]\n");
     }
     mVect.clear();
     m_mutex.unlock();
     m_isExitting = true;
 }
 
+/*******************************************************************************/
 void setLowPriority(void)
 {
     sched_param sch;
@@ -132,6 +119,7 @@ void setLowPriority(void)
     }
 }
 
+/*******************************************************************************/
 void setRealTimePriority(void)
 {
     sched_param sch;
@@ -148,18 +136,21 @@ void setRealTimePriority(void)
 const VirtualTime::Time VirtualTime::zero_time ({0,0});
 VirtualTime::Time VirtualTime::_currTime({0,0});
 
+/*******************************************************************************/
 bool VirtualTime::Time::operator< (Time const&r)const
 {
 	return nbSec < r.nbSec or
 			(nbSec == r.nbSec and samples < r.samples);
 }
 
+/*******************************************************************************/
 bool VirtualTime::Time::operator<= (Time const&r)const
 {
 	return nbSec < r.nbSec or
 			(nbSec == r.nbSec and samples <= r.samples);
 }
 
+/*******************************************************************************/
 VirtualTime::Time VirtualTime::Time::operator- (VirtualTime::Time const&r)const
 {
 	if (*this < r) return VirtualTime::zero_time;
@@ -175,6 +166,7 @@ VirtualTime::Time VirtualTime::Time::operator- (VirtualTime::Time const&r)const
 }
 
 
+/*******************************************************************************/
 VirtualTime::Time VirtualTime::Time::operator+ (VirtualTime::Time const&r)const
 {
 	VirtualTime::Time result (*this);
@@ -188,6 +180,7 @@ VirtualTime::Time VirtualTime::Time::operator+ (VirtualTime::Time const&r)const
 	return result;
 }
 
+/*******************************************************************************/
 void VirtualTime::elapseSample(void)
 {
 	_currTime.samples ++;
@@ -198,6 +191,7 @@ void VirtualTime::elapseSample(void)
 	}
 }
 
+/*******************************************************************************/
 unsigned long VirtualTime::delta(const Time& t0, const Time& t1)
 {
 	unsigned long result (t1.samples - t0.samples);
@@ -205,12 +199,14 @@ unsigned long VirtualTime::delta(const Time& t0, const Time& t1)
 	return result;
 }
 
+/*******************************************************************************/
 float VirtualTime::toS(const Time& s)
 {
 	const float res (s.nbSec + ((float)s.samples) /FREQUENCY_HZ);
 	return res;
 }
 
+/*******************************************************************************/
 VirtualTime::Time VirtualTime::inS(float s)
 {
 	Time result (zero_time);
@@ -234,100 +230,6 @@ VirtualTime::Time VirtualTime::inS(float s)
 }
 
 /*******************************************************************************
- * CONFIGURATION (XML)
- *******************************************************************************/
-
-XMLConfig::XMLConfig(const char* filename)
-{
-    trackVect.clear();
-    LIBXML_TEST_VERSION
-
-    xmlDocPtr doc; /* the resulting document tree */
-    xmlNode *root_element = NULL;
-
-    doc = xmlReadFile( filename, NULL, 0);
-    if (doc == NULL) {
-        fprintf(stderr, "Failed to parse document\n");
-        return;
-    }
-
-    root_element = xmlDocGetRootElement(doc);
-
-    // Look for "<PBKR>"
-
-    xmlNode *pbkrNode = NULL;
-
-    for (pbkrNode = root_element; pbkrNode; pbkrNode = pbkrNode->next) {
-        if (pbkrNode->type == XML_ELEMENT_NODE && strEqual (pbkrNode->name,"PBKR") )
-            break;
-    }
-    if (pbkrNode)
-    {
-        m_title = ::getStrAttr(pbkrNode, "title");
-
-        xmlNode *trackNode = NULL;
-        for (trackNode = pbkrNode->children; trackNode; trackNode = trackNode->next) {
-            if (trackNode->type == XML_ELEMENT_NODE && strEqual (trackNode->name,"Track") )
-            {
-                // process node!
-                TrackNode t (trackNode);
-                trackVect.push_back(t);
-                printf("Track %d (%s :%s)\n",t.id,t.title.c_str(),t.filename.c_str());
-                display.setTrackName(t.filename,t.id - 1);
-            }
-        }
-    }
-    else
-    {
-        printf("No element PBKR found...\n");
-    }
-
-
-    printf("%s open successfull\n",filename);
-    xmlFreeDoc(doc);
-    xmlCleanupParser();
-}
-XMLConfig::TrackNode::TrackNode ( xmlNode *trackNode):
-        _n(trackNode),
-        id(getIntAttr("id")),
-        title(::getStrAttr(_n,"title")),
-        filename(::getStrAttr(_n,"file"))
-{
-
-} //XMLConfig::TrackNode::TrackNode
-
-XMLConfig::TrackNode::~TrackNode (void)
-{
-}
-
-const int XMLConfig::TrackNode::getIntAttr(const char* attrName)
-{
-    xmlAttr* attribute = _n->properties;
-    while(attribute && attribute->name && attribute->children)
-    {
-        xmlChar* value = xmlNodeListGetString(_n->doc, attribute->children, 1);
-        if (strEqual (attribute->name,attrName))
-        {
-            const std::string res (strdup((const char*)value));
-            try
-            {
-                int i = std::stoi(res);
-                xmlFree(value);
-                return i;
-            }
-            catch (...)
-            {
-                printf("Invalid INT value:%s\n",res.c_str());
-                return 0;
-            }
-        }
-        xmlFree(value);
-        attribute = attribute->next;
-    }
-    return 0;
-} // XMLConfig::TrackNode::getIntAttr
-
-/*******************************************************************************
  * FADER
  *******************************************************************************/
 
@@ -342,6 +244,7 @@ Fader::Fader(float dur_s, float initVal, float finalVal):
 				_done(false)
 {}
 
+/*******************************************************************************/
 void Fader::debug(void)
 {
     printf("Timer (init= %f, end = %f, now = %f) (%d)\n",
@@ -350,6 +253,7 @@ void Fader::debug(void)
             VirtualTime::toS(VirtualTime::now()),update());
 }
 
+/*******************************************************************************/
 void Fader::restart(void)
 {
     _initTime = VirtualTime::now();
@@ -357,12 +261,14 @@ void Fader::restart(void)
     _done = false;
 }
 
+/*******************************************************************************/
 bool Fader::update(void)
 {
 	if (_finalTime < VirtualTime::now())
 		_done = true;
 	return _done;
 }
+/*******************************************************************************/
 float Fader::position (void)
 {
 	const VirtualTime::Time now (VirtualTime::now());
@@ -386,6 +292,7 @@ float Fader::position (void)
  *******************************************************************************/
 MIDI_Decoder::MIDI_Decoder(void):m_maxLevel(0.0),m_hasBreak(false),m_oof(true),m_skip(100){}
 
+/*******************************************************************************/
 int MIDI_Decoder::receive (int16_t val)
 {
     static const float MAX_BYTE (256.0);
@@ -443,143 +350,88 @@ int MIDI_Decoder::receive (int16_t val)
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
-FileManager::FileManager (std::string path):
+FileManager::FileManager (void):
         Thread("FileManager"),
-        _path(path + "/"),
         m_indexPlaying(0),
         m_nbFiles(0),
         _file(NULL),
         _reading(false),
         _lastL(0.0),
         _lastR(0.0),
-        _pConfig(NULL)
+        _pProject(NULL)
 {
 }
 
+/*******************************************************************************/
 FileManager::~FileManager (void)
 {
     if (_file) delete (_file);
-    if (_pConfig) delete _pConfig;
 }
 
+/*******************************************************************************/
 void FileManager::body(void)
 {
-    printf("FileManager::body(%s)!\n",_path.c_str());
-    on_disconnect();
-
-    while (not isExitting())
+    for ( ; not isExitting() ; usleep(100 * 1000))
     {
-        do
+        ProjectVect projects (getAllProjects());
+        if (_pProject)
         {
-            if (isExitting()) return;
-            usleep(10 * 1000);
-        } while (not is_connected());
-        on_connect();
-        do
-        {
-            if (isExitting()) return;
-            usleep(10 * 1000);
-        } while (is_connected());
-        on_disconnect();
-    }
-}
-
-bool FileManager::is_connected(void)
-{
-    DIR *dir;
-    if ((dir = opendir (_path.c_str())) != NULL)
-    {
-        closedir (dir);
-        return true;
-    }
-    return false;
-}
-
-/*******************************************************************************/
-void FileManager::on_disconnect(void)
-{
-    display.onEvent(DISPLAY::DisplayManager::evUsbOut);
-    printf("USB disconnected!\n");
-    m_nbFiles = 0;
-    _title = "NO USB KEY";
-
-    if (_pConfig) delete _pConfig;
-    _pConfig = NULL;
-
-    std::string path (MOUNT_POINT);
-    path += "/pbkr.xml";
-    _pConfig = new XMLConfig (path.c_str());
-}
-
-/*******************************************************************************/
-void FileManager::on_connect(void)
-{
-    display.onEvent(DISPLAY::DisplayManager::evUsbIn);
-
-    printf("USB connected!\n");
-
-    // search for compatible files
-    m_nbFiles = 0;
-    m_indexPlaying = 0;
-    /*
-    DIR *dir;
-    struct dirent *ent;
-    if ((dir = opendir (_path.c_str())) != NULL)
-    {
-        // using  std::regex is reaaly too long for compile time!
-
-        while ((ent = readdir (dir)) != NULL)
-        {
-            const size_t l(strlen(ent->d_name));
-            if (l < 4) continue;
-            const char* end(&ent->d_name[l-4]);
-            if (strcmp (end,".WAV") == 0 ||
-                    strcmp (end,".wav") == 0)
+            // check that project still exists!
+            if (_pProject->toClose())
             {
-                printf ("%s\n", ent->d_name);
-                m_files[m_nbFiles] =ent->d_name;
-                m_nbFiles++;
+                unloadProject();
             }
         }
-        closedir (dir);
-    }*/
-
-    // search for TITLE
-    if (_pConfig) delete _pConfig;
-
-    std::string path (MOUNT_POINT);
-    path += "/pbkr.xml";
-
-    _title= "Untitled project";
-    try
-    {
-        _pConfig = new XMLConfig (path.c_str());
-        _title = _pConfig->getTitle();
-        m_nbFiles = 0;
-        for (size_t i(0); i < sizeof(m_files)/sizeof(*m_files); ++i)
+        // auto-load first project
+        for (auto it(projects.begin()); (it != projects.end()) && (not _pProject); it++)
         {
-            m_files[i] = "";
-        }
-        for (auto it (_pConfig->trackVect.begin()); it != _pConfig->trackVect.end(); it++)
-        {
-            const XMLConfig::TrackNode& tn(*it);
-            if (tn.id == 0) continue;
-            if (tn.id >= m_nbFiles) m_nbFiles = tn.id;
-            m_files[tn.id - 1] = tn.filename;
+            Project* project (*it);
+            if (not project->toClose())
+            {
+                loadProject(project);
+            }
         }
     }
-    catch (...) {
-        _pConfig = NULL;
-    }
+}
 
-    //sleep(1);
+/*******************************************************************************/
+bool
+FileManager::loadProject (Project* proj)
+{
+    if (!proj) return false;
+    if (proj->getNbTracks() <= 0) return false;
+
+    stopReading();
+    _pProject = proj;
+    _pProject->setInuse(true);
+    m_indexPlaying = -1;
+    m_nbFiles = proj->getNbTracks();
+    m_title = proj->m_title;
     display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
-    display.onEvent(DISPLAY::DisplayManager::evProjectTitle, _title);
-    selectIndex(0);
+    display.onEvent(DISPLAY::DisplayManager::evProjectTitle, m_title);
 
-} // FileManager::on_connect
+    printf("Loaded project '%s' (%d tracks)\n",m_title.c_str(), m_nbFiles);
+    selectIndex (proj->getFirstTrackIndex());
 
+    return true;
+}  // FileManager::loadProject
 
+/*******************************************************************************/
+void
+FileManager::unloadProject (void)
+{
+    if (!_pProject) return;
+    stopReading();
+    m_indexPlaying = -1;
+    m_nbFiles = -1;
+    _pProject->setInuse(false);
+    _pProject = NULL;
+    display.onEvent(DISPLAY::DisplayManager::evProjectTitle, "No project...");
+    display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (0));
+
+}  // FileManager::unloadProject
+
+/*******************************************************************************/
 void FileManager::startReading(void)
 {
     if (!_file)
@@ -590,12 +442,7 @@ void FileManager::startReading(void)
     {
         if (_reading)
         {
-            _reading = false;
-            printf("Stop reading\n");
-            display.onEvent(DISPLAY::DisplayManager::evStop);
-            if (_file) delete (_file);
-            _file=NULL;
-
+            stopReading();
         }
         else
         {
@@ -611,11 +458,21 @@ void FileManager::startReading(void)
     }
 }
 
+/*******************************************************************************/
 void FileManager::stopReading(void)
 {
-    if (_file && _reading) startReading();
+    if (_file && _reading)
+    {
+        _reading = false;
+        printf("Stop reading\n");
+        display.onEvent(DISPLAY::DisplayManager::evStop);
+        if (_file) delete (_file);
+        _file=NULL;
+    }
+
 } // FileManager::stopReading
 
+/*******************************************************************************/
 void FileManager::getSample(float& l, float & r, int& midiB)
 {
     midiB = -1;
@@ -635,30 +492,32 @@ void FileManager::getSample(float& l, float & r, int& midiB)
     r = _lastR;
 } // FileManager::getSample
 
+/*******************************************************************************/
 void FileManager::startup(void)
 {
     start();
 }
 
+/*******************************************************************************/
 std::string FileManager::filename(size_t idx)const
 {
-    if (idx > sizeof(m_files)/sizeof(*m_files)) return "";
-    return m_files[idx];
+    if (_pProject == NULL) return "";
+    return _pProject->getByTrackId(idx).m_filename;
 }
 
+/*******************************************************************************/
 std::string FileManager::fileTitle(size_t idx)const
 {
-    if (idx > sizeof(m_files)/sizeof(*m_files)) return "";
-    if (_pConfig == NULL) return "";
-    const XMLConfig::TrackNode & tn (_pConfig->trackVect[idx]);
-    return tn.title;
+    if (_pProject == NULL) return "";
+    return _pProject->getByTrackId(idx).m_title;
 }
 
+/*******************************************************************************/
 void FileManager::nextTrack(void)
 {
     printf("nextTrack %d %d \n",m_nbFiles, m_indexPlaying);
     const int prev (m_indexPlaying);
-    while (m_nbFiles > 0 && m_indexPlaying + 1 < m_nbFiles )
+    while (m_nbFiles > 0 && m_indexPlaying < m_nbFiles )
     {
         m_indexPlaying ++;
         if (selectIndex (m_indexPlaying)) return;
@@ -666,11 +525,12 @@ void FileManager::nextTrack(void)
     m_indexPlaying=prev;
 }
 
+/*******************************************************************************/
 void FileManager::prevTrack(void)
 {
     printf("prevTrack %d %d \n",m_nbFiles, m_indexPlaying);
     const int prev (m_indexPlaying);
-    while (m_nbFiles > 0 && m_indexPlaying > 0)
+    while (m_nbFiles > 0 && m_indexPlaying > 1)
     {
         m_indexPlaying --;
         if (selectIndex (m_indexPlaying)) return;
@@ -678,23 +538,29 @@ void FileManager::prevTrack(void)
     m_indexPlaying=prev;
 }
 
+/*******************************************************************************/
 bool FileManager::selectIndex(const size_t i)
 {
-    if (i >= m_nbFiles || m_files[i] == "")
+    if (!_pProject) return false;
+    if (i == 0) return false;
+    const size_t trackId (i);
+    const Track & track(_pProject->getByTrackId(trackId));
+    if (track.m_title.length() == 0)
     {
-        display.warning(std::string("No track #") + std::to_string(i+1));
+        display.warning(string("No track #") + std::to_string(trackId));
         return false;
     }
     stopReading();
-    m_indexPlaying = i;
+    m_indexPlaying = trackId;
     try
     {
-        _file = new WavFileLRC ( std::string (_path) , m_files[m_indexPlaying]);
+        const string path(_pProject->m_source.pPath + "/" + _pProject->m_title);
+        _file = new WavFileLRC (path, track.m_filename);
     }
     catch (...) {
         printf("Open cancelled, file badly formatted\n");
 
-        display.warning(std::string("BAD FILE FORMAT"));
+        display.warning(string("BAD FILE FORMAT"));
         _file = NULL;
         return false;
     }
@@ -702,20 +568,14 @@ bool FileManager::selectIndex(const size_t i)
     {
         printf("Opened %s\n",_file->_filename.c_str());
 
-        std::string title(m_files[m_indexPlaying]);
-        std::string trackIdx(std::to_string(m_indexPlaying+1));
-        if (_pConfig && m_indexPlaying < _pConfig->trackVect.size())
-        {
-            const XMLConfig::TrackNode & tn (_pConfig->trackVect[m_indexPlaying]);
-            title = tn.title;
-        }
-        display.onEvent(DISPLAY::DisplayManager::evFile, title);
+        const string trackIdx(std::to_string(track.m_index));
+        display.onEvent(DISPLAY::DisplayManager::evFile, track.m_title);
         display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);
         return true;
     }
     else
     {
-        printf("Failed to open <%s>\n",m_files[m_indexPlaying].c_str());
+        printf("Failed to open <%s>\n",_file->_filename.c_str());
     }
     return false;
 
@@ -725,6 +585,7 @@ bool FileManager::selectIndex(const size_t i)
  * GENERAL PURPOSE FUNCTIONSS
  *******************************************************************************/
 
+/*******************************************************************************/
 const char getch(void) {
 	char buf = 0;
 #if 1
@@ -815,7 +676,7 @@ const char* getIPNetMask (const char* device)
  *******************************************************************************/
 WemosControl::WemosControl(const char* filename):
     m_current(0),
-    m_handle (open (filename, O_WRONLY)),
+    m_handle (file_open_write (filename)),
     m_keepAlive(2, 0.0, 0.0)
 {
     if (m_handle < 0) {

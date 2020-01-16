@@ -10,11 +10,9 @@
 #include <vector>
 #include <mutex>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
-
 #include "pbkr_config.h"
+#include "pbkr_types.h"
+#include "pbkr_projects.h"
 
 namespace PBKR
 {
@@ -74,37 +72,6 @@ private:
 	pthread_t _thread;
 	pthread_attr_t* _attr;
 	const std::string m_name;
-};
-
-/*******************************************************************************
- * CONFIGURATION (XML)
- *******************************************************************************/
-class XMLConfig
-{
-public:
-    XMLConfig(const char* filename);
-
-    class TrackNode
-    {
-    public:
-        TrackNode ( xmlNode *trackNode);
-        ~TrackNode (void);
-    private:
-        xmlNode *_n;
-    public:
-        const size_t id;
-        const std::string title;
-        const std::string filename;
-    private:
-        const int   getIntAttr(const char* attrName);
-    };
-    typedef std::vector<TrackNode,std::allocator<TrackNode>> TrackVect;
-    TrackVect trackVect;
-    const std::string& getTitle(void)const{return m_title;}
-private:
-    std::string m_title;
-
-
 };
 
 /*******************************************************************************
@@ -201,39 +168,37 @@ private:
 class FileManager: protected Thread
 {
 public:
-	FileManager (std::string path);
+	FileManager (void);
 	virtual ~FileManager (void);
     void startup(void);
-    bool selectIndex(const size_t i); /* @param i = track index, starting at 0 */
+    bool selectIndex(const size_t i); /* @param i = track index, starting at 1 */
     void nextTrack(void);
     void prevTrack(void);
     void stopReading(void);
     void startReading(void);
     void getSample( float& l, float & r, int& midiB);
     bool reading(void)const{return _reading;}
-    const std::string title(void)const {return _title;}
+    const std::string title(void)const {return m_title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}
     size_t nbFiles(void)const {return m_nbFiles;}
     std::string filename(size_t idx)const;
     std::string fileTitle(size_t idx)const;
+    bool loadProject (Project* proj);
+    void unloadProject (void);
 protected:
 	virtual void body(void);
 private:
-    bool is_connected(void);
-    void on_connect(void);
-    void on_disconnect(void);
     void preBuffer(void);
-    std::string _path;
-    std::string m_files[256];
-    size_t m_indexPlaying; // 0 = track 1
+    size_t m_indexPlaying; // 1 = track 1
     size_t m_nbFiles;
-    std::string _title;
+    std::string m_title;
     WavFileLRC* _file;
     bool _reading;
     float _lastL;
     float _lastR;
     MIDI_Decoder _midiDecoder;
-    XMLConfig* _pConfig;
+    Project* _pProject;
+    ProjectVect m_allProjects;
 };
 
 extern FileManager fileManager;

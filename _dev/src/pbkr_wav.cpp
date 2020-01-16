@@ -52,7 +52,7 @@ namespace PBKR
 
 /*******************************************************************************/
 WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
-                _filename(path + filename),
+                _filename(path + "/" + filename),
                 _f(_filename),
                 _len(fileLength(_f)),
                 _eof(NULL),

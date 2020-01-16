@@ -23,6 +23,7 @@
 #include "pbkr_osc.h"
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
+#include "pbkr_projects.h"
 
 
 /*******************************************************************************
@@ -46,7 +47,7 @@ namespace
 {
 //const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
 //const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
-
+static  FILE*stdoutCpy(stdout);
 static void intHandler(int dummy);
 static inline void setClicVolume  (const float& v);
 static inline std::string onKeyboardCmd  (const std::string& msg);
@@ -65,7 +66,7 @@ public:
         while (not isExitting())
         {
             printf("> ");
-            fflush(stdout);
+            fflush(stdoutCpy);
             const char c ( getch());
             printf("%c\n",c);
             switch (c) {
@@ -103,7 +104,7 @@ public:
             case '7':
             case '8':
             case '9':
-                fileManager.selectIndex (c - '1');
+                fileManager.selectIndex (c - '0');
                 break;
             default:
                 printf("Unknown command :(0x%02X)\n",c);
@@ -236,7 +237,7 @@ void Evt::onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice)
                 {
                     if (padId[i] == b1)
                     {
-                        fileManager.selectIndex (i);
+                        fileManager.selectIndex (i + 1);
                         return;
                     }
                 }
@@ -363,7 +364,7 @@ public:
     virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
     virtual void onPlayEvent    (void){fileManager.startReading ();}
     virtual void onStopEvent    (void){fileManager.stopReading ();}
-    virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx);}
+    virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx + 1);}
     virtual void setClicVolume  (const float& v){::setClicVolume(v);}
     virtual std::string onKeyboardCmd  (const std::string& msg){return ::onKeyboardCmd(msg);}
 };
@@ -424,8 +425,9 @@ int main (int argc, char**argv)
 	try {
 	    midiMgr.start();
 	    DISPLAY::DisplayManager::instance().onEvent(DISPLAY::DisplayManager::evBegin);
+	    setDefaultProject();
 	    fileManager.startup();
-		printf("Press btn...!\n");
+
         if (interactive_console) console.start();
 		Fader* ledFader(new Fader(0.5,0,0));
 		bool  led_on(true);

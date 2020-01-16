@@ -4,6 +4,7 @@
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
 #include "pbkr_display.h"
+#include "pbkr_projects.h"
 
 namespace
 {
@@ -60,8 +61,8 @@ struct PlayMenuItem : MenuItem
     virtual void onSelPressLong(void);
     virtual void onSelPressShort(void);
     virtual void onLeftRightPress(const bool isLeft);
-    virtual const std::string menul1(void)const{return "";}
-    virtual const std::string menul2(void)const{return "";}
+    virtual const std::string menul1(void){return "";}
+    virtual const std::string menul2(void){return "";}
 };
 PlayMenuItem playMenuItem;
 
@@ -73,6 +74,7 @@ struct ListMenuItem : MenuItem
     ListMenuItem(const std::string & title, MenuItem* parent, const uint32_t maxItems);
     virtual ~ListMenuItem(void){}
     virtual void onLeftRightPress(const bool isLeft);
+    virtual const std::string menul1(void);
 protected:
     const uint32_t m_lrIdx_Max;
     uint32_t m_lrIdx;
@@ -83,13 +85,32 @@ struct NetShowMenuItem : ListMenuItem
     NetShowMenuItem(const std::string & title, MenuItem* parent);
     virtual ~NetShowMenuItem(void){}
     virtual void onUpDownPress(const bool isUp);
-    virtual const std::string menul1(void)const;
-    virtual const std::string menul2(void)const;
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
 private:
     uint32_t m_upDownIdx;
     uint32_t m_upDownIdxMax;
 };
 NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
+
+struct SelectProjectShowMenuItem : ListMenuItem
+{
+    SelectProjectShowMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~SelectProjectShowMenuItem(void){}/*
+    virtual void onUpDownPress(const bool isUp);
+    virtual const std::string menul1(void);*/
+    virtual const std::string menul2(void);
+    virtual void onSelPressShort(void);
+    void setDefaultProject(void);
+private:
+    uint32_t m_upDownIdx;
+    uint32_t m_upDownIdxMax;
+    string m_projectTitle;
+    ProjectVect m_allproj;
+    static const string m_saveSection;
+};
+const string SelectProjectShowMenuItem::m_saveSection("SelectProjectShowMenuItem");
+SelectProjectShowMenuItem selectProjectShowMenuItem ("Select show", &mainMenuItem);
 
 
 struct ClicSettingsMenuItem : ListMenuItem
@@ -98,8 +119,8 @@ struct ClicSettingsMenuItem : ListMenuItem
     virtual ~ClicSettingsMenuItem(void){}
     virtual void onSelPressShort(void);
     virtual void onUpDownPress(const bool isUp);
-    virtual const std::string menul1(void)const;
-    virtual const std::string menul2(void)const;
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
 private:
     static int paramToVolume(const int param){return (param * 127) /100;}
     void sendVolume(void);
@@ -135,6 +156,11 @@ ListMenuItem::ListMenuItem(const std::string & title, MenuItem* parent, const ui
     m_lrIdx_Max(maxItems),
     m_lrIdx(0)
 {}
+
+const std::string ListMenuItem::menul1(void)
+{
+    return addVertArrow(subMenuName());
+}
 
 void ListMenuItem::onLeftRightPress(const bool isLeft)
 {
@@ -185,6 +211,69 @@ void PlayMenuItem::onLeftRightPress(const bool isLeft)
 
 /*******************************************************************************
  *
+########  ########   #######        ## ########  ######  ########
+##     ## ##     ## ##     ##       ## ##       ##    ##    ##
+##     ## ##     ## ##     ##       ## ##       ##          ##
+########  ########  ##     ##       ## ######   ##          ##
+##        ##   ##   ##     ## ##    ## ##       ##          ##
+##        ##    ##  ##     ## ##    ## ##       ##    ##    ##
+##        ##     ##  #######   ######  ########  ######     ##
+
+*******************************************************************************/
+SelectProjectShowMenuItem::SelectProjectShowMenuItem (const std::string & title, MenuItem* parent)
+:
+        ListMenuItem(title, parent, 4),
+        m_upDownIdx(0),
+        m_upDownIdxMax(3),
+        m_projectTitle("")
+{
+}
+void
+SelectProjectShowMenuItem::setDefaultProject(void)
+{
+    m_projectTitle = Config::instance().loadStr(m_saveSection);
+    m_allproj = getAllProjects();
+    if (m_projectTitle.length() > 0)
+    {
+        printf("Trying to auto load previous show: '%s'\n",m_projectTitle.c_str());
+        onSelPressShort();
+    }
+}
+
+const std::string
+SelectProjectShowMenuItem::menul2(void)
+{
+    m_allproj = getAllProjects();
+    if (m_lrIdx < m_allproj.size())
+    {
+        m_projectTitle = m_allproj[m_lrIdx]->m_title;
+        return m_projectTitle;
+    }
+    m_projectTitle = "";
+    return std::string("<EMPTY") + std::to_string(m_lrIdx + 1) +">";
+}
+
+void
+SelectProjectShowMenuItem::onSelPressShort(void)
+{
+    if (m_projectTitle.length() > 0)
+    {
+        Project* p(findProjectByTitle(m_allproj, m_projectTitle));
+        if (p)
+        {
+            fileManager.loadProject(p);
+            globalMenu.setMenu(&playMenuItem);
+            Config::instance().saveStr(m_saveSection, m_projectTitle);
+        }
+        else
+        {
+            printf("Failed to load:%s\n",m_projectTitle.c_str());
+        }
+    }
+}
+
+/*******************************************************************************
+ *
 
 ##    ## ######## ########    ##     ## ######## ##    ## ##     ##
 ###   ## ##          ##       ###   ### ##       ###   ## ##     ##
@@ -215,7 +304,7 @@ void NetShowMenuItem::onUpDownPress(const bool isUp)
     }
 }
 
-const std::string NetShowMenuItem::menul1(void)const
+const std::string NetShowMenuItem::menul1(void)
 {
     switch (m_lrIdx)
     {
@@ -251,7 +340,7 @@ const std::string NetShowMenuItem::menul1(void)const
     return "##noitem##";
 }
 
-const std::string NetShowMenuItem::menul2(void)const
+const std::string NetShowMenuItem::menul2(void)
 {
     switch (m_lrIdx)
     {
@@ -371,14 +460,14 @@ void ClicSettingsMenuItem::onUpDownPress(const bool isUp)
     }
 }
 
-const std::string ClicSettingsMenuItem::menul1(void)const
+const std::string ClicSettingsMenuItem::menul1(void)
 {
     NumParam* param( m_param[m_lrIdx]);
     if (!param) return label_empty;
     return (m_lrIdx < ID_COUNT ? addVertArrow (param->m_name) : label_empty);
 }
 
-const std::string ClicSettingsMenuItem::menul2(void)const
+const std::string ClicSettingsMenuItem::menul2(void)
 {
     NumParam* param( m_param[m_lrIdx]);
     if (!param) return label_empty;
@@ -461,7 +550,7 @@ void MenuItem::onSelPressLong(void)
     }
 }
 
-const std::string MenuItem::menul1(void)const
+const std::string MenuItem::menul1(void)
 {
     if (m_iter != m_subMenus.end() && m_subMenus.size() > 1)
     {
@@ -470,7 +559,7 @@ const std::string MenuItem::menul1(void)const
     return subMenuName();
 }
 
-const std::string MenuItem::menul2(void)const
+const std::string MenuItem::menul2(void)
 {
     if (m_iter != m_subMenus.end())
     {
@@ -565,6 +654,12 @@ void MainMenu::body(void)
         }
     }
 }
+
+void setDefaultProject(void)
+{
+    selectProjectShowMenuItem.setDefaultProject();
+}
+
 
 } // namespace PBKR
 

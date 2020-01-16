@@ -7,7 +7,7 @@
 
 namespace PBKR
 {
-
+using namespace std;
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
@@ -21,8 +21,10 @@ class Config
 {
 public:
     static Config& instance();
-    void saveInt(const std::string& name, const int value);
-    int loadInt(const std::string& name, const int defaultValue);
+    void saveInt(const string& name, const int value);
+    int loadInt(const string& name, const int defaultValue);
+    void saveStr(const string& name, const string& value);
+    string loadStr(const string& name, const string& defaultValue = "");
 protected:
     Config(void);
 	virtual ~Config(void);

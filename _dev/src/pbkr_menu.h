@@ -35,8 +35,8 @@ public:
     virtual void onSelPressLong(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onUpDownPress(const bool isUp){}
-    virtual const std::string menul1(void)const;
-    virtual const std::string menul2(void)const;
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
     virtual const std::string subMenuName(void)const{return name;}
     const std::string name;
 protected:
@@ -64,4 +64,6 @@ private:
     MenuItem* m_currentMenu;
 };
 extern MainMenu &globalMenu;
+
+void setDefaultProject(void);
 } // namespace PBKR
