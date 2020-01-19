@@ -6,7 +6,7 @@ CFLAGS= -O1 -Wall -I/usr/local/include/libxml2
 LIBS=-lwiringPi
 LIBS+=-lasound
 LIBS+=-lpthread
-LIBS+=-lxml2
+# LIBS+=-lxml2
 
 
 default:all
@@ -15,7 +15,7 @@ obj :
 	$(Q)$(CC) $(CFLAGS) -c  -o $(BUILD)/$(FILE).o src/$(FILE) -Isrc
 prepare:
 	@echo "== CLEAN... "
-	rm -rf $(BUILD) &&  mkdir -p $(BUILD)
+	rm -rf $(BUILD) &&  mkdir -p $(BUILD) && chmod -R 777  $(BUILD)
 link:
 	@echo "== LINK... $(OUT)/$(TARGET)"
 	@mkdir -p $(OUT)
@@ -42,6 +42,9 @@ osc:
 utils:
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
+snd:
+	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
+	$(Q)make link TARGET=pbkr --no-print-directory 
 menu:
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
@@ -57,22 +60,30 @@ wav:
 display:
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+console:
+	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 cfg:
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+api:
+	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory & 
-	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory 
-	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory & 
-	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
 clean:
 	rm -f src/* .build/*

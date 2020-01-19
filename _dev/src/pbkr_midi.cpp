@@ -1,4 +1,6 @@
 #include "pbkr_midi.h"
+#include "pbkr_display.h"
+#include "pbkr_api.h"
 
 #include <inttypes.h>
 #include <alsa/asoundlib.h>
@@ -176,13 +178,14 @@ MIDI_Msg::MIDI_Msg(const uint8_t* data, const size_t len):
 MIDI_Msg::~MIDI_Msg (void){ free ((void*)m_msg);}
 
 /*******************************************************************************/
-MIDI_Controller::MIDI_Controller(const MIDI_Ctrl_Cfg& cfg, MIDI_Event& receiver):
+MIDI_Controller::MIDI_Controller(const MIDI_Ctrl_Cfg& cfg, MIDI_Controller_Mgr& mgr):
         Thread(std::string("MIDI_Controller:") + cfg.name),
         m_midiin(NULL),
         m_midiout(NULL),
-        m_receiver(receiver),
-        m_cfg(cfg)
+        m_cfg(cfg),
+        m_mgr(mgr)
 {
+    DISPLAY::DisplayManager::instance().info(cfg.name + " connected.");
     // note : MIDI read fail if the open is not done in the same thread as read
     start();
 } // MIDI_Controller::MIDI_Controller
@@ -268,12 +271,12 @@ void MIDI_Controller::body(void)
             if (pos >= MAX_MSG_LEN) continue; // drop
             // printf ("Rcvd MIDI msg (len =%d)\n",pos);
             const MIDI_Msg msg (buffer,pos);
-            m_receiver.onMidiEvent(msg, m_cfg.name);
+            API::onMidiEvent(msg, m_cfg);
         }
     }
     catch (...)
     {
-        m_receiver.onDisconnectEvent(m_cfg.device.c_str());
+        m_mgr.onDisconnect(m_cfg);
         delete this;
     }
 } // MIDI_Controller::body
@@ -282,20 +285,41 @@ void MIDI_Controller::body(void)
 /*******************************************************************************
  * MIDI CONTROLLER MANAGER
  *******************************************************************************/
-MIDI_Controller_Mgr::MIDI_Controller_Mgr(void)
+MIDI_Controller_Mgr::MIDI_Controller_Mgr(void):
+        Thread("MIDI_Controller_Mgr")
 {
     m_InputControllers.clear();
+    start();
 } // MIDI_Controller_Mgr::MIDI_Controller_Mgr
 
 /*******************************************************************************/
-void MIDI_Controller_Mgr::onDisconnect (const char* device)
+void MIDI_Controller_Mgr::body(void)
 {
+    while (!isExitting())
+    {
+        loop();
+        usleep(100 * 1000);
+    }
+};
+
+/*******************************************************************************/
+void MIDI_Controller_Mgr::onInputConnect (const MIDI::MIDI_Ctrl_Cfg& cfg)
+{
+    printf("Found: %s (%s)\n", cfg.name.c_str(), cfg.device.c_str());
+    MIDI::MIDI_Controller* midi_ctrl(new MIDI_Controller (cfg, *this));
+    (void)midi_ctrl;
+}
+
+
+/*******************************************************************************/
+void MIDI_Controller_Mgr::onDisconnect (const MIDI_Ctrl_Cfg& cfg)
+{
+    DISPLAY::DisplayManager::instance().info(cfg.name + " disconnected.");
     for (MIDI_Ctrl_Cfg_Vect::iterator it (m_InputControllers.begin()); it != m_InputControllers.end(); it++)
     {
-        const MIDI_Ctrl_Cfg& cfg (*it);
-        if (cfg.device == device)
+        const MIDI_Ctrl_Cfg& cfg2 (*it);
+        if (cfg.device == cfg2.device)
         {
-            onInputDisconnect (cfg);
             m_InputControllers.erase(it);
             break;
         }
@@ -345,7 +369,7 @@ void MIDI_Controller_Mgr::loop(void)
         }
     }
 
-    for (MIDI_Ctrl_Cfg_Vect::const_iterator it (newMIDIs.begin()); it != newMIDIs.end(); it++)
+    for (auto it (newMIDIs.begin()); it != newMIDIs.end(); it++)
     {
         const MIDI_Ctrl_Cfg& cfg (*it);
         if (cfg.isInput)
@@ -353,7 +377,7 @@ void MIDI_Controller_Mgr::loop(void)
             m_mutex.lock();
             bool found(false);
             // Was it already present?
-                    for (MIDI_Ctrl_Cfg_Vect::const_iterator jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
+                    for (auto jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
                     {
                         const MIDI_Ctrl_Cfg& prev (*jt);
                         if (cfg.device == prev.device) found = true;

@@ -1,3 +1,4 @@
+#include "pbkr_types.h"
 #include "pbkr_osc.h"
 
 #include <inttypes.h>
@@ -32,6 +33,7 @@ inline void* MALLOC(size_t len)
     return res;
 }
 
+/*******************************************************************************/
 std::string splitStringPath(std::string& s)
 {
     const size_t pos(s.find('/'));
@@ -43,8 +45,8 @@ std::string splitStringPath(std::string& s)
     }
     else
     {
-        const std::string res (s.substr(0, pos));
-        s = s.substr(1 + pos);
+        const std::string res (PBKR::substring (s, 0, pos));
+        s = PBKR::substring (s, 1 + pos);
         return res;
     }
 }
@@ -184,14 +186,14 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
     start();
     p_osc_instance = this;
 
-} // MIDI_Controller::MIDI_Controller
+} // OSC_Controller::OSC_Controller
 
 /*******************************************************************************/
 OSC_Controller::~OSC_Controller(void)
 {
     close (m_inSockfd);
     close (m_outSockfd);
-} // MIDI_Controller::~MIDI_Controller
+} // OSC_Controller::~OSC_Controller
 
 /*******************************************************************************/
 void OSC_Controller::sendLabelMessage(const std::string& msg)
@@ -223,7 +225,7 @@ void OSC_Controller::setProjectName(const std::string& title)
 void OSC_Controller::setTrackName (const std::string& name, size_t trackIdx)
 {
     const std::string obj (OSC_NAME("lTrack") + std::to_string(trackIdx));
-    send (OSC_Msg_To_Send (obj, name.substr(0, 5)));
+    send (OSC_Msg_To_Send (obj, substring (name, 0, 5)));
 }
 
 /*******************************************************************************/
@@ -295,7 +297,7 @@ void OSC_Controller::body(void)
     try
     {
 
-        printf("OSC_Controller started (In %d, out %d\n)", m_cfg.portIn, m_cfg.portOut);
+        printf("OSC_Controller started (In %d, out %d)\n", m_cfg.portIn, m_cfg.portOut);
 
         while (not isExitting())
         {

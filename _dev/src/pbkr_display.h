@@ -16,6 +16,8 @@ namespace PBKR
 {
 namespace DISPLAY
 {
+static const int DISPLAY_I2C_ADDRESS (0x27);
+
 static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
 static const int MAX_NB_TRACKS (64);
@@ -105,6 +107,7 @@ private:
     virtual ~DisplayManager(void);
     void refresh(void);
     virtual void body(void);
+    I2C_Display m_display;
     bool m_running;
     bool m_ready;
     volatile uint32_t m_printIdx;

@@ -5,3 +5,4 @@ umount /mnt/usb
 mount -r "/dev/$1" /mnt/usb >> /tmp/LOG 2>> /tmp/LOG
 echo "$1" > /tmp/usb.mounted
 
+

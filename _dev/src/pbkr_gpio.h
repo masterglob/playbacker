@@ -30,20 +30,21 @@ class GPIO
 public:
 	GPIO(const GPIO_id id, const int mode, const std::string& name);
 	static void begin(void);
-	BCM_id getBCM(void)const{return _bcm;};
-	PIN_id getPIN(void)const{return _pin;};
+	BCM_id getBCM(void)const{return m_bcm;};
+	PIN_id getPIN(void)const{return m_pin;};
 	static GPIO_id pinToId(const PIN_id pin);
-    std::string name(void)const{return _name;};
+    std::string name(void)const{return m_name;};
 private:
 	static const BCM_id bcm_map[nb_ios];
 	static const PIN_id pin_map[nb_ios];
 	static int       io_mode[nb_ios];
 protected:
-	std::string _name;
-	GPIO_id _gpio;
-	PIN_id _pin;
-	BCM_id _bcm;
-	static bool _began;
+    std::string m_name;
+    std::string m_mode;
+	GPIO_id m_gpio;
+	PIN_id m_pin;
+	BCM_id m_bcm;
+	static bool m_began;
 };
 
 
@@ -94,8 +95,8 @@ class Output: public GPIO
 {
 public:
 	Output (const unsigned int id, const char*name):GPIO(id, OUTPUT,name){};
-	void on(void)const{digitalWrite(_gpio, HIGH);}
-	void off(void)const{digitalWrite(_gpio, LOW);}
+	void on(void)const{digitalWrite(m_gpio, HIGH);}
+	void off(void)const{digitalWrite(m_gpio, LOW);}
 	void set(bool isOn)const {if (isOn) on(); else off();}
 };
 class Led: public Output
@@ -112,7 +113,7 @@ class Input: protected GPIO
 {
 public:
     Input (const unsigned int id, const char*name="INPUT"):GPIO(id, INPUT,name){};
-    bool pressed(void)const{return digitalRead(_gpio);}
+    bool pressed(void)const{return digitalRead(m_gpio);}
 };
 
 /*******************************************************************************

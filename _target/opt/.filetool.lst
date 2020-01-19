@@ -3,15 +3,11 @@ home
 opt
 usr/share/kmap/azerty/
 usr/local/etc/ssh
+usr/local/etc/hostapd.conf
 /etc/shadow
 /etc/passwd
 /etc/gshadow
 /etc/group
 /root/pbkr
-/etc/init.d/rc.shutdown
-var/lib/alsa
 /etc/modules
-/usr/local/share/alsa/alsa.conf
-/usr/local/etc/hostapd.conf
-/root/pbkr
 /etc/udhcpd.conf

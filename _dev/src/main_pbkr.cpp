@@ -24,6 +24,8 @@
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
 #include "pbkr_projects.h"
+#include "pbkr_console.h"
+#include "pbkr_api.h"
 
 
 /*******************************************************************************
@@ -32,12 +34,6 @@
 using namespace PBKR;
 using namespace std;
 
-/*******************************************************************************
- * Serial link
- *******************************************************************************/
-namespace
-{
-}
 
 /*******************************************************************************
  *
@@ -45,349 +41,62 @@ namespace
 
 namespace
 {
-//const GPIOs::Input BTN (GPIOs::GPIO::pinToId(13));
-//const GPIOs::Led led(GPIOs::GPIO::pinToId(15));
-static  FILE*stdoutCpy(stdout);
-static void intHandler(int dummy);
-static inline void setClicVolume  (const float& v);
-static inline std::string onKeyboardCmd  (const std::string& msg);
-
-class Console:public Thread
-{
-public:
-    Console(void): Thread("Console"),
-    doSine(false),
-    _volume(0.11)
-{}
-    virtual ~Console(void){}
-    virtual void body(void)
-    {
-        printf("Console Ready\n");
-        while (not isExitting())
-        {
-            printf("> ");
-            fflush(stdoutCpy);
-            const char c ( getch());
-            printf("%c\n",c);
-            switch (c) {
-            case 'q':
-            case 'Q':
-                printf("Exit requested\n");
-                PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
-                doExit();
-                break;
-                // Sine on/off
-            case 's':doSine = not doSine;
-                break;
-            case '+':
-                changeVolume (_volume + 0.02);
-                break;
-            case '-':
-                changeVolume (_volume - 0.02);
-                break;
-            case 'v':
-                printf("Current volume = %d%%\n", (int)(_volume *100));
-                break;
-            case 0x0A:
-            case ' ':
-                if (fileManager.reading())
-                    fileManager.stopReading();
-                else
-                    fileManager.startReading ();
-                break;
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-                fileManager.selectIndex (c - '0');
-                break;
-            default:
-                printf("Unknown command :(0x%02X)\n",c);
-                break;
-            }
-        }
-        printf("Console Exiting\n");
-        Thread::doExit();
-    }
-    bool doSine;
-    float volume(void);
-    void changeVolume (float v, const float duration = volumeFaderDurationS);
-private:
-    static const float volumeFaderDurationS;
-    float _volume;
-};
-const float Console::volumeFaderDurationS (0.1);
-
-
-void Console::changeVolume (float v, const float duration)
-{
-    if (v > 1.0) v = 1.0;
-    if (v < 0.0) v = 0.0;
-    _volume = v;
-
-    const uint8_t vol8 (v * 128.0);
-    MidiOutMsg msg;
-    msg.push_back(MIDI_CMD_CC | MIDI_CHANNEL_16);
-    msg.push_back(MIDI_CC_VOLUME);
-    msg.push_back(vol8);
-    wemosControl.pushMessage(msg);
-
-}
-
-float Console::volume(void)
-{
-    return _volume;
-}
-
-static Console console;
-void intHandler(int dummy) {
-    PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
-    Thread::doExit();
-    //led.off();
-}
-
-class MIDI_Input_Mgr;
-
-struct Evt : MIDI::MIDI_Event
-{
-    Evt(MIDI_Input_Mgr* mgr):m_mgr(mgr){}
-    virtual ~Evt(void){}
-    virtual void onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice);
-    virtual void onDisconnectEvent (const char* device);
-private:
-    MIDI_Input_Mgr*m_mgr;
-};
-
-class MIDI_Input_Mgr : public MIDI::MIDI_Controller_Mgr
-{
-public:
-    MIDI_Input_Mgr (void):MIDI::MIDI_Controller_Mgr (),
-    m_evt(this),
-    m_Thread(this)
-    {
-    }
-    void start(void){
-        m_Thread.start();
-    }
-private:
-    Evt m_evt;
-    struct M_Thread : public Thread
-    {
-        M_Thread(MIDI_Input_Mgr* mgr):
-            Thread("M_Thread"),
-                m_mgr(mgr){}
-        virtual void body(void)
-        {
-            printf("MIDI_Input_Mgr:loop()\n");
-            while (!isExitting())
-            {
-                m_mgr->loop();
-                usleep(100 * 1000);
-            }
-        };
-        MIDI_Input_Mgr* m_mgr;
-    };
-    M_Thread m_Thread;
-    virtual void onInputConnect (const MIDI::MIDI_Ctrl_Cfg& cfg)
-    {
-        printf("Found: %s (%s)\n", cfg.name.c_str(), cfg.device.c_str());
-        MIDI::MIDI_Controller* midi_ctrl(new MIDI::MIDI_Controller (cfg, m_evt));
-        DISPLAY::DisplayManager::instance().info(cfg.name + " connected.");
-        (void)midi_ctrl;
-    }
-    virtual void onInputDisconnect (const MIDI::MIDI_Ctrl_Cfg& cfg)
-    {
-        DISPLAY::DisplayManager::instance().info(cfg.name + " disconnected.");
-    }
-};
-static MIDI_Input_Mgr midiMgr;
-
-
-void Evt::onMidiEvent (const MIDI::MIDI_Msg& msg, const std::string& fromDevice)
-{
-    static const uint8_t SYS_EX_START(0xF0);
-    static const uint8_t SYS_EX_STOP(0xF7);
-    if (msg.m_len == 0) return;
-    const uint8_t cmd(msg.m_msg[0]);
-    const uint8_t b1(msg.m_len> 1 ? msg.m_msg[1] : 0);
-    const uint8_t b2(msg.m_len> 2 ? msg.m_msg[2] : 0);
-    const uint8_t lst(msg.m_msg[msg.m_len-1]);
-
-    if (fromDevice == std::string("TINYPAD MIDI 1"))
-    {
-        /** TInyPad MINI:
-         */
-        if (msg.m_len == 3)
-        {
-            static const uint8_t CMD_NOTE(0x99);
-            static const uint8_t CMD_CTRL(0xB9);
-
-            if (cmd == CMD_NOTE && b2 == 0) return;
-            if (cmd == CMD_NOTE && b2 != 0)
-            {
-                // Pads
-                static const int nbPads(12);
-                const uint8_t padId[nbPads]={0x27,0x30,0x2D,0x2B,0x33,0x31,0x24,0x26,0x28,0x2A,0x2C,0x2E};
-                for (uint8_t i(0) ; i < nbPads; i++)
-                {
-                    if (padId[i] == b1)
-                    {
-                        fileManager.selectIndex (i + 1);
-                        return;
-                    }
-                }
-
-                // Bottom Controls (Notes)
-                static const uint8_t PAD_BOTT_LEFT(0x01);
-                static const uint8_t PAD_BOTT_RIGHT(0x02);
-                if (b1 == PAD_BOTT_LEFT)
-                {
-                    DISPLAY::DisplayManager::instance().info("Not ass.:NBL");
-                    return;
-                }
-                if (b1 == PAD_BOTT_RIGHT)
-                {
-                    DISPLAY::DisplayManager::instance().info("Not ass.:NBR");
-                    return;
-                }
-            }
-
-            // Left controllers
-            static const uint8_t PAD_REFR(0x31);
-            static const uint8_t PAD_PREV(0x2F);
-            static const uint8_t PAD_NEXT(0x30);
-            static const uint8_t PAD_RECO(0x2C);
-            static const uint8_t PAD_STOP(0x2E);
-            static const uint8_t PAD_PLAY(0x2D);
-
-            if (cmd == CMD_CTRL && b2 == 0) return;
-            if (cmd == CMD_CTRL && b2 != 0)
-            {
-                switch (b1) {
-                case PAD_REFR:
-                    DISPLAY::DisplayManager::instance().info("Not ass.:REFR");
-                    return;
-                case PAD_RECO:
-                    DISPLAY::DisplayManager::instance().info("Not ass.:REC");
-                    return;
-                case PAD_PLAY:
-                    // Play/pause
-                    fileManager.startReading ();
-                    return;
-                case PAD_STOP:
-                    fileManager.stopReading();
-                    return;
-                case PAD_PREV:
-                    fileManager.prevTrack();
-                    return;
-                case PAD_NEXT:
-                    fileManager.nextTrack();
-                    return;
-                default:
-                    return;
-                }
-            }
-        }
-        //SYSEX msg?
-        if (cmd == SYS_EX_START && lst == SYS_EX_STOP)
-        {
-            if (msg.m_len ==8 && msg.m_msg[1] == 0x7F &&
-                    msg.m_msg[2] == 0x7F && msg.m_msg[3] == 0x04 &&
-                    msg.m_msg[4] == 0x01 && msg.m_msg[5] == 0x00)
-            {
-                setClicVolume(msg.m_msg[6] / 128.0);
-                return;
-            }
-            if (msg.m_len == 11 && msg.m_msg[1] == 0x42 &&
-                    msg.m_msg[2] == 0x40 && msg.m_msg[3] == 0x00 &&
-                    msg.m_msg[4] == 0x01 && msg.m_msg[5] == 0x04 &&
-                    msg.m_msg[6] == 0x00 && msg.m_msg[7] == 0x5F &&
-                    msg.m_msg[8] == 0x4F)
-            {
-                const uint8_t bankId( msg.m_msg[9]);
-                DISPLAY::DisplayManager::instance().info(
-                        std::string("Bank:") + std::to_string(bankId));
-                return;
-            }
-        }
-    }
-    printf("Recv MIDI event from device <%s>:[",fromDevice.c_str());
-    for (size_t i(0); i< msg.m_len;i++)
-        printf("%02X ",msg.m_msg[i]);
-    printf("]\n");
-
-}
-void Evt::onDisconnectEvent (const char* device)
-{
-    printf("Disconnect %s\n",device);
-    m_mgr->onDisconnect(device);
-}
 
 void print_help(const char* name)
 {
     printf("Usage: %s [-h] [-i] <pbdevice=hw:0> <clickdevice=hw:1>\n", name);
     printf("Options:\n");
     printf(" -h  This help:\n");
+    printf(" -v  Show versino & exit\n");
     printf(" -i  Use interactive keyboard console:\n");
 }
 
-void setClicVolume  (const float& v)
+void print_version(void)
 {
-    console.changeVolume(v,0.01);
-    DISPLAY::DisplayManager::instance().info(
-            std::string("Clic Vol:") + std::to_string((int)(100*v)) + "%");
-    if (OSC::p_osc_instance)
-        OSC::p_osc_instance->setClicVolume(v);
+    printf("PBKR V" PBKR_VERSION "\n");
 }
 
-std::string onKeyboardCmd  (const std::string& msg)
-{
-    static const std::string badCmd ("Unknown Command :");
-    // static bool logged (false);
-    if (msg == "/R")
-    {
-        Thread::doExit();
-        return "Reboot command OK";
-    }
-    return badCmd + msg;
+/*******************************************************************************
+ * SIGNAL HANDLERS
+ *******************************************************************************/
+void intHandler(int dummy) {
+    PBKR::DISPLAY::DisplayManager::instance().onEvent(PBKR::DISPLAY::DisplayManager::evEnd);
+    Thread::doExit();
 }
 
-class OSC_Event : public OSC::OSC_Event
-{
-public:
-    virtual ~OSC_Event(void){}
-    virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
-    virtual void onPlayEvent    (void){fileManager.startReading ();}
-    virtual void onStopEvent    (void){fileManager.stopReading ();}
-    virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx + 1);}
-    virtual void setClicVolume  (const float& v){::setClicVolume(v);}
-    virtual std::string onKeyboardCmd  (const std::string& msg){return ::onKeyboardCmd(msg);}
-};
-static OSC_Event oscEvent;
-
-static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
-static OSC::OSC_Controller osc(oscCfg,oscEvent);
-
-} // namsepace
-
-void  ALARMhandler(int sig)
+void alarmHandler(int sig)
 {
   signal(SIGALRM, SIG_IGN);          /* ignore this signal       */
   printf("Failed to exit cleany. Force exit 1\n");
   exit (1);
 }
 
+
+static Console console;
+
+
+/*******************************************************************************
+ * PROCESS OSC EVENTS
+ *******************************************************************************/
+class OSC_Impl : public OSC::OSC_Event
+{
+public:
+    virtual ~OSC_Impl(void){}
+    virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
+    virtual void onPlayEvent    (void){fileManager.startReading ();}
+    virtual void onStopEvent    (void){fileManager.stopReading ();}
+    virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx + 1);}
+    virtual void setClicVolume  (const float& v){API::setClicVolume(v);}
+    virtual std::string onKeyboardCmd  (const std::string& msg){return API::onKeyboardCmd(msg);}
+};
+
+} // namsepace
+
 /*******************************************************************************
  *
  *******************************************************************************/
 int main (int argc, char**argv)
 {
-    WEB::BasicWebSrv srv(fileManager, midiMgr);
 
     using namespace PBKR;
     /*
@@ -406,6 +115,11 @@ int main (int argc, char**argv)
             print_help(argv[0]);
             return 0;
         }
+        if (strcmp(cmd,"-v") == 0)
+        {
+            print_version();
+            return 0;
+        }
         else if (strcmp(cmd,"-i") == 0)
         {
             interactive_console = true;
@@ -417,13 +131,21 @@ int main (int argc, char**argv)
         }
     }
 
+    print_version();
+
+    static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
+    static OSC_Impl oscImpl;
+    static OSC::OSC_Controller osc(oscCfg, oscImpl);
+
+    static MIDI::MIDI_Controller_Mgr midiMgr;
+
+    WEB::BasicWebSrv srv(fileManager, midiMgr);
 	GPIOs::GPIO::begin();
 
 	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos
 
 	signal(SIGINT, intHandler);
 	try {
-	    midiMgr.start();
 	    DISPLAY::DisplayManager::instance().onEvent(DISPLAY::DisplayManager::evBegin);
 	    setDefaultProject();
 	    fileManager.startup();
@@ -495,7 +217,7 @@ int main (int argc, char**argv)
 		printf("Exception : %s\n", e.what());
 	}
 
-	signal(SIGALRM, ALARMhandler);
+	signal(SIGALRM, alarmHandler);
 	alarm(2);
 	Thread::join_all();
 

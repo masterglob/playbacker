@@ -1,8 +1,12 @@
 #include "pbkr_gpio.h"
 #include "pbkr_utils.h"
 
+#define DEBUG_GPIO printf
+//#define DEBUG_GPIO(...)
+
 namespace
 {
+extern const char* mode_to_string(const int mode);
 const char* mode_to_string(const int mode)
 {
 	switch (mode) {
@@ -37,53 +41,54 @@ int      GPIO::io_mode[nb_ios]=
 		-1, -1, -1, -1, -1, -1, -1, -1, // 8-15
 		-1, -1, -1, -1, -1, -1, -1, -1, // 16-23
 		-1, -1, -1, -1, -1, -1, -1, -1}; //24 - 31,
-bool GPIO::_began(false);
+bool GPIO::m_began(false);
 GPIO::GPIO(const GPIO_id id, const int mode, const std::string& name):
-		_name(name),
-		_gpio(id)
+		m_name(name),
+		m_mode(mode_to_string (mode)),
+		m_gpio(id)
 {
-	if(_began)
+	if(m_began)
 	{
 		throw std::range_error("GPIO::begin() already called");
 	}
-	if (_gpio >= nb_ios)
+	if (m_gpio >= nb_ios)
 	{
-		throw std::range_error(std::string("Bad GPIO:")+std::to_string(_gpio));
+		throw std::range_error(std::string("Bad GPIO:")+std::to_string(m_gpio));
 	}
-	_pin = pin_map[_gpio];
-	if (_pin < 0)
+	m_pin = pin_map[m_gpio];
+	if (m_pin < 0)
 	{
-		throw std::range_error(std::string("GPIO ")+std::to_string(_gpio)+" is not mapped on J8");
+		throw std::range_error(std::string("GPIO ")+std::to_string(m_gpio)+" is not mapped on J8");
 	}
-	_bcm = bcm_map[_gpio];
-	if (_bcm < 0)
+	m_bcm = bcm_map[m_gpio];
+	if (m_bcm < 0)
 	{
-		throw std::range_error(std::string("GPIO ")+std::to_string(_gpio)+" is not mapped on J8");
+		throw std::range_error(std::string("GPIO ")+std::to_string(m_gpio)+" is not mapped on J8");
 	}
-	if (io_mode[_gpio] == -1)
+	if (io_mode[m_gpio] == -1)
 	{
-		io_mode[_gpio] = mode;
+		io_mode[m_gpio] = mode;
 	}
 	else
 	{
-		throw std::range_error(std::string("GPIO ")+std::to_string(_gpio)+" is already assigned. "
+		throw std::range_error(std::string("GPIO ")+std::to_string(m_gpio)+" is already assigned. "
 				"Cannot assign to " + name);
 	}
-	printf("GPIO %d(pin %d) is set to mode %s for %s\n",
-			_gpio,_pin,
-			mode_to_string (mode), _name.c_str());
+	DEBUG_GPIO("GPIO %d(pin %d) is set to mode %s for %s\n",
+			m_gpio,m_pin,
+			m_mode.c_str(), m_name.c_str());
 }
 
 void GPIO::begin(void)
 {
-	if (_began)
+	if (m_began)
 	{
 		throw std::range_error("GPIO::begin() called twice!");
 	}
-	_began = true;
+	m_began = true;
 
 	wiringPiSetup ();
-	printf("wiringPiSetup()\n");
+	DEBUG_GPIO("wiringPiSetup()\n");
 	for (GPIO_id i(0) ; i< nb_ios ; ++i)
 	{
 		const int mode(io_mode[i]);
@@ -105,7 +110,7 @@ GPIO_id GPIO::pinToId(const PIN_id pin)
 
 bool Button::pressed(float& duration)const
 {
-    if (digitalRead(_gpio))
+    if (digitalRead(m_gpio))
     {
         if (m_must_release)
         {

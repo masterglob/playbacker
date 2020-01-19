@@ -1,6 +1,7 @@
 #ifndef _pbkr_config_h_
 #define _pbkr_config_h_
 
+#include "pbkr_version.h"
 /*
  HW configuration:
       Raspberry 3 B

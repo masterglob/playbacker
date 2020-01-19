@@ -45,49 +45,42 @@ struct MIDI_Ctrl_Cfg
 
 typedef std::vector<MIDI_Ctrl_Cfg,std::allocator<MIDI_Ctrl_Cfg>> MIDI_Ctrl_Cfg_Vect;
 
-/***
- * Derive this class to receive MIDI events from MIDI_Controller
- */
-struct MIDI_Event
-{
-    virtual ~MIDI_Event(void){}
-    virtual void onMidiEvent (const MIDI_Msg& msg, const std::string& fromDevice) = 0;
-    virtual void onDisconnectEvent (const char* device) = 0;
-};
-
 /*******************************************************************************
  * MIDI CONTROLLER
  *******************************************************************************/
+class MIDI_Controller_Mgr;
 
 class MIDI_Controller : private Thread
 {
 public:
-    MIDI_Controller(const MIDI_Ctrl_Cfg& cfg, MIDI_Event& receiver);
+    MIDI_Controller(const MIDI_Ctrl_Cfg& cfg,  MIDI_Controller_Mgr& mgr);
     virtual ~MIDI_Controller(void);
 private:
     virtual void body(void);
     snd_rawmidi_t* m_midiin;
     snd_rawmidi_t* m_midiout;
-    MIDI_Event & m_receiver;
     const MIDI_Ctrl_Cfg m_cfg;
+    MIDI_Controller_Mgr& m_mgr;
 }; // class MIDI_Controller
 
 
 /*******************************************************************************
  * MIDI CONTROLLER MANAGER
  *******************************************************************************/
-
-class MIDI_Controller_Mgr
+/** Check for new MIDI controllers to be plugged / unplugged
+ * and instantiate a MIDI_Controller for each new controller found
+ */
+class MIDI_Controller_Mgr : private Thread
 {
 public:
     MIDI_Controller_Mgr(void);
-    void loop(void);
     virtual ~MIDI_Controller_Mgr(void){}
-    virtual void onInputConnect (const MIDI_Ctrl_Cfg& cfg) = 0;
-    virtual void onInputDisconnect (const MIDI_Ctrl_Cfg& cfg) = 0;
-    void onDisconnect (const char* device);
+    void loop(void);
     const MIDI_Ctrl_Cfg_Vect getControllers(void);
+    void onDisconnect (const MIDI_Ctrl_Cfg& cfg);
 private:
+    void onInputConnect (const MIDI_Ctrl_Cfg& cfg);
+    virtual void body(void);
     MIDI_Ctrl_Cfg_Vect m_InputControllers;
     std::mutex m_mutex;
 };

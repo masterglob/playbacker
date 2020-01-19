@@ -10,6 +10,9 @@
 #include "pbkr_display.h"
 #include "pbkr_osc.h"
 
+// #define DEBUG_DISPLAY printf
+#define DEBUG_DISPLAY(...)
+
 // commands
 #define LCD_CLEARDISPLAY 0x01
 #define LCD_RETURNHOME 0x02
@@ -55,10 +58,7 @@
 #define En 0x04  // Enable bit
 #define Rw 0x02  // Read/Write bit
 #define Rs 0x01  // Register select bit
-namespace
-{
-static const int DISPLAY_I2C_ADDRESS (0x27);
-}
+
 namespace PBKR
 {
 namespace DISPLAY
@@ -66,7 +66,6 @@ namespace DISPLAY
 /*******************************************************************************
  *
  *******************************************************************************/
-static I2C_Display display( DISPLAY_I2C_ADDRESS);
 
 I2C_Display::I2C_Display (const int address):_file(-1),
 		_address(address),
@@ -85,13 +84,13 @@ I2C_Display::I2C_Display (const int address):_file(-1),
 	char filename[20];
 
 	snprintf (filename, 19, "/dev/i2c-%d", adapter_nr);
-	printf("Opening '%s' (addr=%x)...\n",filename, _address);
+	DEBUG_DISPLAY("Opening '%s' (addr=%x)...\n",filename, _address);
 	_file = wiringPiI2CSetupInterface (filename, _address);
 	if (_file < 0) {
 		/* ERROR HANDLING; you can check errno to see what went wrong */
 		throw std::range_error(std::string("Could not find I2C:")+filename);
 	}
-	printf("'%s' opened!\n",filename);
+	DEBUG_DISPLAY("'%s' opened!\n",filename);
 
 	if (ioctl(_file, I2C_SLAVE, _address) < 0) {
 		throw std::range_error(std::string("I2C init failed"));
@@ -237,7 +236,7 @@ inline void I2C_Display::expanderWrite(uint8_t value) {
 	const int res = wiringPiI2CWrite(_file, value);
 	if (res != 0)
 	{
-		printf("i2c_smbus_write_byte_data returned %d\n",res);
+	    DEBUG_DISPLAY("i2c_smbus_write_byte_data returned %d\n",res);
 	}
 }
 void I2C_Display::pulseEnable(uint8_t _data){
@@ -258,8 +257,10 @@ DisplayManager& DisplayManager::instance(void)
     return singleton;
 }
 
+/*******************************************************************************/
 DisplayManager::DisplayManager(void):
         Thread("DisplayManager"),
+        m_display(DISPLAY_I2C_ADDRESS),
         m_running(true),
         m_ready(false),
         m_printIdx(0),
@@ -274,11 +275,14 @@ DisplayManager::DisplayManager(void):
 {
     Thread::start();
 }
+
+/*******************************************************************************/
 DisplayManager::~DisplayManager(void)
 {
     m_running = false;
 }
 
+/*******************************************************************************/
 void DisplayManager::body(void)
 {
     while (m_running)
@@ -375,11 +379,11 @@ void DisplayManager::refresh(void)
     {
         m_line1 = l1;
         m_line2 = l2;
-        DISPLAY::display.clear();
-        DISPLAY::display.setCursor(0,0);
-        DISPLAY::display.print(l1.c_str());
-        DISPLAY::display.setCursor(0, 1);
-        DISPLAY::display.print(l2.c_str());
+        m_display.clear();
+        m_display.setCursor(0,0);
+        m_display.print(l1.c_str());
+        m_display.setCursor(0, 1);
+        m_display.print(l2.c_str());
     }
     m_canEvent = false;
 } // DisplayManager::refresh
@@ -449,10 +453,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
     m_mutex.lock();
     switch (e) {
     case evBegin:
-        display.begin();
-        display.backlight();
-        display.noBlink();
-        display.noCursor();
+        m_display.begin();
+        m_display.backlight();
+        m_display.noBlink();
+        m_display.noCursor();
         if (OSC::p_osc_instance)
         {
             OSC::p_osc_instance->setProjectName("");
@@ -474,10 +478,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_ready = true;
         break;
     case evEnd:
-        display.clear();
-        display.noBacklight();
-        display.noDisplay();
-        display.noCursor();
+        m_display.clear();
+        m_display.noBacklight();
+        m_display.noDisplay();
+        m_display.noCursor();
         if (OSC::p_osc_instance)
         {
             OSC::p_osc_instance->sendLabelMessage("Disconnected...");
@@ -571,9 +575,6 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
     refresh();
     m_mutex.unlock();
 } // DisplayManager::onEvent
-
-
-
 
 
 } // namespace DISPLAY

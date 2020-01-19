@@ -14,10 +14,6 @@
 #include <fstream>
 #include <sched.h>
 
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#include <libxml/xpath.h>
-
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -774,6 +770,7 @@ void Latency::setMs(uint8_t latency)
         m_buffer = NULL;
     }
 
+    if (newSize == m_size) return;
     if (newSize > m_size)
     {
         if (m_buffer) delete m_buffer;

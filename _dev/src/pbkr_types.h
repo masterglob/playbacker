@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stdio.h>
 #include <fcntl.h>
 
 namespace PBKR
@@ -20,6 +21,16 @@ static inline bool string_starts_with (const std::string& s, const std::string& 
 static inline int file_open_write (const char* filename)
 {
     return open (filename, O_WRONLY);
+}
+
+template<typename... Args> static inline int err_printf (const char * fmt,Args... args)
+{
+    return fprintf(stderr,fmt, args...);
+}
+
+static inline std::string substring(const std::string& s, size_t from, size_t len = std::string::npos)
+{
+    return s.substr(from, len);
 }
 
 } // namespace PBKR

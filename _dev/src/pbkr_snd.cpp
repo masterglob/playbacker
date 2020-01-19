@@ -13,6 +13,10 @@
 #include <alsa/asoundlib.h>
 #include <alloca.h>
 
+
+// #define DEBUG_SND printf
+#define DEBUG_SND(...)
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -87,11 +91,11 @@ SoundPlayer::SoundPlayer(const char * device_name)
 	/* by the hardware, use nearest possible rate.         */
 	exact_rate = FREQUENCY_HZ;
 	if (snd_pcm_hw_params_set_rate_near(pcm_handle, hwparams, &exact_rate, 0) < 0) {
-		fprintf(stderr, "Error setting rate.\n");
+	    err_printf("Error setting rate.\n");
 		fail("Error setting rate.");
 	}
 	if (FREQUENCY_HZ != exact_rate) {
-		fprintf(stderr, "The rate %d Hz is not supported by your hardware.\n"
+	    err_printf("The rate %d Hz is not supported by your hardware.\n"
 				"==> Using %u Hz instead.\n", FREQUENCY_HZ, exact_rate);
 	}
 
@@ -116,7 +120,7 @@ SoundPlayer::SoundPlayer(const char * device_name)
 	if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
 		fail("Error setting HW params.");
 	}
-	printf("SoundPlayer(%s) opened at %d Hz\n",pcm_name(),exact_rate);
+	DEBUG_SND("SoundPlayer(%s) opened at %d Hz\n",pcm_name(),exact_rate);
 
 	_samples =  (StereoSample *)malloc(SND_BUFFER_SIZE);
 	_sampleFill = _samples;
@@ -131,7 +135,7 @@ SoundPlayer::~SoundPlayer(void)
 
 	/* Stop PCM device after pending frames have been played */
 	//snd_pcm_drain(pcm_handle);
-	printf("SoundPlayer(%s) closed!\n",pcm_name());
+	DEBUG_SND("SoundPlayer(%s) closed!\n",pcm_name());
 	free (_pcm_name);
 	free (_samples);
 } // SoundPlayer::~SoundPlayer
@@ -140,7 +144,7 @@ SoundPlayer::~SoundPlayer(void)
 void SoundPlayer::fail(const std::string& msg)
 {
 	std::string s (_pcm_name);
-	fprintf(stderr, "%s\n",msg.c_str());
+	err_printf( "%s\n",msg.c_str());
 	throw std::runtime_error (s + std::string(":") + msg);
 } // SoundPlayer::fail
 
@@ -150,7 +154,7 @@ void SoundPlayer::play(unsigned char * data, int frames)
 	snd_pcm_sframes_t pcmreturn;
 	while ((pcmreturn = snd_pcm_writei(pcm_handle, data, frames)) < 0) {
 		snd_pcm_prepare(pcm_handle);
-		fprintf(stderr, "<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
+		err_printf("<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
 	}
 } // SoundPlayer::play
 
@@ -158,15 +162,15 @@ void SoundPlayer::play(unsigned char * data, int frames)
 void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
 {
 	// TODO : convert to a non-blocking call...
-	/*printf("fill(%p,%u)\n",samples,count);*/
+	/*DEBUG_SND("fill(%p,%u)\n",samples,count);*/
 	snd_pcm_sframes_t pcmreturn;
 	while (count)
 	{
 		snd_pcm_uframes_t n (count);
 		if (n + _sampleToFill > SND_CHANNEL_SAMPLES)
 			n = SND_CHANNEL_SAMPLES - _sampleToFill;
-		/*printf("_sampleToFill=%u (%u)\n",_sampleToFill,SND_CHANNEL_SAMPLES);
-		printf("memcpy(%p,%p,%u)\n",
+		/*DEBUG_SND("_sampleToFill=%u (%u)\n",_sampleToFill,SND_CHANNEL_SAMPLES);
+		DEBUG_SND("memcpy(%p,%p,%u)\n",
 				_sampleFill, (void*)samples, n * BYTE_PER_STEREO_SAMPLE);*/
 
 		memcpy ((void*)(_sampleFill), samples, n * BYTE_PER_STEREO_SAMPLE);
@@ -174,12 +178,12 @@ void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
 		_sampleFill += n;
 		samples += n;
 		count -= n;
-		/*printf("_sampleToFill=%u (%u)\n",_sampleToFill,SND_CHANNEL_SAMPLES);*/
+		/*DEBUG_SND("_sampleToFill=%u (%u)\n",_sampleToFill,SND_CHANNEL_SAMPLES);*/
 		if (_sampleToFill == SND_CHANNEL_SAMPLES)
 		{
 			while ((pcmreturn = snd_pcm_writei(pcm_handle, _samples, _sampleToFill )) < 0) {
 				snd_pcm_prepare(pcm_handle);
-				fprintf(stderr, "<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
+				err_printf( "<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
 			}
 			_sampleToFill = 0;
 			_sampleFill = _samples;

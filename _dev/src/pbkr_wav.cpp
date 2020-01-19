@@ -7,6 +7,9 @@
 #include <unistd.h>
 
 
+// #define DEBUG_WAV printf
+#define DEBUG_WAV(...)
+
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -38,10 +41,10 @@ size_t fileLength(std::ifstream& f)
 #define CHECK_FIELD(label, found, exp) do{\
         if (found != exp) \
         {\
-            printf("%s : found 0x%X, exp 0x%X\n", label, (unsigned int)found, (unsigned int)exp);\
+            DEBUG_WAV("%s : found 0x%X, exp 0x%X\n", label, (unsigned int)found, (unsigned int)exp);\
             throw std::invalid_argument(label);\
         }else{\
-            /*printf("%s OK: 0x%X\n", label, (unsigned int)found);*/\
+            /*DEBUG_WAV("%s OK: 0x%X\n", label, (unsigned int)found);*/\
         }}while(0)
 
 /*******************************************************************************
@@ -65,7 +68,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
     ZERO(wavHdr);
     ZERO(audioHdr);
     ZERO(addHdr);
-    printf("opened file %s, len =%d\n",_filename.c_str(), _len);
+    DEBUG_WAV("opened file %s, len =%d\n",_filename.c_str(), _len);
     readFile((char*)&wavHdr, sizeof(wavHdr));
     CHECK_FIELD("File truncated1", _f.gcount(), sizeof(wavHdr));
 
@@ -129,7 +132,7 @@ WavFileLRC::~WavFileLRC (void)
 {
     if (_eof) delete(_eof);
     _f.close();
-    printf("Closed %s\n", _filename.c_str());
+    DEBUG_WAV("Closed %s\n", _filename.c_str());
 }
 
 /*******************************************************************************/
@@ -224,7 +227,7 @@ WavFileLRC::readBuffer(size_t index)
         if (!_f)
         {
             _eof = new Fader (0.01, 1.0, 0.0);
-            printf("End Of file (underrun from USB)\n");
+            DEBUG_WAV("End Of file (underrun)\n");
         }
     }
     b._pos = 0;
