@@ -32,7 +32,7 @@
 #define DEBUG_LRC_SINE_TEST 2
 
 // 1 to debug serial input
-#define DEBUG_SERIAL_IN 1
+#define DEBUG_SERIAL_IN 0
 
 /**
  * I2S output frequency: 44100 or 22050
