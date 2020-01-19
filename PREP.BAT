@@ -5,4 +5,4 @@
 
 @echo Compiling
 %PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "tce-load -i gcc make compiletc wiringpi-dev libasound-dev"
-@true
+@echo
