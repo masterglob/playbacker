@@ -61,6 +61,7 @@ public:
     void setToClose(void){m_toClose = true;}
     bool inUse(void)const{return m_inUse;}
     bool toClose(void)const{return m_toClose;}
+    const TrackVect tracks(void)const {return m_tracks;}
 private:
     TrackVect m_tracks;
     int getNewTrackIndex(int fromId)const;

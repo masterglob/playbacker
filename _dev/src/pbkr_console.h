@@ -23,9 +23,11 @@ public:
     float volume(void);
     void changeVolume (float v, const float duration = volumeFaderDurationS);
 private:
+    void show_current_infos(void)const;
     static const float volumeFaderDurationS;
     static Console* m_instance;
     float _volume;
+    int m_escape;
 };
 
 }

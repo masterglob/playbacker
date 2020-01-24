@@ -15,7 +15,7 @@
 
 #include "pbkr_config.h"
 #include "pbkr_gpio.h"
-#include "pbkr_display.h"
+#include "pbkr_display_mgr.h"
 #include "pbkr_utils.h"
 #include "pbkr_snd.h"
 #include "pbkr_midi.h"

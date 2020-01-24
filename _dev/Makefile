@@ -60,7 +60,7 @@ wav:
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
 display:
-	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_display_mgr.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
 console:

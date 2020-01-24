@@ -1,5 +1,5 @@
 #include "pbkr_midi.h"
-#include "pbkr_display.h"
+#include "pbkr_display_mgr.h"
 #include "pbkr_api.h"
 
 #include <inttypes.h>

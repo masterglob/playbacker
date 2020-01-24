@@ -1,7 +1,7 @@
 
 #include "pbkr_api.h"
 #include "pbkr_console.h"
-#include "pbkr_display.h"
+#include "pbkr_display_mgr.h"
 #include "pbkr_osc.h"
 
 namespace PBKR
