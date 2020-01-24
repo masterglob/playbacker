@@ -1,5 +1,5 @@
 #include "pbkr_utils.h"
-#include "pbkr_display.h"
+#include "pbkr_display_mgr.h"
 #include "pbkr_wav.h"
 #include "pbkr_osc.h"
 

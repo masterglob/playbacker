@@ -159,6 +159,10 @@ ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
  *******************************************************************************
  *******************************************************************************/
 
+/*******************************************************************************
+ * ListMenuItem
+ *******************************************************************************/
+
 ListMenuItem::ListMenuItem(const std::string & title, MenuItem* parent, const uint32_t maxItems):
     MenuItem(title, parent),
     m_lrIdx_Max(maxItems),
@@ -689,6 +693,45 @@ void setDefaultProject(void)
     selectProjectShowMenuItem.setDefaultProject();
 } // setDefaultProject
 
+
+bool Button::pressed(float& duration)const
+{
+    if (digitalRead(m_gpio))
+    {
+        if (m_must_release)
+        {
+            return false;
+        }
+        if (m_pressed)
+        {
+            const float f = VirtualTime::toS(VirtualTime::now() - m_t0);
+            if (m_maxWait < f)
+            {
+                m_pressed = false;
+                duration = f;
+                m_must_release = true;
+                return true;
+            }
+        }
+        else
+        {
+            m_t0 = VirtualTime::now();
+            m_pressed = true;
+        }
+    }
+    else
+    {
+        m_must_release = false;
+        if (m_pressed)
+        {
+            m_pressed = false;
+            duration = VirtualTime::toS(VirtualTime::now() - m_t0);
+            m_must_release = true;
+            return true;
+        }
+    }
+    return false;
+}
 
 } // namespace PBKR
 

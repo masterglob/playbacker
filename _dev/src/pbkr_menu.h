@@ -11,17 +11,35 @@
 namespace PBKR
 {
 
+/*******************************************************************************/
+class Button: protected PBKR::GPIOs::Input
+{
+public:
+   Button (const unsigned int id, const float & maxWait, const char*name="BUTTON"):
+       Input(id, name),m_pressed(false),
+       m_must_release(false),
+       m_t0 (VirtualTime::now()),
+       m_maxWait(maxWait){};
+   ~Button(void){}
+   bool   pressed(float& duration)const;
+private :
+   mutable bool m_pressed;
+   mutable bool m_must_release;
+   mutable VirtualTime::Time m_t0;
+   const float m_maxWait;
+};
+
 /*******************************************************************************
  * MAIN MENU CONFIG
  *******************************************************************************/
 struct MenuCfg
 {
     MenuCfg(void);
-    const GPIOs::Button leftGpio;
-    const GPIOs::Button rightGpio;
-    const GPIOs::Button upGpio;
-    const GPIOs::Button downGpio;
-    const GPIOs::Button selectGpio;
+    const Button leftGpio;
+    const Button rightGpio;
+    const Button upGpio;
+    const Button downGpio;
+    const Button selectGpio;
 };
 
 class MainMenu;

@@ -8,7 +8,7 @@ LIBS+=-lasound
 LIBS+=-lpthread
 # LIBS+=-lxml2
 
-
+LCD_OBJS=$(BUILD)/pbkr_display.cpp.o $(BUILD)/pbkr_gpio.cpp.o
 default:all
 obj :
 	@echo "== COMPILE $(FILE)..."
@@ -23,7 +23,9 @@ link:
 link_pbkr:
 	$(Q)make link TARGET=pbkr --no-print-directory
 link_display:
-	$(Q)make link TARGET=lcd_display --no-print-directory
+	@echo "== LINK... $(OUT)/lcd_display"
+	@mkdir -p $(OUT)
+	$(Q)$(CC) -o $(OUT)/lcd_display $(LCD_OBJS) $(BUILD)/main_lcd_display.* $(LIBS)
 compile:
 	@for i in $$(cd src && ls -1 *.c[p]*); do make obj FILE=$$i --no-print-directory || exit 1; done
 all:prepare compile link_pbkr
@@ -59,6 +61,7 @@ wav:
 	$(Q)make link TARGET=pbkr --no-print-directory 
 display:
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_display_mgr.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
 console:
 	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory 
@@ -69,17 +72,22 @@ cfg:
 api:
 	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+lcd_display:
+	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
+	$(Q)make obj FILE=main_lcd_display.cpp --no-print-directory
+	$(Q)make link_display --no-print-directory
 pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory
+	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory

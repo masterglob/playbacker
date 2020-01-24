@@ -5,8 +5,6 @@
 #include <wiringPi.h>
 #include <stdexcept>
 
-#include "pbkr_utils.h"
-
 namespace PBKR
 {
 namespace GPIOs
@@ -116,25 +114,6 @@ public:
     bool pressed(void)const{return digitalRead(m_gpio);}
 };
 
-/*******************************************************************************
- *
- *******************************************************************************/
-class Button: protected Input
-{
-public:
-    Button (const unsigned int id, const float & maxWait, const char*name="BUTTON"):
-        Input(id, name),m_pressed(false),
-        m_must_release(false),
-        m_t0 (VirtualTime::now()),
-        m_maxWait(maxWait){};
-    ~Button(void){}
-    bool   pressed(float& duration)const;
-private :
-    mutable bool m_pressed;
-    mutable bool m_must_release;
-    mutable VirtualTime::Time m_t0;
-    const float m_maxWait;
-};
 }
 }
 #endif

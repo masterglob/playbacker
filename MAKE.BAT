@@ -8,4 +8,4 @@ set MKTRGT=%1
 
 @echo Compiling
 %PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make %MKTRGT% -C %TARGET_PATH%"
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "sudo cp %TARGET_PATH%/out/pbkr /root/pbkr"
+:: %PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "sudo cp %TARGET_PATH%/out/pbkr /root/pbkr"
