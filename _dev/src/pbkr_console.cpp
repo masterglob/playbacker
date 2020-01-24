@@ -7,6 +7,7 @@
 #include "pbkr_utils.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_console.h"
+#include "pbkr_projects.h"
 #include "pbkr_midi.h"
 
 using namespace std;

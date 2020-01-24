@@ -3,6 +3,7 @@
 
 #include "pbkr_config.h"
 #include "pbkr_types.h"
+#include "pbkr_utils.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -40,6 +41,8 @@ struct ProjectSource
 };
 typedef vector<ProjectSource,allocator<ProjectSource>> ProjectSourceVect;
 extern const ProjectSourceVect projectSources;
+extern const ProjectSource projectSourceUSB;
+extern const ProjectSource projectSourceInternal;
 
 /*******************************************************************************
  * PROJECT
@@ -86,6 +89,28 @@ Project* findProjectByTitle(const ProjectVect& pVect, const string& title);
 /*******************************************************************************
  *
  *******************************************************************************/
+class ProjectCopier : protected Thread
+{
+public:
+    ProjectCopier (const Project* source, const ProjectSource& dest);
+    virtual ~ProjectCopier (void);
+    bool willOverwrite(void)const;
+    void setDoBackup(bool doBackup){m_doBackup = doBackup;}
+    void begin(void);
+    bool done(void)const{return m_done;}
+    bool failed(void)const{return m_failed;}
+    void cancel(void);
+    std::string progress (void)const;
+protected:
+    virtual void body(void);
+private:
+    ProjectSource m_source;
+    string m_name;
+    ProjectSource m_dest;
+    bool m_doBackup;
+    bool m_failed;
+    bool m_done;
+};
 
 } // namespace PBKR
 #endif // _pbkr_projects_h_

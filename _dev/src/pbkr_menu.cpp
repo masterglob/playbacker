@@ -3,8 +3,9 @@
 
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
-#include "pbkr_display.h"
+#include "pbkr_display_mgr.h"
 #include "pbkr_projects.h"
+#include "pbkr_utils.h"
 
 namespace
 {
@@ -13,6 +14,11 @@ using namespace PBKR;
 // http://patorjk.com/software/taag/#p=display&f=Banner3&t=NET%20MENU
 
 static const char* label_empty ("<EMPTY>");
+static string boolToString(const bool b)
+{
+    return (b ? "<YES>" : "<NO>");
+}
+
 static const std::string edit_me ("->");
 /*******************************************************************************/
 static const std::string addVertArrow(const std::string& title)
@@ -119,6 +125,25 @@ private:
 const string SelectProjectShowMenuItem::m_saveSection("SelectProjectShowMenuItem");
 SelectProjectShowMenuItem selectProjectShowMenuItem ("Select show", &mainMenuItem);
 
+/*******************************************************************************/
+struct CopyFromUSBMenuItem : MenuItem
+{
+    CopyFromUSBMenuItem(MenuItem* parent);
+    virtual ~CopyFromUSBMenuItem(void);
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+    virtual void onLeftRightPress(const bool isLeft);
+    virtual void onSelPressShort(void);
+private:
+    void stopCopy(void);
+    ProjectVect m_projects;
+    uint32_t m_projIdx;
+    uint32_t m_step;
+    bool m_confirm;
+    ProjectCopier* m_copier;
+};
+
+CopyFromUSBMenuItem copyFromUSBMenuItem (&mainMenuItem);
 
 /*******************************************************************************/
 struct ClicSettingsMenuItem : ListMenuItem
@@ -224,6 +249,174 @@ void PlayMenuItem::onLeftRightPress(const bool isLeft)
         fileManager.nextTrack();
 }
 
+
+/*******************************************************************************
+ ######   #######  ########  ##    ##
+##    ## ##     ## ##     ##  ##  ##
+##       ##     ## ##     ##   ####
+##       ##     ## ########     ##
+##       ##     ## ##           ##
+##    ## ##     ## ##           ##
+ ######   #######  ##           ##
+*******************************************************************************/
+CopyFromUSBMenuItem::CopyFromUSBMenuItem (MenuItem* parent)
+:
+        MenuItem("Copy from USB", parent),
+        m_projects(getAllProjects()),
+        m_projIdx(0),
+        m_step(0),
+        m_confirm(false),
+        m_copier(NULL)
+{
+}
+
+/*******************************************************************************/
+CopyFromUSBMenuItem::~CopyFromUSBMenuItem(void)
+{
+    if (m_copier)
+        delete m_copier;
+}
+
+/*******************************************************************************/
+const std::string
+CopyFromUSBMenuItem::menul1(void)
+{
+    switch (m_step) {
+    case 0: return "Select USB Proj.";
+    case 1: return "Delete existing?";
+    case 2: return "Confirm?";
+    case 3: // Copying
+        {
+            if (m_copier)
+            {
+                if (m_copier->failed())
+                {
+                    m_step = 4;
+                }
+                else if (m_copier->done())
+                {
+                    m_step = 5;
+                }
+                return m_copier->progress();
+            }
+            m_step = 4;
+            return "Copy:";
+        }
+    case 4:
+    case 5: return "Copy result:";
+    default: return label_empty;
+    }
+}
+
+/*******************************************************************************/
+const std::string
+CopyFromUSBMenuItem::menul2(void)
+{
+    m_projects = getAllProjects();
+    if (m_projIdx >= m_projects.size())
+    {
+        m_projIdx = 0;
+        return "No project on USB";
+    }
+    if (m_projIdx < 0 && !m_projects.empty())
+    {
+        m_projIdx = 0;
+    }
+    switch (m_step) {
+    case 0: return m_projects[m_projIdx]->m_title;
+    case 1: return boolToString (m_confirm);
+    case 2: return boolToString (m_confirm);
+    case 3: return "<Cancel>";
+    case 4: return "Failed...";
+    case 5: return "Success...";
+    default: return label_empty;
+    }
+}
+
+/*******************************************************************************/
+void
+CopyFromUSBMenuItem::onLeftRightPress(const bool isLeft)
+{
+    if (m_step == 0)
+    {
+        if (isLeft && m_projIdx > 0)
+        {
+            m_projIdx --;
+        }
+        if (!isLeft && m_projIdx +1 < m_projects.size())
+        {
+            m_projIdx ++;
+        }
+    }
+    else if (m_step == 2) {m_confirm = not m_confirm;}
+}
+
+/*******************************************************************************/
+void
+CopyFromUSBMenuItem::onSelPressShort(void)
+{
+    if (m_projIdx >= m_projects.size())
+    {
+        m_projIdx = 0;
+        m_step = 4;
+        return ;
+    }
+    switch (m_step) {
+    case 0:
+    {
+        m_step = 2;
+        m_confirm = true;
+    }
+    break;
+    case 1:
+    {
+
+    }
+    break;
+    case 2:
+    {
+        if (m_confirm)
+        {
+            m_step = 3;
+            // TODO move constructor to step 0/1
+            if (m_copier) delete m_copier;
+            m_copier = new ProjectCopier (m_projects[m_projIdx], projectSourceInternal);
+            m_copier->begin();
+        }
+        else
+        {
+            m_step = 0;
+            globalMenu.setMenu(&playMenuItem);
+        }
+    }
+    break;
+    case 3: // Copying
+    {
+        // Action = stop
+        if (m_copier) m_copier->cancel();
+        m_step = 4;
+    }
+    break;
+    case 4: // FAILED
+    case 5: // OK
+    {
+        stopCopy();
+        m_step = 0;
+        globalMenu.setMenu(&playMenuItem);
+    }
+    break;
+    default: break;
+    }
+}
+
+/*******************************************************************************/
+void
+CopyFromUSBMenuItem::stopCopy(void)
+{
+    if (m_copier) delete m_copier;
+    m_copier = NULL;
+}
+
 /*******************************************************************************
  *
 ########  ########   #######        ## ########  ######  ########
@@ -243,6 +436,7 @@ SelectProjectShowMenuItem::SelectProjectShowMenuItem (const std::string & title,
         m_projectTitle("")
 {
 }
+
 
 /*******************************************************************************/
 void

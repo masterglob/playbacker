@@ -32,6 +32,7 @@ std::string onKeyboardCmd  (const std::string& msg);
  * Process an incoming MIDI event received from a given controller
  */
 void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg);
+
 } // namespace API
 
 } // namespace PBKR

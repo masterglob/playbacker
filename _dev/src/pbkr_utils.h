@@ -12,7 +12,6 @@
 
 #include "pbkr_config.h"
 #include "pbkr_types.h"
-#include "pbkr_projects.h"
 
 namespace PBKR
 {
@@ -50,8 +49,9 @@ class Thread
 public:
 	Thread(const std::string& name);
 	virtual ~Thread(void);
-	void start(void);
+	void start(bool needJoin=true);
 	virtual void body(void) =0;
+    void stop(void){m_stop=true;}
     static void join_all(void);
     static void doExit(void);
     static bool isExitting(void);
@@ -67,7 +67,8 @@ private:
     typedef std::vector<ThrInfo,std::allocator<ThrInfo>> ThreadVect;
     static ThreadVect mVect;
 	static void* real_start(void* param);
-	static bool m_isExitting;
+    static bool m_isExitting;
+    bool m_stop;
 	static std::mutex m_mutex;
 	pthread_t _thread;
 	pthread_attr_t* _attr;
@@ -161,6 +162,9 @@ private:
     bool  m_oof; // out of frame
     int   m_skip;
 };
+
+class Project;
+typedef vector<Project*,allocator<Project*>> ProjectVect;
 
 /*******************************************************************************
  * FILE MANAGER

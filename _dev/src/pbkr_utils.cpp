@@ -2,6 +2,7 @@
 #include "pbkr_display_mgr.h"
 #include "pbkr_wav.h"
 #include "pbkr_osc.h"
+#include "pbkr_projects.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -48,7 +49,8 @@ namespace PBKR
 FileManager fileManager;
 
 /*******************************************************************************/
-Thread::Thread(const std::string& name): _thread(-1),_attr(NULL),m_name(name)
+Thread::Thread(const std::string& name): m_stop(false), _thread(-1),_attr(NULL),m_name(name)
+
 {
 }
 
@@ -58,15 +60,18 @@ Thread::~Thread(void)
 }
 
 /*******************************************************************************/
-void Thread::start()
+void Thread::start(bool needJoin)
 {
     DEBUG_THREADS("Thread::start\n");
     m_mutex.lock();
 	pthread_create (&_thread, _attr,Thread::real_start, (void*)this);
-	ThrInfo info;
-	info.name = m_name;
-	info.pid = _thread;
-    mVect.push_back(info);
+	if (needJoin)
+	{
+	    ThrInfo info;
+	    info.name = m_name;
+	    info.pid = _thread;
+	    mVect.push_back(info);
+	}
     m_mutex.unlock();
     DEBUG_THREADS("[THREAD] start %s\n", info.name.c_str());
 }

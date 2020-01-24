@@ -4,7 +4,9 @@
 #include <stdio.h>
 #include <bits/stdc++.h>
 #include <algorithm>
+#include <unistd.h>
 #include <string>
+#include <sys/wait.h>
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -17,6 +19,39 @@ extern int toupper(int);
 namespace
 {
 using namespace PBKR;
+
+/*******************************************************************************/
+bool moveToStartOfLine(std::ifstream& fs)
+{
+    fs.seekg(-1, std::ios_base::cur);
+    for(long i = fs.tellg(); i > 0; i--)
+    {
+        if(fs.peek() == '\n')
+        {
+            fs.get();
+            return true;
+        }
+        fs.seekg(i, std::ios_base::beg);
+    }
+    return false;
+}
+
+/*******************************************************************************/
+std::string getLastLineInFile(const string filename)
+{
+    std::ifstream fs(filename);
+    if(!fs.is_open()) return "";
+
+    // Go to the last character before EOF
+    fs.seekg(-1, std::ios_base::end);
+    if (!moveToStartOfLine(fs))
+        fs.seekg(0, ios_base::beg);
+
+    std::string lastline = "";
+    getline(fs, lastline);
+    fs.close();
+    return lastline;
+}
 
 /*******************************************************************************/
 int readIntInFile(const string& name, int defVal)
@@ -150,6 +185,26 @@ ProjectSource::findProjects(void)const
 static ProjectVect currentProjects;
 
 /*******************************************************************************/
+void getProjects(ProjectVect& vect, const ProjectSource& from)
+{
+    const StringVect v (from.findProjects());
+    FOR (i, v)
+    {
+        const string& s (*i);
+        try
+        {
+            Project* proj = new Project(s, from);
+            // proj->debug();
+            vect.push_back(proj);
+        }
+        catch (Project::BadProject& e)
+        {
+            printf("Invalid project:%s\n", s.c_str());
+        }
+    }
+}
+
+/*******************************************************************************/
 ProjectVect getAllProjects(void)
 {
     ProjectVect newProjects;
@@ -158,23 +213,7 @@ ProjectVect getAllProjects(void)
     {
         // TODO REMOVE!
         const ProjectSource& ps(*s);
-        // printf("Looking into %s\n",ps.pName.c_str());
-        const StringVect v (ps.findProjects());
-        for (auto i(v.begin()) ;i != v.end();i++)
-        {
-            const string& s (*i);
-            // printf("Found project %s (%s)\n", s.c_str(), ps.pName.c_str());
-            try
-            {
-                Project* proj = new Project(s, ps);
-                // proj->debug();
-                newProjects.push_back(proj);
-            }
-            catch (Project::BadProject& e)
-            {
-                printf("Invalid project:%s\n", s.c_str());
-            }
-        }
+        getProjects (newProjects, ps);
     }
 
     // Add new items  to currentProjects
@@ -339,6 +378,108 @@ Project::getNewTrackIndex(int fromId)const
         if (not alreadyExists) return fromId;
         fromId++;
     }
+}
+
+
+/*******************************************************************************
+ ######   #######  ########  #### ######## ########
+##    ## ##     ## ##     ##  ##  ##       ##     ##
+##       ##     ## ##     ##  ##  ##       ##     ##
+##       ##     ## ########   ##  ######   ########
+##       ##     ## ##         ##  ##       ##   ##
+##    ## ##     ## ##         ##  ##       ##    ##
+ ######   #######  ##        #### ######## ##     ##
+
+ *******************************************************************************/
+ProjectCopier::ProjectCopier (const Project* source, const ProjectSource& dest)
+:
+        Thread ("ProjectCopier"),
+        m_source(source->m_source),
+        m_name(source->m_title),
+        m_dest(dest),
+        m_doBackup(true),
+        m_failed (false),
+        m_done(false)
+{
+}
+
+
+/*******************************************************************************/
+ProjectCopier::~ProjectCopier(void)
+{
+}
+
+/*******************************************************************************/
+bool
+ProjectCopier::willOverwrite(void)const
+{
+    ProjectVect vect;
+    getProjects(vect, m_dest);
+    return findProjectByTitle(vect,m_name) != NULL;
+}
+
+/*******************************************************************************/
+void
+ProjectCopier::cancel(void)
+{
+    m_failed = true;
+}
+
+/*******************************************************************************/
+void
+ProjectCopier::begin(void)
+{
+    start();
+}
+
+/*******************************************************************************/
+void
+ProjectCopier::body(void)
+{
+    // Create and clear file
+    static const string filename = "/tmp/progress";
+    ofstream of(filename);
+    of << "  0%" << endl;
+
+    const int cpid  = fork();
+    int  status(-1);
+    if (cpid  < 0) throw EXCEPTION("Fork failed");
+    if (cpid  == 0)
+    {
+        // forked exec
+        char* argv[] ={
+                strdup("/root/pbkr/pbkr_cpy.sh"),
+                strdup(m_source.pPath.c_str()),
+                strdup (m_dest.pPath.c_str()),
+                strdup (m_name.c_str()),
+                strdup ("-r"),
+                NULL};
+        execv("/root/pbkr/pbkr_cpy.sh", argv);
+        _exit (-1);
+    }
+    else
+    {
+        const int flag(WNOHANG);
+        while (not (isExitting() or m_failed))
+        {
+            const int waitRes (waitpid(cpid, &status, flag));
+            if (waitRes < 0) throw EXCEPTION("Fork failed2");
+            if (WIFEXITED(status)) break;
+            if (WIFSIGNALED(status)) break;
+            usleep(1000 * 20);
+        }
+    }
+
+    if (WEXITSTATUS(status) != 0) m_failed = true;
+    m_done = true;
+}
+
+/*******************************************************************************/
+std::string
+ProjectCopier::progress (void)const
+{
+    static const string filename = "/tmp/progress";
+    return getLastLineInFile (filename);
 }
 
 } // namespace PBKR
