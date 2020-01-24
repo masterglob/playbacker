@@ -4,5 +4,5 @@
 @set PPK=C:\Users\MAO\Documents\_ssh\id-rsa-priv.ppk
 
 @echo Compiling
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "tce-load -i gcc make compiletc wiringpi-dev libasound-dev"
-@echo
+%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "tce-load -i gcc make compiletc wiringpi-dev libasound-dev samba4"
+%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "sudo /usr/local/sbin/smbd -D || true"

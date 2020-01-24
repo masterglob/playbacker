@@ -85,6 +85,7 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_display_mgr.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory &
