@@ -80,6 +80,7 @@ typedef vector<Project*,allocator<Project*>> ProjectVect;
  * - removed projects are deleted when m_inUse is false
  */
 ProjectVect getAllProjects(void);
+void getProjects(ProjectVect& vect, const ProjectSource& from);
 
 /**
  * Find a project in a list using its name
@@ -92,14 +93,15 @@ Project* findProjectByTitle(const ProjectVect& pVect, const string& title);
 class ProjectCopier : protected Thread
 {
 public:
+    typedef enum {CM_OVERWRITE ,CM_COMPLETE, CM_BACKUP, CM_CANCEL, NB_CM} CopyMode;
     ProjectCopier (const Project* source, const ProjectSource& dest);
     virtual ~ProjectCopier (void);
     bool willOverwrite(void)const;
     void setDoBackup(bool doBackup){m_doBackup = doBackup;}
-    void begin(void);
+    void begin(CopyMode mode);
     bool done(void)const{return m_done;}
     bool failed(void)const{return m_failed;}
-    void cancel(void);
+    void cancel(void){ m_failed = true;}
     std::string progress (void)const;
 protected:
     virtual void body(void);
@@ -108,6 +110,27 @@ private:
     string m_name;
     ProjectSource m_dest;
     bool m_doBackup;
+    bool m_failed;
+    bool m_done;
+    CopyMode m_mode;
+};
+
+/*******************************************************************************
+ *
+ *******************************************************************************/
+class ProjectDeleter
+{
+public:
+    ProjectDeleter (const Project* source);
+    virtual ~ProjectDeleter (void);
+    void begin(void);
+    bool done(void)const{return m_done;}
+    bool failed(void)const{return m_failed;}
+    void cancel(void){ m_failed = true;}
+protected:
+private:
+    ProjectSource m_source;
+    string m_name;
     bool m_failed;
     bool m_done;
 };

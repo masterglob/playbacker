@@ -9,6 +9,7 @@
 #include "pbkr_console.h"
 #include "pbkr_projects.h"
 #include "pbkr_midi.h"
+#include "pbkr_menu.h"
 
 using namespace std;
 
@@ -77,6 +78,12 @@ Console::body(void)
                     fileManager.stopReading();
                 else
                     fileManager.startReading ();
+                break;
+            case 'c': // Goto COPY menu
+                openCopyFromUSBMenu();
+                break;
+            case 'd': // Goto DELETE PROJECT menu
+                openDeleteProjectMenu();
                 break;
             case 'i': // Show current projext infos
                 show_current_infos();

@@ -1,4 +1,3 @@
-#include "pbkr_projects.h"
 
 #include <dirent.h>
 #include <stdio.h>
@@ -7,6 +6,10 @@
 #include <unistd.h>
 #include <string>
 #include <sys/wait.h>
+
+#include "pbkr_config.h"
+#include "pbkr_types.h"
+#include "pbkr_projects.h"
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -128,7 +131,7 @@ listFilesWithExtension(const string & path, const string & ext)
         const string uppername(stringToUpper(name));
         if (len > extLen)
         {
-            const string upperExt(uppername.substr(len - extLen,extLen));
+            const string upperExt(PBKR::substring (uppername, len - extLen,extLen));
             if (upperExt == ext)
             {
                 result.push_back(name);
@@ -380,6 +383,60 @@ Project::getNewTrackIndex(int fromId)const
     }
 }
 
+/*******************************************************************************
+########  ######## ##       ######## ######## ######## ########
+##     ## ##       ##       ##          ##    ##       ##     ##
+##     ## ##       ##       ##          ##    ##       ##     ##
+##     ## ######   ##       ######      ##    ######   ########
+##     ## ##       ##       ##          ##    ##       ##   ##
+##     ## ##       ##       ##          ##    ##       ##    ##
+########  ######## ######## ########    ##    ######## ##     ##
+ *******************************************************************************/
+ProjectDeleter::ProjectDeleter(const Project* source)
+:
+        m_source(source->m_source),
+        m_name(source->m_title),
+        m_failed (false),
+        m_done(false)
+{
+
+}
+
+
+/*******************************************************************************/
+ProjectDeleter::~ProjectDeleter(void)
+{
+}
+
+/*******************************************************************************/
+void
+ProjectDeleter::begin(void)
+{
+    const string rm_cmd ("\\rm -rf \'");
+    const string cmd (rm_cmd + m_source.pPath + "/" + m_name + "\'");
+
+    // SECURITY!!!
+
+    static const string shouldStartWith ("\\rm -rf \'" INTERNAL_MOUNT_POINT "/pbkr.projects/");
+    const string startWith (substring(cmd, 0, (size_t) shouldStartWith.length()));
+
+    cout << "Delete command:" << cmd << endl;
+    if (startWith == shouldStartWith)
+    {
+
+        const int res (system(cmd.c_str()));
+        if (res != 0)
+        {
+            m_failed = true;
+        }
+    }
+    else
+    {
+        cout << "Unexpected command: <" << shouldStartWith << "> was expected..." << endl;
+        m_failed = true;
+    }
+    m_done = true;
+}
 
 /*******************************************************************************
  ######   #######  ########  #### ######## ########
@@ -399,7 +456,8 @@ ProjectCopier::ProjectCopier (const Project* source, const ProjectSource& dest)
         m_dest(dest),
         m_doBackup(true),
         m_failed (false),
-        m_done(false)
+        m_done(false),
+        m_mode(CM_CANCEL)
 {
 }
 
@@ -420,22 +478,33 @@ ProjectCopier::willOverwrite(void)const
 
 /*******************************************************************************/
 void
-ProjectCopier::cancel(void)
+ProjectCopier::begin(CopyMode mode)
 {
-    m_failed = true;
-}
-
-/*******************************************************************************/
-void
-ProjectCopier::begin(void)
-{
-    start();
+    m_mode = mode;
+    if (m_mode == CM_CANCEL) m_failed = true;
+    else start();
 }
 
 /*******************************************************************************/
 void
 ProjectCopier::body(void)
 {
+    // Manage "BACKUP" case
+    if  (m_mode == CM_BACKUP)
+    {
+        // TODO backup project
+        const string newName (substring(m_name,0,12) + "-bak");
+        const string oldPath (m_dest.pPath + "/" + m_name);
+        const string newPath (m_dest.pPath + "/" + newName);
+        const int res (rename (oldPath.c_str(), newName.c_str()));
+        if (res != 0)
+        {
+            cout << "Failed to rename" << oldPath << " to " << newPath << endl;
+            m_failed = true;
+            return;
+        }
+    }
+
     // Create and clear file
     static const string filename = "/tmp/progress";
     ofstream of(filename);
@@ -446,13 +515,14 @@ ProjectCopier::body(void)
     if (cpid  < 0) throw EXCEPTION("Fork failed");
     if (cpid  == 0)
     {
+        const char *mode = (m_mode == CM_COMPLETE ? "-c" : "-r");
         // forked exec
         char* argv[] ={
                 strdup("/root/pbkr/pbkr_cpy.sh"),
                 strdup(m_source.pPath.c_str()),
                 strdup (m_dest.pPath.c_str()),
                 strdup (m_name.c_str()),
-                strdup ("-r"),
+                strdup (mode),
                 NULL};
         execv("/root/pbkr/pbkr_cpy.sh", argv);
         _exit (-1);

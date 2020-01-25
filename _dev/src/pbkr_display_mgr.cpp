@@ -58,7 +58,7 @@ void DisplayManager::body(void)
 {
     while (m_running)
     {
-        for (int i(0);(i<10) && m_running ;i++)
+        for (int i(0);(i<6) && m_running ;i++)
         {
             usleep(1000*100);
             m_mutex.lock();

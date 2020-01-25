@@ -13,10 +13,25 @@ using namespace PBKR;
 
 // http://patorjk.com/software/taag/#p=display&f=Banner3&t=NET%20MENU
 
+// All menus:
+struct ListMenuItem;
+struct PlayMenuItem;
+struct NetShowMenuItem;
+struct SelectProjectShowMenuItem;
+struct ClicSettingsMenuItem;
+struct CopyFromUSBMenuItem;
+struct DeleteInternalProjectMenuItem;
+
+
 static const char* label_empty ("<EMPTY>");
 static string boolToString(const bool b)
 {
     return (b ? "<YES>" : "<NO>");
+}
+
+static inline void increment (uint32_t& val, const int incr, const uint32_t max)
+{
+    val = (val + max + incr) % max;
 }
 
 static const std::string edit_me ("->");
@@ -133,17 +148,43 @@ struct CopyFromUSBMenuItem : MenuItem
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
     virtual void onLeftRightPress(const bool isLeft);
+    virtual void onSelPressLong(void);
     virtual void onSelPressShort(void);
 private:
-    void stopCopy(void);
+    typedef enum  {S_INIT ,S_CONFIRM, S_COPY_MODE, S_COPY, S_FAILED,S_SUCCESS} State;
+
     ProjectVect m_projects;
     uint32_t m_projIdx;
-    uint32_t m_step;
+    State m_step;
     bool m_confirm;
+    ProjectCopier::CopyMode m_copyMode;
     ProjectCopier* m_copier;
 };
 
 CopyFromUSBMenuItem copyFromUSBMenuItem (&mainMenuItem);
+
+
+/*******************************************************************************/
+struct DeleteInternalProjectMenuItem : MenuItem
+{
+    DeleteInternalProjectMenuItem(MenuItem* parent);
+    virtual ~DeleteInternalProjectMenuItem(void);
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+    virtual void onLeftRightPress(const bool isLeft);
+    virtual void onSelPressLong(void);
+    virtual void onSelPressShort(void);
+private:
+    typedef enum  {S_CHOOSE ,S_CONFIRM, S_DELETE, S_FAILED,S_SUCCESS} State;
+
+    ProjectVect m_projects;
+    uint32_t m_projIdx;
+    State m_step;
+    bool m_confirm;
+    ProjectDeleter* m_deleter;
+};
+DeleteInternalProjectMenuItem deleteInternalProjectMenuItem (&mainMenuItem);
+
 
 /*******************************************************************************/
 struct ClicSettingsMenuItem : ListMenuItem
@@ -251,6 +292,156 @@ void PlayMenuItem::onLeftRightPress(const bool isLeft)
 
 
 /*******************************************************************************
+########  ######## ##       ######## ######## ########    ########  ########   #######        ##
+##     ## ##       ##       ##          ##    ##          ##     ## ##     ## ##     ##       ##
+##     ## ##       ##       ##          ##    ##          ##     ## ##     ## ##     ##       ##
+##     ## ######   ##       ######      ##    ######      ########  ########  ##     ##       ##
+##     ## ##       ##       ##          ##    ##          ##        ##   ##   ##     ## ##    ##
+##     ## ##       ##       ##          ##    ##          ##        ##    ##  ##     ## ##    ##
+########  ######## ######## ########    ##    ########    ##        ##     ##  #######   ######
+*******************************************************************************/
+DeleteInternalProjectMenuItem::DeleteInternalProjectMenuItem (MenuItem* parent)
+:
+        MenuItem("Delete proj.", parent),
+        m_projects(getAllProjects()),
+        m_projIdx(0),
+        m_step(S_CHOOSE),
+        m_confirm(false),
+        m_deleter(NULL)
+{
+}
+
+/*******************************************************************************/
+DeleteInternalProjectMenuItem::~DeleteInternalProjectMenuItem(void)
+{
+    if (m_deleter) delete m_deleter;
+}
+
+/*******************************************************************************/
+const std::string
+DeleteInternalProjectMenuItem::menul1(void)
+{ // S_CHOOSE ,S_CONFIRM, S_FAILED,S_SUCCESS S_DELETE
+    switch (m_step) {
+    case S_CHOOSE: return "Delete project:";
+    case S_CONFIRM: return "Confirm?";
+    case S_DELETE:
+    {
+        if (m_deleter)
+        {
+            if (m_deleter->failed())
+            {
+                m_step = S_FAILED;
+            }
+            else if (m_deleter->done())
+            {
+                m_step = S_SUCCESS;
+            }
+        }
+        else
+        {
+            m_step = S_FAILED;
+        }
+        return "Deleting...";
+    }
+    case S_FAILED:  return "Deletion...";
+    case S_SUCCESS: return "Deletion...";
+    default: return label_empty;
+    }
+}
+
+/*******************************************************************************/
+const std::string
+DeleteInternalProjectMenuItem::menul2(void)
+{
+    m_projects.clear();
+    getProjects (m_projects, projectSourceInternal);
+    if (m_projIdx >= m_projects.size())
+    {
+        m_projIdx = 0;
+        return "No USB projects!";
+    }
+    if (m_projIdx < 0 && !m_projects.empty())
+    {
+        m_projIdx = 0;
+    }
+
+    switch (m_step) {
+    case S_CHOOSE:  return m_projects[m_projIdx]->m_title;
+    case S_CONFIRM: return boolToString (m_confirm);
+    case S_DELETE:  return "<CANCEL>";
+    case S_FAILED:  return "  ...failed";
+    case S_SUCCESS: return "  ...success";
+    default: return label_empty;
+    }
+}
+
+/*******************************************************************************/
+void
+DeleteInternalProjectMenuItem::onLeftRightPress(const bool isLeft)
+{
+    const int delta (isLeft ? -1 : +1);
+    if (m_step == S_CHOOSE)
+    {
+        increment (m_projIdx, delta, m_projects.size());
+    }
+    else if (m_step == S_CONFIRM) {m_confirm = not m_confirm;}
+}
+
+/*******************************************************************************/
+void
+DeleteInternalProjectMenuItem::onSelPressLong(void)
+{
+    m_step = S_FAILED;
+}
+
+/*******************************************************************************/
+void
+DeleteInternalProjectMenuItem::onSelPressShort(void)
+{
+    // S_CHOOSE ,S_CONFIRM, S_FAILED,S_SUCCESS S_DELETE
+    if (m_projIdx >= m_projects.size())
+    {
+        m_projIdx = 0;
+        m_step = S_FAILED;
+    }
+    switch (m_step) {
+    case S_CHOOSE:
+    {
+        m_confirm = true;
+        m_step = S_CONFIRM;
+    }
+    break;
+    case S_CONFIRM:
+    {
+        if (m_confirm)
+        {
+            m_step = S_DELETE;
+            if (m_deleter) delete m_deleter;
+            m_deleter = new ProjectDeleter (m_projects[m_projIdx]);
+            m_deleter->begin();
+        }
+        else m_step = S_FAILED;
+    }
+    break;
+    case S_DELETE:
+    {
+        m_step = S_FAILED;
+        m_deleter->cancel();
+    }
+    break;
+    case S_FAILED:
+    case S_SUCCESS:
+    {
+        m_step = S_CHOOSE;
+        globalMenu.setMenu(m_parent);
+        if (m_deleter)
+            m_deleter->cancel();
+    }
+    break;
+    default: break;
+    }
+}
+/*******************************************************************************
  ######   #######  ########  ##    ##
 ##    ## ##     ## ##     ##  ##  ##
 ##       ##     ## ##     ##   ####
@@ -262,10 +453,10 @@ void PlayMenuItem::onLeftRightPress(const bool isLeft)
 CopyFromUSBMenuItem::CopyFromUSBMenuItem (MenuItem* parent)
 :
         MenuItem("Copy from USB", parent),
-        m_projects(getAllProjects()),
         m_projIdx(0),
-        m_step(0),
+        m_step(S_INIT),
         m_confirm(false),
+        m_copyMode(ProjectCopier::CM_OVERWRITE),
         m_copier(NULL)
 {
 }
@@ -282,28 +473,28 @@ const std::string
 CopyFromUSBMenuItem::menul1(void)
 {
     switch (m_step) {
-    case 0: return "Select USB Proj.";
-    case 1: return "Delete existing?";
-    case 2: return "Confirm?";
-    case 3: // Copying
+    case S_INIT: return "Select USB Proj.";
+    case S_COPY_MODE: return "Delete existing?";
+    case S_CONFIRM: return "Confirm?";
+    case S_COPY: // Copying
         {
             if (m_copier)
             {
                 if (m_copier->failed())
                 {
-                    m_step = 4;
+                    m_step = S_FAILED;
                 }
                 else if (m_copier->done())
                 {
-                    m_step = 5;
+                    m_step = S_SUCCESS;
                 }
                 return m_copier->progress();
             }
-            m_step = 4;
+            m_step = S_FAILED;
             return "Copy:";
         }
-    case 4:
-    case 5: return "Copy result:";
+    case S_FAILED:
+    case S_SUCCESS: return "Copy result:";
     default: return label_empty;
     }
 }
@@ -312,43 +503,63 @@ CopyFromUSBMenuItem::menul1(void)
 const std::string
 CopyFromUSBMenuItem::menul2(void)
 {
-    m_projects = getAllProjects();
+    m_projects.clear();
+    getProjects (m_projects, projectSourceUSB);
     if (m_projIdx >= m_projects.size())
     {
         m_projIdx = 0;
-        return "No project on USB";
+        return "No USB projects!";
     }
     if (m_projIdx < 0 && !m_projects.empty())
     {
         m_projIdx = 0;
     }
     switch (m_step) {
-    case 0: return m_projects[m_projIdx]->m_title;
-    case 1: return boolToString (m_confirm);
-    case 2: return boolToString (m_confirm);
-    case 3: return "<Cancel>";
-    case 4: return "Failed...";
-    case 5: return "Success...";
-    default: return label_empty;
+    case S_INIT: return m_projects[m_projIdx]->m_title;
+    case S_COPY_MODE:
+    {
+        switch (m_copyMode) {
+        // CM_OVERWRITE ,CM_COMPLETE, CM_BACKUP, CM_CANCEL
+        case ProjectCopier::CM_OVERWRITE:return "<Overwrite>";
+        case ProjectCopier::CM_COMPLETE:return "<Complete>";
+        case ProjectCopier::CM_BACKUP:return "<Beckup>";
+        case ProjectCopier::CM_CANCEL:return "<Cancel>";
+        default: break;
+        }
+        break;
     }
+    case S_CONFIRM: return boolToString (m_confirm);
+    case S_COPY: return "<Cancel>";
+    case S_FAILED: return "Failed...";
+    case S_SUCCESS: return "Success...";
+    default: break;
+    }
+    return label_empty;
 }
 
 /*******************************************************************************/
 void
 CopyFromUSBMenuItem::onLeftRightPress(const bool isLeft)
 {
-    if (m_step == 0)
+    const int delta (isLeft ? -1 : +1);
+    if (m_step == S_INIT)
     {
-        if (isLeft && m_projIdx > 0)
-        {
-            m_projIdx --;
-        }
-        if (!isLeft && m_projIdx +1 < m_projects.size())
-        {
-            m_projIdx ++;
-        }
+        increment (m_projIdx, delta, m_projects.size());
     }
-    else if (m_step == 2) {m_confirm = not m_confirm;}
+    else if (m_step == S_CONFIRM) {m_confirm = not m_confirm;}
+    else if (m_step == S_COPY_MODE)
+    {
+        uint32_t mode ((uint32_t)m_copyMode);
+        increment (mode, delta, (uint32_t)ProjectCopier::NB_CM);
+        m_copyMode = (ProjectCopier::CopyMode)mode;
+    }
+}
+
+/*******************************************************************************/
+void
+CopyFromUSBMenuItem::onSelPressLong(void)
+{
+    m_step = S_FAILED;
 }
 
 /*******************************************************************************/
@@ -358,64 +569,56 @@ CopyFromUSBMenuItem::onSelPressShort(void)
     if (m_projIdx >= m_projects.size())
     {
         m_projIdx = 0;
-        m_step = 4;
-        return ;
+        m_step = S_FAILED;
     }
     switch (m_step) {
-    case 0:
+    case S_INIT:
     {
-        m_step = 2;
+        if (m_copier) delete m_copier;
+        m_copier = new ProjectCopier (m_projects[m_projIdx], projectSourceInternal);
+        m_step = (m_copier->willOverwrite() ? S_COPY_MODE : S_CONFIRM);
         m_confirm = true;
     }
     break;
-    case 1:
+    case S_COPY_MODE:
     {
-
+        m_step = (m_copyMode == ProjectCopier::CM_CANCEL ? S_FAILED : S_CONFIRM);
     }
     break;
-    case 2:
+    case S_CONFIRM:
     {
         if (m_confirm)
         {
-            m_step = 3;
-            // TODO move constructor to step 0/1
-            if (m_copier) delete m_copier;
-            m_copier = new ProjectCopier (m_projects[m_projIdx], projectSourceInternal);
-            m_copier->begin();
+            m_step = S_COPY;
+            m_copier->begin(m_copyMode);
         }
         else
         {
-            m_step = 0;
+            m_step = S_INIT;
             globalMenu.setMenu(&playMenuItem);
         }
     }
     break;
-    case 3: // Copying
+    case S_COPY: // Copying
     {
         // Action = stop
         if (m_copier) m_copier->cancel();
-        m_step = 4;
+        m_step = S_FAILED;
     }
     break;
-    case 4: // FAILED
-    case 5: // OK
+    case S_FAILED:
+    case S_SUCCESS: // OK
     {
-        stopCopy();
-        m_step = 0;
-        globalMenu.setMenu(&playMenuItem);
+        if (m_copier) delete m_copier;
+        m_copier = NULL;
+        m_step = S_INIT;
+        globalMenu.setMenu(m_parent);
     }
     break;
     default: break;
     }
 }
 
-/*******************************************************************************/
-void
-CopyFromUSBMenuItem::stopCopy(void)
-{
-    if (m_copier) delete m_copier;
-    m_copier = NULL;
-}
 
 /*******************************************************************************
  *
@@ -730,7 +933,7 @@ namespace PBKR
 MenuItem::MenuItem (const std::string& title, MenuItem* parent):
         name(title),m_parent(parent),m_iter(m_subMenus.end())
 {
-    // printf("MenuItem:%s\n",title.c_str());
+    printf("MenuItem:%s\n",title.c_str());
     if (m_parent)
     {
         m_parent->m_subMenus.push_back(this);
@@ -797,6 +1000,8 @@ const std::string MenuItem::menul2(void)
 }
 
 MainMenu& globalMenu(MainMenu::instance());
+void openCopyFromUSBMenu(){ globalMenu.setMenu(&copyFromUSBMenuItem);}
+void openDeleteProjectMenu(){ globalMenu.setMenu(&deleteInternalProjectMenuItem);}
 
 /*******************************************************************************
  * MAIN MENU CONFIG

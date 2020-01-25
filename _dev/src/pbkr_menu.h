@@ -82,6 +82,8 @@ private:
     MenuItem* m_currentMenu;
 };
 extern MainMenu &globalMenu;
+extern void openCopyFromUSBMenu();
+extern void openDeleteProjectMenu();
 
 void setDefaultProject(void);
 } // namespace PBKR
