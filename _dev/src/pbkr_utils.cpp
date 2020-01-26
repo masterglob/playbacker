@@ -16,6 +16,7 @@
 #include <sched.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
@@ -359,7 +360,8 @@ FileManager::FileManager (void):
         _reading(false),
         _lastL(0.0),
         _lastR(0.0),
-        _pProject(NULL)
+        _pProject(NULL),
+        m_usbMounted(false)
 {
 }
 
@@ -392,6 +394,31 @@ void FileManager::body(void)
                 loadProject(project);
             }
         }
+
+        // Check USB
+        struct stat info;
+        const bool usbMounted ( stat( USB_MOUNT_POINT , &info ) == 0);
+        if (m_usbMounted != usbMounted)
+        {
+            using namespace DISPLAY;
+            m_usbMounted = usbMounted;
+            if (m_usbMounted)
+            {
+                DisplayManager::instance().warning("USB plugged");
+            }
+            else
+            {
+                DisplayManager::instance().warning("USB unplugged");
+            }
+            if (OSC::p_osc_instance) OSC::p_osc_instance->CheckUSB();
+        }
+
+        // update timecode
+        if (OSC::p_osc_instance)
+        {
+            const string timecode (_file ? _file->getTimeCode() : "  :  ");
+            OSC::p_osc_instance-> setTimeCode(timecode);
+        }
     }
 }
 
@@ -420,6 +447,7 @@ FileManager::loadProject (Project* proj)
     printf("Loaded project '%s' (%d tracks)\n",m_title.c_str(), m_nbFiles);
     selectIndex (proj->getFirstTrackIndex());
 
+    if (OSC::p_osc_instance) OSC::p_osc_instance->updateProjectList();
     return true;
 }  // FileManager::loadProject
 
@@ -478,6 +506,24 @@ void FileManager::stopReading(void)
     }
 
 } // FileManager::stopReading
+
+/*******************************************************************************/
+void FileManager::fastForward(void)
+{
+    if (_file && _reading)
+    {
+        _file->fastForward(true);
+    }
+} // FileManager:: fastForward
+
+/*******************************************************************************/
+void FileManager::backward(void)
+{
+    if (_file && _reading)
+    {
+        _file->fastForward(false);
+    }
+} // FileManager:: backward
 
 /*******************************************************************************/
 void FileManager::getSample(float& l, float & r, int& midiB)

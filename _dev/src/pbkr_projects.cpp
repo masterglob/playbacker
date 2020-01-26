@@ -208,6 +208,14 @@ void getProjects(ProjectVect& vect, const ProjectSource& from)
 }
 
 /*******************************************************************************/
+ProjectVect getUSBProjects(void)
+{
+    ProjectVect newProjects;
+    getProjects (newProjects, projectSourceUSB);
+    return newProjects;
+}
+
+/*******************************************************************************/
 ProjectVect getAllProjects(void)
 {
     ProjectVect newProjects;

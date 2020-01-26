@@ -125,18 +125,16 @@ NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
 struct SelectProjectShowMenuItem : ListMenuItem
 {
     SelectProjectShowMenuItem(const std::string & title, MenuItem* parent);
-    virtual ~SelectProjectShowMenuItem(void){}/*
-    virtual void onUpDownPress(const bool isUp);
-    virtual const std::string menul1(void);*/
+    virtual ~SelectProjectShowMenuItem(void){}
     virtual const std::string menul2(void);
     virtual void onSelPressShort(void);
     void setDefaultProject(void);
+    static const string m_saveSection;
 private:
     uint32_t m_upDownIdx;
     uint32_t m_upDownIdxMax;
     string m_projectTitle;
     ProjectVect m_allproj;
-    static const string m_saveSection;
 };
 const string SelectProjectShowMenuItem::m_saveSection("SelectProjectShowMenuItem");
 SelectProjectShowMenuItem selectProjectShowMenuItem ("Select show", &mainMenuItem);
@@ -304,7 +302,7 @@ void PlayMenuItem::onLeftRightPress(const bool isLeft)
 DeleteInternalProjectMenuItem::DeleteInternalProjectMenuItem (MenuItem* parent)
 :
         MenuItem("Delete proj.", parent),
-        m_projects(getAllProjects()),
+        //m_projects(getAllProjects()),
         m_projIdx(0),
         m_step(S_CHOOSE),
         m_confirm(false),
@@ -647,7 +645,9 @@ void
 SelectProjectShowMenuItem::setDefaultProject(void)
 {
     m_projectTitle = Config::instance().loadStr(m_saveSection);
-    m_allproj = getAllProjects();
+
+    m_allproj.clear();
+    getProjects (m_allproj, projectSourceInternal);
     if (m_projectTitle.length() > 0)
     {
         printf("Trying to auto load previous show: '%s'\n",m_projectTitle.c_str());
@@ -655,11 +655,13 @@ SelectProjectShowMenuItem::setDefaultProject(void)
     }
 }
 
+
 /*******************************************************************************/
 const std::string
 SelectProjectShowMenuItem::menul2(void)
 {
-    m_allproj = getAllProjects();
+    m_allproj.clear();
+    getProjects (m_allproj, projectSourceInternal);
     if (m_lrIdx < m_allproj.size())
     {
         m_projectTitle = m_allproj[m_lrIdx]->m_title;
@@ -1003,6 +1005,13 @@ const std::string MenuItem::menul2(void)
 MainMenu& globalMenu(MainMenu::instance());
 void openCopyFromUSBMenu(){ globalMenu.setMenu(&copyFromUSBMenuItem);}
 void openDeleteProjectMenu(){ globalMenu.setMenu(&deleteInternalProjectMenuItem);}
+void SelectProjectMenu(Project* proj)
+{
+    if (!proj) return;
+    fileManager.loadProject(proj);
+    Config::instance().saveStr(SelectProjectShowMenuItem::m_saveSection, proj->m_title);
+
+}
 
 /*******************************************************************************
  * MAIN MENU CONFIG
@@ -1046,8 +1055,7 @@ void MainMenu::setMenu(MenuItem* menu)
 {
     if (!menu) return;
     m_currentMenu = menu;
-    if (OSC::p_osc_instance)
-        OSC::p_osc_instance->setMenuName(menu->name);
+    if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuName(menu->name);
     printf("New menu => %s\n",m_currentMenu->name.c_str());
 } // MainMenu::setMenu
 

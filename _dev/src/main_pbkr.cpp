@@ -82,9 +82,15 @@ class OSC_Impl : public OSC::OSC_Event
 {
 public:
     virtual ~OSC_Impl(void){}
-    virtual void forceRefresh    (void){DISPLAY::DisplayManager::instance().forceRefresh();}
+    virtual void forceRefresh    (void)
+    {
+        DISPLAY::DisplayManager::instance().forceRefresh();
+        if (OSC::p_osc_instance) OSC::p_osc_instance->updateProjectList();
+    }
     virtual void onPlayEvent    (void){fileManager.startReading ();}
     virtual void onStopEvent    (void){fileManager.stopReading ();}
+    virtual void onBackward     (void){fileManager.backward ();}
+    virtual void onFastForward  (void){fileManager.fastForward ();}
     virtual void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx + 1);}
     virtual void setClicVolume  (const float& v){API::setClicVolume(v);}
     virtual std::string onKeyboardCmd  (const std::string& msg){return API::onKeyboardCmd(msg);}
@@ -163,6 +169,8 @@ int main (int argc, char**argv)
 		SOUND::SoundPlayer playerHifi (hifidac);
 
 		setRealTimePriority();
+
+        osc.updateProjectList();
 
 		while (!Thread::isExitting())
 		{

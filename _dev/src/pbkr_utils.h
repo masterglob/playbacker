@@ -180,6 +180,8 @@ public:
     void prevTrack(void);
     void stopReading(void);
     void startReading(void);
+    void fastForward(void);
+    void backward(void);
     void getSample( float& l, float & r, int& midiB);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return m_title;}
@@ -203,6 +205,7 @@ private:
     MIDI_Decoder _midiDecoder;
     Project* _pProject;
     ProjectVect m_allProjects;
+    bool m_usbMounted;
 };
 
 extern FileManager fileManager;

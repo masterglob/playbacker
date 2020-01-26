@@ -2,6 +2,7 @@
 #include "pbkr_wav.h"
 #include "pbkr_utils.h"
 
+#include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -9,6 +10,8 @@
 
 // #define DEBUG_WAV printf
 #define DEBUG_WAV(...)
+
+#define FAST_FORWARD_BACKWARD_S 30
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -139,6 +142,7 @@ WavFileLRC::~WavFileLRC (void)
 void
 WavFileLRC::reset(void)
 {
+    m_mutex.lock();
     if (_bof) delete (_bof);
     _bof = new Fader(0.2, 0.0, 1.0 );
     if (_eof) delete(_eof);
@@ -155,6 +159,7 @@ WavFileLRC::reset(void)
         readBuffer(i);
     }
     _bufferIdx = 0;
+    m_mutex.unlock();
 
 }
 
@@ -166,6 +171,39 @@ WavFileLRC::is_open(void)
 }
 
 /*******************************************************************************/
+void
+WavFileLRC::fastForward(bool forward)
+{
+    m_mutex.lock();
+    // Note : 6 bytes per sample
+    static const streamoff offset(FREQUENCY_HZ * FAST_FORWARD_BACKWARD_S * 6);
+    const int sign(forward ? 1 : -1);
+    _f.seekg(offset * sign, ios_base::cur);
+    cout << "FF, dir=" << sign << ", EOF =" << _f.eof() << ", GOOD=" << _f.good() << endl;
+    if (_f.good())
+    {
+        printf("Pos=%s\n",getTimeCode().c_str());
+    }
+    m_mutex.unlock();
+}
+
+/*******************************************************************************/
+string
+WavFileLRC::getTimeCode(void)
+{
+    if (_f.good())
+    {
+        const size_t currBytePos ((size_t)_f.tellg());
+        const size_t samplePos ((currBytePos - _hdrLen) / (NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE));
+        const size_t posSec ((samplePos) / (NB_SAMPLES_PER_SEC));
+        char s[10];
+        snprintf(s, 10, "%02d:%02d\n",posSec/60, posSec%60);
+        return s;
+    }
+    else return "  :  ";
+}
+
+/*******************************************************************************/
 bool
 WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
 {
@@ -173,11 +211,13 @@ WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
     Buffer* b(&_buffers[_bufferIdx]);
     if (b->_pos >= WAV_BUFFER_SAMPLES)
     {
+        m_mutex.lock();
         readBuffer(_bufferIdx);
         // get next buffer
         _bufferIdx++;
         _bufferIdx%=WAV_NB_BUFFERS;
         b = &_buffers[_bufferIdx];
+        m_mutex.unlock();
         if (b->_pos >= WAV_BUFFER_SAMPLES)
         {
             // underrun from input (EOF)?
@@ -224,10 +264,11 @@ WavFileLRC::readBuffer(size_t index)
     if (!_eof)
     {
         readFile((char*)b._data, sizeof(b._data));
+        //fread (_f, (char*)b._data, sizeof(b._data));
         if (!_f)
         {
             _eof = new Fader (0.01, 1.0, 0.0);
-            DEBUG_WAV("End Of file (underrun)\n");
+            DEBUG_WAV("End Of file\n");
         }
     }
     b._pos = 0;

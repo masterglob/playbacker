@@ -2,6 +2,7 @@
 #include "pbkr_osc.h"
 #include "pbkr_api.h"
 #include "pbkr_menu.h"
+#include "pbkr_projects.h"
 
 #include <inttypes.h>
 #include <fcntl.h>
@@ -16,11 +17,17 @@
 #define DO_DEBUG_IN 0
 #define DO_DEBUG_OUT 0
 
-#define OSC_PAGE "4"
-#define OSC_MENU "menu"
+#define OSC_PAGE "pbkrctrl"
+#define OSC_KBD  "pbkrkbd"
+#define OSC_MENU "pbkrmenu"
 #define OSC_NAME(x) "/" OSC_PAGE "/" x
 #define OSC_MENU_NAME(x) "/" OSC_MENU "/" x
 
+
+/***
+- Color can be set remotely with OSC, example: "/1/fader1/color red"
+- Visibility can be set remotely with OSC, example: "/1/fader1/visible 0"
+ */
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -151,8 +158,7 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
         Thread("OSC_Controller"),
         m_receiver(receiver),
         m_cfg(cfg),
-        m_isClientKnown(false),
-        m_menuL1(""), m_menuL2("")
+        m_isClientKnown(false)
 {
 
     setLowPriority();
@@ -226,17 +232,79 @@ void OSC_Controller::setClicVolume  (const float& v)
 /*******************************************************************************/
 void OSC_Controller::setMenuTxt  (const std::string& l1,const std::string& l2)
 {
-    m_menuL1 = l1;
-    m_menuL2 = l2;
-    send (OSC_Msg_To_Send (OSC_MENU_NAME("menuL1"), m_menuL1));
-    send (OSC_Msg_To_Send (OSC_MENU_NAME("menuL2"), m_menuL2));
+    static const string color("blue");
+    static const string sl1(OSC_MENU_NAME("menuL1"));
+    static const string sl2(OSC_MENU_NAME("menuL2"));
+    send (OSC_Msg_To_Send (sl1, l1));
+    send (OSC_Msg_To_Send (sl2, l2));
+    setColor (sl1, color);
+    setColor (sl2, color);
 } // OSC_Controller::setClicVolume
+
+/*******************************************************************************/
+void OSC_Controller::CheckUSB(void)
+{
+    const ProjectVect list(getUSBProjects ());
+
+    int idx(0);
+    FOR (it, list)
+    {
+        idx++;
+        const Project* p(*it);
+        const string name (string (OSC_MENU_NAME("usb")) + to_string(idx));
+        const string color ("gray");
+
+        send (OSC_Msg_To_Send (name, p->m_title));
+        setColor (name, color);
+        setVisible (name, true);
+    }
+    for (idx++; idx <= 10 ; idx ++)
+    {
+        const string name (string (OSC_MENU_NAME("usb")) + to_string(idx));
+        send (OSC_Msg_To_Send (name, ""));
+        setVisible (name, false);
+    }
+} // OSC_Controller::setMenuName
+
+/*******************************************************************************/
+void OSC_Controller::setTimeCode(const string & timecode)
+{
+    if (m_previoustc != timecode)
+        send (OSC_Msg_To_Send (OSC_NAME("timecode"), timecode));
+    m_previoustc = timecode;
+}
 
 /*******************************************************************************/
 void OSC_Controller::setMenuName  (const std::string& title)
 {
     send (OSC_Msg_To_Send (OSC_MENU_NAME("menuTitle"), title));
-} // OSC_Controller::setClicVolume
+} // OSC_Controller::setMenuName
+
+/*******************************************************************************/
+void OSC_Controller:: updateProjectList(void)
+{
+    ProjectVect list;
+    getProjects (list, projectSourceInternal);
+    const string currName(fileManager.title());
+    int idx(0);
+    FOR (it, list)
+    {
+        idx++;
+        const Project* p(*it);
+        const string name (string (OSC_MENU_NAME("project")) + to_string(idx));
+        const string color (currName == p->m_title ? "green" : "gray");
+
+        send (OSC_Msg_To_Send (name, p->m_title));
+        setColor (name, color);
+        setVisible (name, true);
+    }
+    for (idx++; idx <= 10 ; idx ++)
+    {
+        const string name (string (OSC_MENU_NAME("project")) + to_string(idx));
+        send (OSC_Msg_To_Send (name, "<Empty>"));
+        setVisible (name, false);
+    }
+} // OSC_Controller::updateProjectList
 
 /*******************************************************************************/
 void OSC_Controller::setProjectName(const std::string& title)
@@ -425,66 +493,20 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
         return;
     }
 
-    if (cmd1 == "4")
+    if (cmd1 == OSC_PAGE)
     {
         if (paramF > 0.01)
         {
-            if (cmd2 == "pPlay")
-            {
-                m_receiver.onPlayEvent();
-            }
-            else if (cmd2 == "pStop")
-            {
-                m_receiver.onStopEvent();
-
-            }
-            else if (cmd2 == "pRefresh")
-            {
-                // refresh all
-                m_receiver.forceRefresh();
-            }
-            else if (cmd2 == "mtTrackSel")
-            {
-                try {
-                    const int y(OSC_TRACK_NB_Y - std::atoi (cmd3.c_str()));
-                    const int x(std::atoi (cmd4.c_str()) - 1);
-                    m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
-                } catch (...) {
-                    printf("Invalid parameters in mtTrackSel.IGNORED\n");
-                }
-            }
-            else if (cmd2 == "clicVolume")
-            {
-                m_receiver.setClicVolume(paramF);
-            }
-
+            processPlaylist (cmd2, cmd3, cmd4);
         }
     } // Page 4
-    else if (cmd1 == "kbd")
+    else if (cmd1 == OSC_KBD)
     {
-        if (paramF > 0.01)
-        {
-            processKbd(cmd2);
-        }
+        if (paramF > 0.01) processKbd(cmd2);
     } // OSC keyboard
-    else if (cmd1 == "menu")
+    else if (cmd1 == OSC_MENU)
     {
-        if (paramF > 0.01)
-        {
-            cout << "cmd2=" << cmd2 << endl;
-            if (cmd2 == "menuCancel")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_CANCEL);
-            else if (cmd2 == "menuOk")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_OK);
-            else if (cmd2 == "menuLeft")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_LEFT);
-            else if (cmd2 == "menuRight")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_RIGHT);
-            else if (cmd2 == "menuDown")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_DOWN);
-            else if (cmd2 == "menuUp")
-                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_UP);
-        }
+        if (paramF > 0.01) processMenu(cmd2);
     } // OSC Menu
 #if DO_DEBUG_IN
     printf("cmd= <%s>/<%s>/<%s>/<%s> \n",cmd1.c_str(),
@@ -494,6 +516,77 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
 #endif
 
 } // OSC_Controller::processMsg
+
+/*******************************************************************************/
+void OSC_Controller::processPlaylist(const std::string key,
+        const std::string p1,
+        const std::string p2)
+{
+
+    if (key == "pPlay")
+    {
+        m_receiver.onPlayEvent();
+    }
+    else if (key == "pStop")
+    {
+        m_receiver.onStopEvent();
+    }
+    if (key == "pBackward")
+    {
+        m_receiver.onBackward();
+    }
+    if (key == "pFastForward")
+    {
+        m_receiver.onFastForward();
+    }
+    else if (key == "pRefresh")
+    {
+        // refresh all
+        m_receiver.forceRefresh();
+    }
+    else if (key == "mtTrackSel")
+    {
+        try {
+            const int y(OSC_TRACK_NB_Y - std::atoi (p1.c_str()));
+            const int x(std::atoi (p2.c_str()) - 1);
+            m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
+        } catch (...) {
+            printf("Invalid parameters in mtTrackSel.IGNORED\n");
+        }
+    }
+
+} // OSC_Controller::processPlaylist
+
+/*******************************************************************************/
+void OSC_Controller::processMenu(const std::string key)
+{
+    cout << "key=" << key << endl;
+    if (key == "menuCancel")     PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_CANCEL);
+    else if (key == "menuOk")    PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_OK);
+    else if (key == "menuLeft")  PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_LEFT);
+    else if (key == "menuRight") PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_RIGHT);
+    else if (key == "menuDown")  PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_DOWN);
+    else if (key == "menuUp")    PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_UP);
+
+    ProjectVect list;
+    getProjects (list, projectSourceInternal);
+    int idx(0);
+    FOR (it, list)
+    {
+        idx++;
+        Project* p(*it);
+        if (p)
+        {
+            const string name (string ("selP") + to_string(idx));
+            if (key == name)
+            {
+                SelectProjectMenu (p);
+            }
+        }
+    }
+} // OSC_Controller::processMenu
+
+/*******************************************************************************/
 void OSC_Controller::processKbd(const std::string key)
 {
     static std::string input;
@@ -508,8 +601,8 @@ void OSC_Controller::processKbd(const std::string key)
         output2 = output1;
         output1 = m_receiver.onKeyboardCmd(input);
         input = "";
-        send (OSC_Msg_To_Send ("/kbd/Output1", output1));
-        send (OSC_Msg_To_Send ("/kbd/Output2", output2));
+        send (OSC_Msg_To_Send ("/" OSC_KBD "/Output1", output1));
+        send (OSC_Msg_To_Send ("/" OSC_KBD "/Output2", output2));
     }
     else if (key == "DEL")
     {
@@ -542,7 +635,20 @@ void OSC_Controller::processKbd(const std::string key)
     {
         input += " ";
     }
-    send (OSC_Msg_To_Send ("/kbd/InputFB", input + "|"));
+    send (OSC_Msg_To_Send ("/" OSC_KBD "/InputFB", input + "|"));
 }// OSC_Controller::processKbd
+
+
+/*******************************************************************************/
+void OSC_Controller::setColor(const std::string& name, const std::string& color)
+{
+    send (OSC_Msg_To_Send (name + "/color", color));
+} // OSC_Controller::setColor
+
+/*******************************************************************************/
+void OSC_Controller::setVisible(const std::string& name, bool visible)
+{
+    send (OSC_Msg_To_Send (name + "/visible", (visible ? 1 : 0)));
+}
 } // namespace OSC
 } // namespace PBKR

@@ -84,6 +84,7 @@ private:
     MenuItem* m_currentMenu;
 };
 extern MainMenu &globalMenu;
+extern void SelectProjectMenu(Project* proj);
 extern void openCopyFromUSBMenu();
 extern void openDeleteProjectMenu();
 

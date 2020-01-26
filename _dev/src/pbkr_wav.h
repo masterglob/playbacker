@@ -4,6 +4,7 @@
 #include "pbkr_utils.h"
 #include "pbkr_config.h"
 
+#include <mutex>
 #include <iostream>
 #include <fstream>
 
@@ -31,7 +32,14 @@ public:
      * Return True if the file is still reading. false when terminated
      */
     bool getNextSample(float & l, float & r, int16_t& midi);
+
+    /**
+     * false = backward.
+     * See FAST_FORWARD_BACKWARD_S
+     */
+    void fastForward(bool forward);
     void reset(void);
+    string getTimeCode(void);
     const std::string _filename;
 
 private:
@@ -103,6 +111,7 @@ private:
     };
     Buffer _buffers[WAV_NB_BUFFERS];
     size_t _bufferIdx;
+    std::mutex m_mutex;
     void readBuffer(size_t index);
 };
 } // namespace PBKR

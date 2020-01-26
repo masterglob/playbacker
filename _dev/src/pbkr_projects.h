@@ -81,6 +81,7 @@ typedef vector<Project*,allocator<Project*>> ProjectVect;
  */
 ProjectVect getAllProjects(void);
 void getProjects(ProjectVect& vect, const ProjectSource& from);
+ProjectVect getUSBProjects(void);
 
 /**
  * Find a project in a list using its name

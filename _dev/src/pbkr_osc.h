@@ -42,6 +42,8 @@ struct OSC_Event
     virtual ~OSC_Event(void){}
     virtual void onPlayEvent    (void) = 0;
     virtual void onStopEvent    (void) = 0;
+    virtual void onBackward     (void) = 0;
+    virtual void onFastForward  (void) = 0;
     virtual void setClicVolume  (const float& v) = 0;
     virtual void forceRefresh    (void) = 0;
     virtual void onChangeTrack  (const uint32_t idx) = 0;
@@ -102,10 +104,19 @@ public:
     void setClicVolume  (const float& v);
     void setMenuTxt  (const std::string& l1,const std::string& l2);
     void setMenuName  (const std::string& title);
+    void updateProjectList(void);
+    void CheckUSB(void);
+    void setTimeCode(const string & timecode);
 private:
     virtual void body(void);
     void processMsg(const void* buff, const size_t len);
     void processKbd(const std::string key);
+    void processMenu(const std::string key);
+    void processPlaylist(const std::string key,
+            const std::string p1,
+            const std::string p2);
+    void setColor(const std::string& name, const std::string& color);
+    void setVisible(const std::string& name, bool visible);
     OSC_Event & m_receiver;
     const OSC_Ctrl_Cfg m_cfg;
     int m_inSockfd;
@@ -113,7 +124,7 @@ private:
     in_addr m_clientAddr;
     bool  m_isClientKnown;
     OSC_Msg_To_Send_Vect m_toSend;
-    std::string m_menuL1, m_menuL2;
+    string m_previoustc;
 }; // class OSC_Controller
 extern OSC_Controller* p_osc_instance;
 

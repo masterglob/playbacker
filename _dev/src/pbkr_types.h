@@ -5,6 +5,7 @@
 #include <vector>
 #include <stdio.h>
 #include <fcntl.h>
+#include <fstream>
 
 namespace PBKR
 {
@@ -35,6 +36,10 @@ static inline std::string substring(const std::string& s, size_t from, size_t le
 
 } // namespace PBKR
 
+static inline void fread(std::ifstream& f, char* buffer, size_t count)
+{
+    f.read (buffer, count);
+}
 #define FOR(it, obj) for (auto it(obj.begin()); it != obj.end(); it ++)
 
 #endif // I_pbkr_types_h_I
