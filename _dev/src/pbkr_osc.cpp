@@ -1,5 +1,7 @@
 #include "pbkr_types.h"
 #include "pbkr_osc.h"
+#include "pbkr_api.h"
+#include "pbkr_menu.h"
 
 #include <inttypes.h>
 #include <fcntl.h>
@@ -9,12 +11,15 @@
 #include <sys/socket.h>
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 #define DO_DEBUG_IN 0
 #define DO_DEBUG_OUT 0
 
 #define OSC_PAGE "4"
+#define OSC_MENU "menu"
 #define OSC_NAME(x) "/" OSC_PAGE "/" x
+#define OSC_MENU_NAME(x) "/" OSC_MENU "/" x
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -60,6 +65,8 @@ namespace PBKR
 {
 namespace OSC
 {
+using namespace std;
+
 OSC_Controller* p_osc_instance = NULL;
 
 /*******************************************************************************
@@ -144,7 +151,8 @@ OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
         Thread("OSC_Controller"),
         m_receiver(receiver),
         m_cfg(cfg),
-        m_isClientKnown(false)
+        m_isClientKnown(false),
+        m_menuL1(""), m_menuL2("")
 {
 
     setLowPriority();
@@ -213,6 +221,21 @@ void OSC_Controller::setPbCtrlStatus(const bool isPlaying)
 void OSC_Controller::setClicVolume  (const float& v)
 {
     send (OSC_Msg_To_Send (OSC_NAME("clicVolume"), v));
+} // OSC_Controller::setClicVolume
+
+/*******************************************************************************/
+void OSC_Controller::setMenuTxt  (const std::string& l1,const std::string& l2)
+{
+    m_menuL1 = l1;
+    m_menuL2 = l2;
+    send (OSC_Msg_To_Send (OSC_MENU_NAME("menuL1"), m_menuL1));
+    send (OSC_Msg_To_Send (OSC_MENU_NAME("menuL2"), m_menuL2));
+} // OSC_Controller::setClicVolume
+
+/*******************************************************************************/
+void OSC_Controller::setMenuName  (const std::string& title)
+{
+    send (OSC_Msg_To_Send (OSC_MENU_NAME("menuTitle"), title));
 } // OSC_Controller::setClicVolume
 
 /*******************************************************************************/
@@ -444,6 +467,25 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
             processKbd(cmd2);
         }
     } // OSC keyboard
+    else if (cmd1 == "menu")
+    {
+        if (paramF > 0.01)
+        {
+            cout << "cmd2=" << cmd2 << endl;
+            if (cmd2 == "menuCancel")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_CANCEL);
+            else if (cmd2 == "menuOk")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_OK);
+            else if (cmd2 == "menuLeft")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_LEFT);
+            else if (cmd2 == "menuRight")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_RIGHT);
+            else if (cmd2 == "menuDown")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_DOWN);
+            else if (cmd2 == "menuUp")
+                PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_UP);
+        }
+    } // OSC Menu
 #if DO_DEBUG_IN
     printf("cmd= <%s>/<%s>/<%s>/<%s> \n",cmd1.c_str(),
             cmd2.c_str(),

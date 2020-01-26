@@ -75,6 +75,8 @@ public:
     void setMenu(MenuItem* menu);
     virtual const std::string menul1(void)const{return m_currentMenu->menul1();}
     virtual const std::string menul2(void)const{return m_currentMenu->menul2();}
+    typedef enum {KEY_LEFT,KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_OK, KEY_CANCEL} Key;
+    void pressKey(const Key& key);
 private:
     MainMenu(void);
     virtual void body(void);

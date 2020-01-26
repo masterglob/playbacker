@@ -411,6 +411,12 @@ FileManager::loadProject (Project* proj)
     display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
     display.onEvent(DISPLAY::DisplayManager::evProjectTitle, m_title);
 
+    const TrackVect tracks(_pProject->tracks());
+    FOR (it, tracks)
+    {
+        const Track& track =(*it);
+        display.setTrackName(track.m_title, track.m_index - 1);
+    }
     printf("Loaded project '%s' (%d tracks)\n",m_title.c_str(), m_nbFiles);
     selectIndex (proj->getFirstTrackIndex());
 

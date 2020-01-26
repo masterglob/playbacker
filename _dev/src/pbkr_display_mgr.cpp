@@ -155,6 +155,7 @@ void DisplayManager::refresh(void)
         m_display.print(l1.c_str());
         m_display.setCursor(0, 1);
         m_display.print(l2.c_str());
+        if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuTxt(l1, l2);
     }
     m_canEvent = false;
 } // DisplayManager::refresh

@@ -89,10 +89,10 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_snd.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory
-	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
 clean:
 	rm -f src/* .build/*

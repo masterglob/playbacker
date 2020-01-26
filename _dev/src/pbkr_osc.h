@@ -1,5 +1,4 @@
-#ifndef I_pbkr_osc_h_I
-#define I_pbkr_osc_h_I
+#pragma once
 
 #include "pbkr_config.h"
 #include "pbkr_utils.h"
@@ -101,6 +100,8 @@ public:
     void sendLabelMessage(const std::string& msg);
     void setPbCtrlStatus(const bool isPlaying);
     void setClicVolume  (const float& v);
+    void setMenuTxt  (const std::string& l1,const std::string& l2);
+    void setMenuName  (const std::string& title);
 private:
     virtual void body(void);
     void processMsg(const void* buff, const size_t len);
@@ -112,10 +113,11 @@ private:
     in_addr m_clientAddr;
     bool  m_isClientKnown;
     OSC_Msg_To_Send_Vect m_toSend;
+    std::string m_menuL1, m_menuL2;
 }; // class OSC_Controller
 extern OSC_Controller* p_osc_instance;
 
 
 }  // namespace OSC
 } // namespace PBKR
-#endif // I_pbkr_osc_h_I
+

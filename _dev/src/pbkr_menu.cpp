@@ -3,6 +3,7 @@
 
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
+#include "pbkr_osc.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_projects.h"
 #include "pbkr_utils.h"
@@ -807,7 +808,7 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
          m_pVolume(NumParam("Volume", "", 100, 10, 10, 90)),
          m_pLatency(NumParam("Latency", "ms", 30, 0, 2, 2)),
          m_pChannL(FixedNumParam ("Left Chann.", "", 15)),
-         m_pChannR(FixedNumParam ("Right Chann.", "", 15)),
+         m_pChannR(FixedNumParam ("Right Chann.", "", 16)),
          m_pPriNote(FixedNumParam ("Primary Note", "", 24)),
          m_pSecNote(FixedNumParam ("Second. Note", "", 25)),
         m_param{&m_pVolume, &m_pLatency,&m_pChannL,&m_pChannR, &m_pPriNote,&m_pSecNote}
@@ -1043,9 +1044,41 @@ MainMenu& MainMenu::instance (void)
 /*******************************************************************************/
 void MainMenu::setMenu(MenuItem* menu)
 {
+    if (!menu) return;
     m_currentMenu = menu;
+    if (OSC::p_osc_instance)
+        OSC::p_osc_instance->setMenuName(menu->name);
     printf("New menu => %s\n",m_currentMenu->name.c_str());
 } // MainMenu::setMenu
+
+/*******************************************************************************/
+void
+MainMenu::pressKey(const Key& key)
+{
+    switch (key)
+    {
+    case KEY_LEFT:
+        m_currentMenu->onLeftRightPress(true);
+        break;
+    case KEY_RIGHT:
+        m_currentMenu->onLeftRightPress(false);
+        break;
+    case KEY_UP:
+        m_currentMenu->onUpDownPress(true);
+        break;
+    case KEY_DOWN:
+        m_currentMenu->onUpDownPress(false);
+        break;
+    case KEY_OK:
+        m_currentMenu->onSelPressShort();
+        break;
+    case KEY_CANCEL:
+        m_currentMenu->onSelPressLong();
+        break;
+    default:
+        break;
+    }
+}
 
 /*******************************************************************************/
 void MainMenu::body(void)
