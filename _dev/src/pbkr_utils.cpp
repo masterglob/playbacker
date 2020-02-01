@@ -819,23 +819,27 @@ void Latency::setMs(uint8_t latency)
 {
     // how many samples? 1000 ms => 44100u
     const size_t newSize ((441*latency) / 10);
+    if (newSize == m_size)
+    {
+        printf("latency unchanged to %d ms = %d samples\n", latency,m_size);
+        return;
+    }
     m_pos = 0;
-    m_size = newSize;
     if (m_size == 0 && m_buffer)
     {
         delete m_buffer;
         m_buffer = NULL;
     }
 
-    if (newSize == m_size) return;
     if (newSize > m_size)
     {
         if (m_buffer) delete m_buffer;
-        m_buffer = (float*) malloc (m_size * sizeof(float));
+        m_buffer = (float*) malloc (newSize * sizeof(float));
         if (m_buffer)
-            memset (m_buffer, 0, m_size);
+            memset (m_buffer, 0, newSize * sizeof(float));
     }
-    printf("Changed latency to %d ms = %d samples\n", latency,newSize);
+    m_size = newSize;
+    printf("Changed latency to %d ms = %d samples\n", latency,m_size);
 }
 
 float Latency::putSample(float & newSample)
