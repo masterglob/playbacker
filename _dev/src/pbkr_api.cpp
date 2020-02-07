@@ -45,6 +45,19 @@ std::string onKeyboardCmd  (const std::string& msg)
     return badCmd + msg;
 }
 
+
+/*******************************************************************************/
+void onPlayEvent    (void){fileManager.startReading ();}
+void onStopEvent    (void){fileManager.stopReading ();}
+void onBackward     (void){fileManager.backward ();}
+void onFastForward     (void){fileManager.fastForward ();}
+void onChangeTrack  (const uint32_t idx){fileManager.selectIndex(idx + 1);}
+void forceRefresh    (void)
+{
+    DISPLAY::DisplayManager::instance().forceRefresh();
+    if (OSC::p_osc_instance) OSC::p_osc_instance->updateProjectList();
+}
+
 /*******************************************************************************
  * MIDI
  *******************************************************************************/
@@ -125,10 +138,10 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                     fileManager.stopReading();
                     return;
                 case PAD_PREV:
-                    fileManager.prevTrack();
+                    fileManager.backward();
                     return;
                 case PAD_NEXT:
-                    fileManager.nextTrack();
+                    fileManager.fastForward();
                     return;
                 default:
                     return;
@@ -137,14 +150,14 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
         }
         //SYSEX msg?
         if (cmd == SYS_EX_START && lst == SYS_EX_STOP)
-        {
+        {/*
             if (msg.m_len ==8 && msg.m_msg[1] == 0x7F &&
                     msg.m_msg[2] == 0x7F && msg.m_msg[3] == 0x04 &&
                     msg.m_msg[4] == 0x01 && msg.m_msg[5] == 0x00)
             {
                 API::setClicVolume(msg.m_msg[6] / 128.0);
                 return;
-            }
+            }*/
             if (msg.m_len == 11 && msg.m_msg[1] == 0x42 &&
                     msg.m_msg[2] == 0x40 && msg.m_msg[3] == 0x00 &&
                     msg.m_msg[4] == 0x01 && msg.m_msg[5] == 0x04 &&

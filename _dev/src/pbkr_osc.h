@@ -34,22 +34,6 @@ struct OSC_Ctrl_Cfg
 
 class OSC_Controller;
 
-/***
- * Derive this class to receive MIDI events from OSC_Controller
- */
-struct OSC_Event
-{
-    virtual ~OSC_Event(void){}
-    virtual void onPlayEvent    (void) = 0;
-    virtual void onStopEvent    (void) = 0;
-    virtual void onBackward     (void) = 0;
-    virtual void onFastForward  (void) = 0;
-    virtual void setClicVolume  (const float& v) = 0;
-    virtual void forceRefresh    (void) = 0;
-    virtual void onChangeTrack  (const uint32_t idx) = 0;
-    virtual std::string onKeyboardCmd  (const std::string& msg) = 0;
-};
-
 /**
  * Common OSC header for OSC_Msg_To_Send
  */
@@ -92,7 +76,7 @@ typedef std::vector<OSC_Msg_To_Send,std::allocator<OSC_Msg_To_Send>> OSC_Msg_To_
 class OSC_Controller : private Thread
 {
 public:
-    OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver);
+    OSC_Controller(const OSC_Ctrl_Cfg& cfg);
     virtual ~OSC_Controller(void);
     void send(const OSC_Msg_To_Send& msg);
     void setProjectName(const std::string& title);
@@ -100,7 +84,7 @@ public:
     void setTrackName (const std::string& name, size_t trackIdx);
     void setActiveTrack (int trackIdx);
     void sendLabelMessage(const std::string& msg);
-    void setPbCtrlStatus(const bool isPlaying);
+    void setPbCtrlStatus(const bool isPlaying, const bool isPaused);
     void setClicVolume  (const float& v);
     void setMenuTxt  (const std::string& l1,const std::string& l2);
     void setMenuName  (const std::string& title);
@@ -117,7 +101,6 @@ private:
             const std::string p2);
     void setColor(const std::string& name, const std::string& color);
     void setVisible(const std::string& name, bool visible);
-    OSC_Event & m_receiver;
     const OSC_Ctrl_Cfg m_cfg;
     int m_inSockfd;
     int m_outSockfd;

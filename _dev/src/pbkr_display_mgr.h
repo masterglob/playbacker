@@ -39,7 +39,7 @@ public:
     enum Event {evBegin,evEnd,
         evProjectTitle, evProjectTrackCount,
         evUsbIn, evUsbOut,
-        evPlay, evStop,
+        evPlay, evStop, evPause,
         evTrack, evFile};
     void info (const std::string& msg);
     void warning (const std::string& msg);
@@ -71,6 +71,7 @@ private:
     std::string m_trackIdx;
     std::string m_trackCount;
     bool m_reading;
+    bool m_pause;
     std::mutex m_mutex;
     std::string m_trackNames[MAX_NB_TRACKS];
 }; // class

@@ -154,9 +154,8 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
  *******************************************************************************/
 
 /*******************************************************************************/
-OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg, OSC_Event& receiver):
+OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg):
         Thread("OSC_Controller"),
-        m_receiver(receiver),
         m_cfg(cfg),
         m_isClientKnown(false)
 {
@@ -216,11 +215,14 @@ void OSC_Controller::sendLabelMessage(const std::string& msg)
 } // OSC_Controller::sendMessage
 
 /*******************************************************************************/
-void OSC_Controller::setPbCtrlStatus(const bool isPlaying)
+void OSC_Controller::setPbCtrlStatus(const bool isPlaying, const bool isPaused)
 {
-    send (OSC_Msg_To_Send (OSC_NAME("pPlay"), (float)(isPlaying ? 1.0 : 0.0)));
-    send (OSC_Msg_To_Send (OSC_NAME("pStop"),  (float)(isPlaying ? 0.0 : 1.0)));
-    send (OSC_Msg_To_Send (OSC_NAME("pRec"),  (float)0.0));
+    const float playVal (isPlaying ? 1.0 : 0.0);
+    const float stopVal (isPaused || (!isPlaying) ? 1.0 : 0.0);
+    static const float recVal (0.0);
+    send (OSC_Msg_To_Send (OSC_NAME("pPlay"), playVal));
+    send (OSC_Msg_To_Send (OSC_NAME("pStop"),  stopVal));
+    send (OSC_Msg_To_Send (OSC_NAME("pRec"),  recVal));
 } // OSC_Controller::setPbCtrlStatus
 
 /*******************************************************************************/
@@ -489,7 +491,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     {
         static const OSC::OSC_Msg_To_Send pingMsg("/ping");
         send(pingMsg);
-        m_receiver.forceRefresh();
+        API::forceRefresh();
         return;
     }
 
@@ -525,31 +527,31 @@ void OSC_Controller::processPlaylist(const std::string key,
 
     if (key == "pPlay")
     {
-        m_receiver.onPlayEvent();
+        API::onPlayEvent();
     }
     else if (key == "pStop")
     {
-        m_receiver.onStopEvent();
+        API::onStopEvent();
     }
     if (key == "pBackward")
     {
-        m_receiver.onBackward();
+        API::onBackward();
     }
     if (key == "pFastForward")
     {
-        m_receiver.onFastForward();
+        API::onFastForward();
     }
     else if (key == "pRefresh")
     {
         // refresh all
-        m_receiver.forceRefresh();
+        API::forceRefresh();
     }
     else if (key == "mtTrackSel")
     {
         try {
             const int y(OSC_TRACK_NB_Y - std::atoi (p1.c_str()));
             const int x(std::atoi (p2.c_str()) - 1);
-            m_receiver.onChangeTrack(x + y * OSC_TRACK_NB_X);
+            API::onChangeTrack(x + y * OSC_TRACK_NB_X);
         } catch (...) {
             printf("Invalid parameters in mtTrackSel.IGNORED\n");
         }
@@ -599,7 +601,7 @@ void OSC_Controller::processKbd(const std::string key)
     else if (key == "Enter")
     {
         output2 = output1;
-        output1 = m_receiver.onKeyboardCmd(input);
+        output1 = API::onKeyboardCmd(input);
         input = "";
         send (OSC_Msg_To_Send ("/" OSC_KBD "/Output1", output1));
         send (OSC_Msg_To_Send ("/" OSC_KBD "/Output2", output2));

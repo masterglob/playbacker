@@ -11,8 +11,6 @@
 // #define DEBUG_WAV printf
 #define DEBUG_WAV(...)
 
-#define FAST_FORWARD_BACKWARD_S 30
-
 /*******************************************************************************
  * LOCAL FUNCTIONS
  *******************************************************************************/
@@ -172,14 +170,15 @@ WavFileLRC::is_open(void)
 
 /*******************************************************************************/
 void
-WavFileLRC::fastForward(bool forward)
+WavFileLRC::fastForward(bool forward, const int nbSeconds)
 {
     m_mutex.lock();
     // Note : 6 bytes per sample
-    static const streamoff offset(FREQUENCY_HZ * FAST_FORWARD_BACKWARD_S * 6);
+    static const int bytesPerSeconde (FREQUENCY_HZ * 6);
+    const streamoff offset(bytesPerSeconde * nbSeconds);
     const int sign(forward ? 1 : -1);
     _f.seekg(offset * sign, ios_base::cur);
-    cout << "FF, dir=" << sign << ", EOF =" << _f.eof() << ", GOOD=" << _f.good() << endl;
+    cout << "FF, sec= "<< nbSeconds << ", dir=" << sign << ", EOF =" << _f.eof() << ", GOOD=" << _f.good() << endl;
     if (_f.good())
     {
         printf("Pos=%s\n",getTimeCode().c_str());

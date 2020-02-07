@@ -42,7 +42,8 @@ DisplayManager::DisplayManager(void):
         m_filename(""),
         m_trackIdx(""),
         m_trackCount(""),
-        m_reading(false)
+        m_reading(false),
+        m_pause(false)
 {
     Thread::start();
 }
@@ -105,16 +106,24 @@ void DisplayManager::refresh(void)
     }
     else if (m_reading)
     {
-        if (idx < 3)
+        if (m_pause)
         {
             l1 = m_title;
+            l2 = "Paused...";
         }
-        else if (idx <6)
-            l1 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
         else
-            l1 ="Reading...";
-        const char scroll[4] = {'/', '-', '/', '|'};
-        l2 = m_filename + (scroll[m_printIdx % sizeof(scroll)]);
+        {
+            if (idx < 3)
+            {
+                l1 = m_title;
+            }
+            else if (idx <6)
+                l1 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
+            else
+                l1 ="Reading...";
+            const char scroll[4] = {'/', '-', '/', '|'};
+            l2 = m_filename + (scroll[m_printIdx % sizeof(scroll)]);
+        }
     }
     else
     {
@@ -234,7 +243,6 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
             OSC::p_osc_instance->setProjectName("");
             OSC::p_osc_instance->setFileName("");
             OSC::p_osc_instance->sendLabelMessage("Connected!");
-            OSC::p_osc_instance->setPbCtrlStatus(false);
             if (OSC::p_osc_instance)
                 OSC::p_osc_instance->setActiveTrack(-1);
             for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
@@ -259,7 +267,6 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
             OSC::p_osc_instance->sendLabelMessage("Disconnected...");
             OSC::p_osc_instance->setProjectName("");
             OSC::p_osc_instance->setFileName("");
-            OSC::p_osc_instance->setPbCtrlStatus(false);
             if (OSC::p_osc_instance)
                 OSC::p_osc_instance->setActiveTrack(-1);
             for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
@@ -268,6 +275,7 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_title = "";
         m_event = "Exiting...";
         m_filename = "";
+        m_reading = false;
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
             m_trackNames[i] = "";
@@ -319,17 +327,19 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
                 OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
         } catch (...) {}
         break;
+    case evPause:
+        m_event = "Paused...";
+        m_pause = true;
+        break;
     case evPlay:
         m_event = "Reading...";
         m_reading = true;
-        if (OSC::p_osc_instance) OSC::p_osc_instance->setPbCtrlStatus(true);
+        m_pause = false;
         break;
     case evStop:
         m_event = "Stopped...";
         m_reading = false;
-
-        if (OSC::p_osc_instance)
-            OSC::p_osc_instance->setPbCtrlStatus(false);
+        m_pause = false;
         break;
     case evFile:
         m_event = std::string ("Reading ") + param;
@@ -340,9 +350,14 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
     default:
         break;
     }
+    if (OSC::p_osc_instance)
+
     m_warning = "";
     if (OSC::p_osc_instance)
+    {
+        OSC::p_osc_instance->setPbCtrlStatus(m_reading, m_pause);
         OSC::p_osc_instance->sendLabelMessage("");
+    }
     m_printIdx = 0;
     refresh();
     m_mutex.unlock();

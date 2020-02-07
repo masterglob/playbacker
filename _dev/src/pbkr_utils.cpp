@@ -35,12 +35,10 @@ namespace
 using namespace PBKR;
 static DISPLAY::DisplayManager& display (DISPLAY::DisplayManager::instance());
 
+#define FAST_FORWARD_BACKWARD_S 20
+#define PAUSE_BACKWARD_S 5
 
 } // namespace
-
-
-#define PRELOAD_RAM 0
-#define DEBUG (void)
 
 /*******************************************************************************
  * EXTERNAL FUNCTIONS
@@ -358,6 +356,7 @@ FileManager::FileManager (void):
         m_nbFiles(0),
         _file(NULL),
         _reading(false),
+        _paused(false),
         _lastL(0.0),
         _lastR(0.0),
         _pProject(NULL),
@@ -477,12 +476,13 @@ void FileManager::startReading(void)
     {
         if (_reading)
         {
-            stopReading();
+            pauseReading();
         }
         else
         {
             _file->reset();
             _reading = true;
+            _paused = false;
             printf("Start reading...\n");
             display.onEvent(DISPLAY::DisplayManager::evPlay);
         }
@@ -492,6 +492,26 @@ void FileManager::startReading(void)
         printf("No selected file!\n");
     }
 }
+
+/*******************************************************************************/
+void FileManager::pauseReading(void)
+{
+    if (_file && _reading)
+    {
+        if (_paused)
+        {
+            _paused = false;
+            _file->fastForward(false, PAUSE_BACKWARD_S);
+            display.onEvent(DISPLAY::DisplayManager::evPlay);
+        }
+        else
+        {
+            display.onEvent(DISPLAY::DisplayManager::evPause);
+            _paused = true;
+        }
+    }
+
+} // FileManager::stopReading
 
 /*******************************************************************************/
 void FileManager::stopReading(void)
@@ -512,7 +532,7 @@ void FileManager::fastForward(void)
 {
     if (_file && _reading)
     {
-        _file->fastForward(true);
+        _file->fastForward(true, FAST_FORWARD_BACKWARD_S);
     }
 } // FileManager:: fastForward
 
@@ -521,7 +541,7 @@ void FileManager::backward(void)
 {
     if (_file && _reading)
     {
-        _file->fastForward(false);
+        _file->fastForward(false, FAST_FORWARD_BACKWARD_S);
     }
 } // FileManager:: backward
 
@@ -529,7 +549,7 @@ void FileManager::backward(void)
 void FileManager::getSample(float& l, float & r, int& midiB)
 {
     midiB = -1;
-    if (_reading && _file)
+    if (_reading && _file && (!_paused))
     {
         int16_t midiIn;
         if (not _file->getNextSample(l ,r, midiIn))

@@ -33,6 +33,13 @@ std::string onKeyboardCmd  (const std::string& msg);
  */
 void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg);
 
+void onPlayEvent    (void);
+void onStopEvent    (void);
+void onBackward     (void);
+void onFastForward     (void);
+void onChangeTrack  (const uint32_t idx);
+void forceRefresh    (void);
+
 } // namespace API
 
 } // namespace PBKR

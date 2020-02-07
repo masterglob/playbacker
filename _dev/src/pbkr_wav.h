@@ -35,9 +35,8 @@ public:
 
     /**
      * false = backward.
-     * See FAST_FORWARD_BACKWARD_S
      */
-    void fastForward(bool forward);
+    void fastForward(bool forward, const int nbSeconds);
     void reset(void);
     string getTimeCode(void);
     const std::string _filename;

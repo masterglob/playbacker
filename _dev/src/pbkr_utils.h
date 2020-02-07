@@ -178,6 +178,7 @@ public:
     bool selectIndex(const size_t i); /* @param i = track index, starting at 1 */
     void nextTrack(void);
     void prevTrack(void);
+    void pauseReading(void);
     void stopReading(void);
     void startReading(void);
     void fastForward(void);
@@ -200,6 +201,7 @@ private:
     std::string m_title;
     WavFileLRC* _file;
     bool _reading;
+    bool _paused;
     float _lastL;
     float _lastR;
     MIDI_Decoder _midiDecoder;
