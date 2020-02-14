@@ -12,11 +12,13 @@ LCD_OBJS=$(BUILD)/pbkr_display.cpp.o $(BUILD)/pbkr_gpio.cpp.o
 default:all
 obj :
 	@echo "== COMPILE $(FILE)..."
-	$(Q)$(CC) $(CFLAGS) -c  -o $(BUILD)/$(FILE).o src/$(FILE) -Isrc
+	$(Q)$(CC) $(CFLAGS) -DBUILD_ID=$(BUILD_ID) -c  -o $(BUILD)/$(FILE).o src/$(FILE) -Isrc
 prepare:
 	@echo "== CLEAN... "
 	rm -rf $(BUILD) &&  mkdir -p $(BUILD) && chmod -R 777  $(BUILD)
 link:
+	@echo "== BUILD ID=$(BUILD_ID)"
+	$(Q)make obj FILE=pbkr_version.cpp --no-print-directory 
 	@echo "== LINK... $(OUT)/$(TARGET)"
 	@mkdir -p $(OUT)
 	$(Q)$(CC) -o $(OUT)/$(TARGET) $(BUILD)/pbkr*.o $(BUILD)/main_$(TARGET).* $(LIBS)
@@ -82,9 +84,10 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 
+	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_osc.cpp --no-print-directory &
-	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_display_mgr.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_cfg.cpp --no-print-directory 
 	$(Q)make obj FILE=pbkr_menu.cpp --no-print-directory &
@@ -92,7 +95,6 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_api.cpp --no-print-directory &
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
-	$(Q)make obj FILE=pbkr_console.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
 clean:
 	rm -f src/* .build/*

@@ -113,11 +113,11 @@ int Config::loadInt(const std::string& name, const int defaultValue)
     return value;
 } // Config::loadInt
 
-string Config::loadStr(const string& name, const string& defaultValue)
+string Config::loadStr(const string& name, const string& defaultValue, bool absPath)
 {
     if (m_error) return defaultValue;
     string value(defaultValue);
-    std::ifstream myfile (toSavePath(name));
+    std::ifstream myfile (absPath ? name : toSavePath(name));
     try
     {
         getline( myfile, value );

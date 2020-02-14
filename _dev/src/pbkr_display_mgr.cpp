@@ -283,6 +283,10 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         break;
     case evProjectTrackCount:
         m_trackCount = param;
+        for (size_t i(0); i< MAX_NB_TRACKS;i++)
+        {
+            m_trackNames[i] = "";
+        }
         break;
     case evUsbIn:
         m_title = "";

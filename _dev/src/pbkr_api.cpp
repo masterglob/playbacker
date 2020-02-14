@@ -3,6 +3,10 @@
 #include "pbkr_console.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_osc.h"
+#include "pbkr_cfg.h"
+#include "pbkr_version.h"
+
+#include <stdlib.h>
 
 namespace PBKR
 {
@@ -35,13 +39,33 @@ std::string onKeyboardCmd  (const std::string& msg)
 {
     static const std::string badCmd ("Unknown Command :");
     // static bool logged (false);
-#if 0
+#if 1
     if (msg == "/R")
     {
         Thread::doExit();
         return "Reboot command OK";
     }
 #endif
+    if (msg == "/H")
+    {
+        return "/MEM /CPU /V";
+    }
+    if (msg == "/V")
+    {
+        return string("PBKR V" PBKR_VERSION) + " B " + to_string(PBKR_BUILD_ID);
+    }
+    if (msg == "/MEM")
+    {
+        system ("free -k|head -2 | tail -1|awk '{printf \"%d%%\\n\",(100*$3)/$2;}' > /tmp/mem.used");
+        const string res (Config::instance().loadStr ("/tmp/mem.used","??",true));
+        return string("Used memory : ") + res;
+    }
+    if (msg == "/CPU")
+    {
+        system ("top -n 1 |head -n 2|tail -n 1|awk '{printf \"%s %s\\n\", $1, $2}' > /tmp/cpu.used");
+        const string res (Config::instance().loadStr ("/tmp/cpu.used","??",true));
+        return res;
+    }
     return badCmd + msg;
 }
 

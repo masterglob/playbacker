@@ -24,7 +24,7 @@ public:
     void saveInt(const string& name, const int value);
     int loadInt(const string& name, const int defaultValue);
     void saveStr(const string& name, const string& value);
-    string loadStr(const string& name, const string& defaultValue = "");
+    string loadStr(const string& name, const string& defaultValue = "", bool absPath=false);
 protected:
     Config(void);
 	virtual ~Config(void);
