@@ -52,6 +52,7 @@ public:
 	void start(bool needJoin=true);
 	virtual void body(void) =0;
     void stop(void){m_stop=true;}
+    bool isDone(void){return m_done;}
     static void join_all(void);
     static void doExit(void);
     static bool isExitting(void);
@@ -69,6 +70,7 @@ private:
 	static void* real_start(void* param);
     static bool m_isExitting;
     bool m_stop;
+    bool m_done;
 	static std::mutex m_mutex;
 	pthread_t _thread;
 	pthread_attr_t* _attr;
@@ -163,6 +165,20 @@ private:
     int   m_skip;
 };
 
+/*******************************************************************************
+ * WemosFileSender
+ *******************************************************************************/
+class WemosFileSender: protected PBKR::Thread
+{
+public:
+    WemosFileSender(const std::string& filename);
+    virtual ~WemosFileSender(void);
+    bool isDone(void){return Thread::isDone();}
+private:
+    virtual void body(void);
+    const string mFilename;
+};
+
 class Project;
 typedef vector<Project*,allocator<Project*>> ProjectVect;
 
@@ -190,6 +206,7 @@ public:
     size_t nbFiles(void)const {return m_nbFiles;}
     std::string filename(size_t idx)const;
     std::string fileTitle(size_t idx)const;
+    std::string fileWavTitle(size_t idx)const;
     bool loadProject (Project* proj);
     void unloadProject (void);
 protected:
@@ -201,6 +218,8 @@ private:
     std::string m_title;
     WavFileLRC* _file;
     bool _reading;
+    bool _starting; // When starting, the title may be sent to WeMos
+    WemosFileSender* mWemosFileSender;
     bool _paused;
     float _lastL;
     float _lastR;
@@ -244,6 +263,7 @@ public:
     {
         SYSEX_COMMAND_KEEP_ALIVE = 0,
         SYSEX_COMMAND_VOLUME = 6,
+        SYSEX_COMMAND_PLAY_SAMPLE = 0x7F,
     };
     void pushMessage(const MidiOutMsg& msg);
     void pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& msg);

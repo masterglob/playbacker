@@ -40,9 +40,9 @@ size_t fileLength(std::ifstream& f)
 #define DEBUG (void)
 
 #define CHECK_FIELD(label, found, exp) do{\
-        if (found != exp) \
+        if ((found) != (exp)) \
         {\
-            DEBUG_WAV("%s : found 0x%X, exp 0x%X\n", label, (unsigned int)found, (unsigned int)exp);\
+            printf("%s : found 0x%X, exp 0x%X\n", label, (unsigned int)found, (unsigned int)exp);\
             throw std::invalid_argument(label);\
         }else{\
             /*DEBUG_WAV("%s OK: 0x%X\n", label, (unsigned int)found);*/\
@@ -53,51 +53,41 @@ size_t fileLength(std::ifstream& f)
  *******************************************************************************/
 namespace PBKR
 {
-
 /*******************************************************************************/
-WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
-                _filename(path + "/" + filename),
-                _f(_filename),
-                _len(fileLength(_f)),
-                _eof(NULL),
-                _bof(NULL),
-                _bufferIdx(0)
+WavFile::WavFile (const std::string& filename):
+                mFilename(filename),
+                mIf(mFilename),
+                mLen(fileLength(mIf))
 {
-    WAVHdr wavHdr;
-    AudioHdr audioHdr;
-    AddHdr addHdr;
-    ZERO(wavHdr);
-    ZERO(audioHdr);
-    ZERO(addHdr);
+    ZERO(mWavHdr);
+    ZERO(mAudioHdr);
+    ZERO(mAddHdr);
     DEBUG_WAV("opened file %s, len =%d\n",_filename.c_str(), _len);
-    readFile((char*)&wavHdr, sizeof(wavHdr));
-    CHECK_FIELD("File truncated1", _f.gcount(), sizeof(wavHdr));
+    fread(mIf, (char*)&mWavHdr, sizeof(mWavHdr));
+    CHECK_FIELD("File truncated1", mIf.gcount(), sizeof(mWavHdr));
 
     // CHECK WAV HEADER
-    CHECK_FIELD("Bad RIFF HDR", wavHdr.FileTypeBlocID, WAV_HDR_RIFF);
-    CHECK_FIELD("Bad WAVE HDR", wavHdr.FileFormatID, WAV_HDR_WAVE);
-    CHECK_FIELD("Bad file size", wavHdr.FileSize + 8, _len);
+    CHECK_FIELD("Bad RIFF HDR", mWavHdr.FileTypeBlocID, WAV_HDR_RIFF);
+    CHECK_FIELD("Bad WAVE HDR", mWavHdr.FileFormatID, WAV_HDR_WAVE);
+    CHECK_FIELD("Bad file size", mWavHdr.FileSize + 8, mLen);
 
     // CHECK AUDIO HEADER
-    readFile((char*)&audioHdr, sizeof(audioHdr));
-    CHECK_FIELD("File truncated2", _f.gcount(), sizeof(audioHdr));
-    CHECK_FIELD("FMT type", audioHdr.ckID, WAV_HDR_FMT);
-    CHECK_FIELD("NB Channels", audioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
-    CHECK_FIELD("Sampling rate", audioHdr.nSamplesPerSec, NB_SAMPLES_PER_SEC);
-    CHECK_FIELD("Blk size", audioHdr.nBlockAlign, NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE);
-    CHECK_FIELD("bit depth", audioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
-    if (wavHdr.FileSize > 0x10 + 1)
+    fread(mIf, (char*)&mAudioHdr, sizeof(mAudioHdr));
+    CHECK_FIELD("File truncated2", mIf.gcount(), sizeof(mAudioHdr));
+    CHECK_FIELD("FMT type", mAudioHdr.ckID, WAV_HDR_FMT);
+    CHECK_FIELD("cksize >= 16", mAudioHdr.cksize >= 16, true);
+    const int addParams (mAudioHdr.cksize - 16);
+
+    if (addParams > (int) sizeof(AddHdr))
     {
         uint16_t cbSize;
-        readFile((char*)&cbSize, sizeof(cbSize));
-        CHECK_FIELD("File truncated3", _f.gcount(), sizeof(cbSize));
+        fread(mIf, (char*)&cbSize, sizeof(cbSize));
+        CHECK_FIELD("File truncated3", mIf.gcount(), sizeof(cbSize));
         if (cbSize == 22)
         {
 
-            readFile((char*)&addHdr, sizeof(addHdr));
-            CHECK_FIELD("File truncated4", _f.gcount(), sizeof(addHdr));
-            CHECK_FIELD("bit depth2", addHdr.wValidBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
-            CHECK_FIELD("Sub PCM type", addHdr.wFormatTag, WAV_FMT_PCM);
+            fread(mIf, (char*)&mAddHdr, sizeof(mAddHdr));
+            CHECK_FIELD("File truncated4", mIf.gcount(), sizeof(mAddHdr));
         }
         else if  (cbSize == 0)
         {
@@ -108,32 +98,85 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
             CHECK_FIELD("cbSize!=0|22",false,true);
         }
     }
-    // actual format (
-    if (audioHdr.wFormatTag != SUB_FORMAT_MASK)
+    else if (addParams > 0)
     {
-        CHECK_FIELD("PCM type", audioHdr.wFormatTag, WAV_FMT_PCM);
+        char extraParams[addParams];
+        fread(mIf, extraParams, sizeof(extraParams));
+        printf("Extra params, size = %d\n", sizeof(extraParams));
+    }
+    // actual format (
+    if (mAudioHdr.wFormatTag != SUB_FORMAT_MASK)
+    {
+        CHECK_FIELD("PCM type", mAudioHdr.wFormatTag, WAV_FMT_PCM);
     }
     // CHECK DATA HEADER
     uint32_t dataMark;
     uint32_t dataSize;
-    readFile((char*)&dataMark, sizeof(dataMark));
-    CHECK_FIELD("File truncated5", _f.gcount(), sizeof(dataMark));
-    readFile((char*)&dataSize, sizeof(dataSize));
-    CHECK_FIELD("File truncated6", _f.gcount(), sizeof(dataSize));
+    fread(mIf, (char*)&dataMark, sizeof(dataMark));
+    CHECK_FIELD("File truncated5", mIf.gcount(), sizeof(dataMark));
+    fread(mIf, (char*)&dataSize, sizeof(dataSize));
+    CHECK_FIELD("File truncated6", mIf.gcount(), sizeof(dataSize));
 
-    _hdrLen = (size_t) _f.tellg();
+    mHdrLen = (size_t) mIf.tellg();
 
     reset();
 
+};
+
+/*******************************************************************************/
+WavFile::~WavFile (void)
+{
+    mIf.close();
+    DEBUG_WAV("Closed %s\n", mFilename.c_str());
 }
-#undef CHECK_FIELD
+
+/*******************************************************************************/
+void
+WavFile::reset(void)
+{
+    mIf.close();
+    mIf.open(mFilename);
+    mIf.seekg(mHdrLen,std::ios::beg);
+}
+
+/*******************************************************************************/
+bool
+WavFile::eof(void)
+{
+    return mIf.eof();
+}
+
+/*******************************************************************************/
+bool
+WavFile::is_open(void)
+{
+    return (mIf && mIf.is_open());
+}
+
+/*******************************************************************************/
+WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
+                WavFile(path + "/" + filename),
+                _eof(NULL),
+                _bof(NULL),
+                _bufferIdx(0)
+{
+    CHECK_FIELD("NB Channels", mAudioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
+    CHECK_FIELD("Sampling rate", mAudioHdr.nSamplesPerSec, NB_SAMPLES_PER_SEC);
+
+    CHECK_FIELD("bit depth", mAudioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
+    CHECK_FIELD("Blk size", mAudioHdr.nBlockAlign, mAudioHdr.nChannels * NB_BYTES_PER_SAMPLE);
+
+    if (mAddHdr.wValidBitsPerSample != 0)
+    {
+        CHECK_FIELD("bit depth2", mAddHdr.wValidBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
+        CHECK_FIELD("Sub PCM type", mAddHdr.wFormatTag, WAV_FMT_PCM);
+    }
+}
 
 /*******************************************************************************/
 WavFileLRC::~WavFileLRC (void)
 {
     if (_eof) delete(_eof);
-    _f.close();
-    DEBUG_WAV("Closed %s\n", _filename.c_str());
 }
 
 /*******************************************************************************/
@@ -145,12 +188,10 @@ WavFileLRC::reset(void)
     _bof = new Fader(0.2, 0.0, 1.0 );
     if (_eof) delete(_eof);
     _eof=NULL;
-    _f.close();
-    _f.open(_filename);
-    _f.seekg(_hdrLen,std::ios::beg);
+    WavFile::reset();
     // read first buffer
     ZERO(_buffers[0]._data);
-    readFile((char*)_buffers[0]._data, sizeof(_buffers[0]._data));
+    fread(mIf, (char*)_buffers[0]._data, sizeof(_buffers[0]._data));
     _buffers[0]._pos = 0;
     for (size_t i(0) ; i < WAV_NB_BUFFERS ; i++)
     {
@@ -158,14 +199,6 @@ WavFileLRC::reset(void)
     }
     _bufferIdx = 0;
     m_mutex.unlock();
-
-}
-
-/*******************************************************************************/
-bool
-WavFileLRC::is_open(void)
-{
-    return (_f && _f.is_open());
 }
 
 /*******************************************************************************/
@@ -177,9 +210,9 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
     static const int bytesPerSeconde (FREQUENCY_HZ * 6);
     const streamoff offset(bytesPerSeconde * nbSeconds);
     const int sign(forward ? 1 : -1);
-    _f.seekg(offset * sign, ios_base::cur);
-    cout << "FF, sec= "<< nbSeconds << ", dir=" << sign << ", EOF =" << _f.eof() << ", GOOD=" << _f.good() << endl;
-    if (_f.good())
+    mIf.seekg(offset * sign, ios_base::cur);
+    cout << "FF, sec= "<< nbSeconds << ", dir=" << sign << ", EOF =" << mIf.eof() << ", GOOD=" << mIf.good() << endl;
+    if (mIf.good())
     {
         printf("Pos=%s\n",getTimeCode().c_str());
     }
@@ -190,10 +223,10 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
 string
 WavFileLRC::getTimeCode(void)
 {
-    if (_f.good())
+    if (mIf.good())
     {
-        const size_t currBytePos ((size_t)_f.tellg());
-        const size_t samplePos ((currBytePos - _hdrLen) / (NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE));
+        const size_t currBytePos ((size_t)mIf.tellg());
+        const size_t samplePos ((currBytePos - mHdrLen) / (NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE));
         const size_t posSec ((samplePos) / (NB_SAMPLES_PER_SEC));
         char s[10];
         snprintf(s, 10, "%02d:%02d\n",posSec/60, posSec%60);
@@ -262,9 +295,9 @@ WavFileLRC::readBuffer(size_t index)
     ZERO(b._data);
     if (!_eof)
     {
-        readFile((char*)b._data, sizeof(b._data));
+        fread(mIf, (char*)b._data, sizeof(b._data));
         //fread (_f, (char*)b._data, sizeof(b._data));
-        if (!_f)
+        if (!mIf)
         {
             _eof = new Fader (0.01, 1.0, 0.0);
             DEBUG_WAV("End Of file\n");
@@ -276,5 +309,35 @@ WavFileLRC::readBuffer(size_t index)
 /*******************************************************************************
  * WavFileLRC
  *******************************************************************************/
+
+/*******************************************************************************/
+WavFile8Mono::WavFile8Mono (const std::string& filename):
+                WavFile(filename)
+{
+    CHECK_FIELD("NB Channels", mAudioHdr.nChannels, 1);
+    CHECK_FIELD("Sampling rate", mAudioHdr.nSamplesPerSec, 11025);
+
+    CHECK_FIELD("bit depth", mAudioHdr.wBitsPerSample, 8);
+    CHECK_FIELD("Blk size", mAudioHdr.nBlockAlign, mAudioHdr.nChannels * 1);
+
+    CHECK_FIELD("wFormatTag", mAudioHdr.wFormatTag, 1);
+
+    if (mAddHdr.wValidBitsPerSample != 0)
+    {
+        CHECK_FIELD("bit depth2", mAddHdr.wValidBitsPerSample, 8);
+        CHECK_FIELD("Sub PCM type", mAddHdr.wFormatTag, WAV_FMT_PCM);
+    }
+}
+
+/*******************************************************************************/
+WavFile8Mono::~WavFile8Mono (void){}
+
+/*******************************************************************************/
+uint8_t WavFile8Mono::readSample(void)
+{
+    uint8_t result;
+    fread (mIf, (char*) &result, 1);
+    return result;
+}
 
 } // namespace PBKR

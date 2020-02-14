@@ -46,6 +46,11 @@
 #define I2S_PIN_LRCK 2
 #define I2S_PIN_BCK 15 
 
+/**
+ * The frequency of received external samples (MIDI_SYSEX_UPLOAD)
+ */
+#define EXT_SAMPLE_HZ_FREQ (11025)
+
 /** 
  *  Overclocking 80 -> 160 MHz
  *  set to 0 or 1
@@ -85,6 +90,9 @@
 #define MIDI_CHANNEL1 (16)
 #define MIDI_CHANNEL2 (15)
 #define MIDI_BAUD_RATE (31250)
+
+
+#define MAX_EXTERNAL_SAMPLE_SIZE (20 * 1024)
 
 const int16_t LRC_wavSine[256] = {
     0x0000, 0x0324, 0x0647, 0x096a, 0x0c8b, 0x0fab, 0x12c8, 0x15e2,

@@ -10,6 +10,10 @@
 
 extern void commmgt_rcv(const uint8_t c);
 extern void set_volume(const  float & volume);
+extern int  mustPlayExternalSample;
+extern int external_sample_size;
+extern uint8_t external_sample[MAX_EXTERNAL_SAMPLE_SIZE];
+extern void playExternalSample(void);
 
 ///////////////////////////////////////////////////////
 // LOCAL FUNCTIONS
@@ -31,8 +35,8 @@ static uint8_t phase;
 static int dtMax(-1);
 static bool sineTest(false);
 static int secCnt(0);
-static float s_volume(0.8);
-static float clic_volume(0.5);
+float s_volume(0.8);
+float clic_volume(0.5);
 static SoftwareSerial SerialRx(SOFT_SER_RX, SOFT_SER_TX);
 String s;
 
@@ -148,6 +152,19 @@ inline void process_MIDI_in(void)
 
 void loop() {
 
+  if (external_sample_size > 0)
+  {
+    // check it's not stuck!
+    if (millis() - last_rcv > 500)
+    {
+      PRINTF(("Force SYSEX unlock\n"));
+      commmgt_rcv(0xF7);
+    }
+  }
+  if (mustPlayExternalSample > 0)
+  {
+    playExternalSample();
+  }
   do
   {
     process_MIDI_in();
@@ -214,4 +231,25 @@ void loop() {
     }
   }
   const int t2(micros()/10);
+}
+
+
+void playExternalSample(void)
+{
+  PRINTF (("Playing external sound size = %db\n",mustPlayExternalSample));
+  const uint8_t* endPos (external_sample + mustPlayExternalSample);
+  for (uint8_t* pByte(external_sample+1);  pByte < endPos; pByte++)
+  {
+    int16_t v (*pByte);  // [0 .. 0xFF]
+    v -= 0x80; // recenter to [-0x80 .. 0x7F]
+    v *= 0xC0; // [-0x6000 .. 0x6000]
+    // PRINTF(("%02X:%04X \n",*pByte, v));
+    while (i2s_is_full()){yield();}
+    for (int freq(I2S_HZ_FREQ / EXT_SAMPLE_HZ_FREQ) ; freq > 0 ; freq --)
+    {
+      LRC_i2s_writeDAC(v*clic_volume*s_volume,v*clic_volume*s_volume);
+    }
+  }
+  external_sample_size = 0;
+  mustPlayExternalSample = 0;
 }

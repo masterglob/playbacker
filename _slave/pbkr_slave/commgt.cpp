@@ -21,7 +21,13 @@ extern void set_volume(const  float & volume);
 #define MIDI_SYSEX_CLIC2_NOTE   4       // Not implemented
 #define MIDI_SYSEX_MIDI_CHANN   5       // Not implemented
 #define MIDI_SYSEX_VOLUME       6
-#define MIDI_SYSEX_UPLOAD       0x80    // Not implemented
+#define MIDI_SYSEX_UPLOAD       0x7F    // Not implemented
+
+
+uint8_t external_sample[MAX_EXTERNAL_SAMPLE_SIZE];
+int external_sample_size(0);
+int mustPlayExternalSample(0);
+extern void playExternalSample(void);
 
 /*******************************************************************************
  *         DEFINITIONS
@@ -30,8 +36,12 @@ struct MIDI_SysEx
 {
   MIDI_SysEx(void);
   ~MIDI_SysEx(void);
+  bool start_receiving(void);
+  bool receiving(void);
   void rcv(const uint8_t c);
+  void execute();
 private:
+  bool m_Receiving;
   uint16_t m_idx;
   uint8_t m_cmd;
   bool    m_ignore;
@@ -39,11 +49,11 @@ private:
 
 struct MIDI_Msg
 {
-  MIDI_Msg(void):rem_bytes(0),len(0),pos(0),sysex (NULL){}
+  MIDI_Msg(void):rem_bytes(0),len(0),pos(0){}
   // ==0 no message
   int rem_bytes;
 
-  MIDI_SysEx* sysex;
+  MIDI_SysEx sysex;
   uint8_t buff[3];
   uint8_t len;
   uint8_t pos;
@@ -55,15 +65,31 @@ struct MIDI_Msg
  *         MIDI_SysEx
  *******************************************************************************/
 MIDI_SysEx::MIDI_SysEx(void):
+        m_Receiving(false),
         m_idx(0),
         m_cmd(0),
         m_ignore(false)
 {
-PRINTLN (("SYSEX msg BEGIN"));
 }
+
 MIDI_SysEx::~MIDI_SysEx(void)
 {
-PRINTLN (("SYSEX msg END"));
+}
+
+bool MIDI_SysEx::start_receiving(void){m_Receiving = true;}
+bool MIDI_SysEx::receiving(void){return m_Receiving;}
+void MIDI_SysEx::execute()
+{
+  if (m_cmd == MIDI_SYSEX_UPLOAD)
+  {
+    if (external_sample_size > 0) mustPlayExternalSample = external_sample_size;
+    PRINTLN (("MIDI_SYSEX_UPLOAD msg END"));
+  }
+  m_idx = 0;
+  m_cmd =0;
+  m_ignore = false;
+  external_sample_size  = 0;
+  m_Receiving = false;
 }
 
 void MIDI_SysEx::rcv(const uint8_t c)
@@ -111,7 +137,12 @@ void MIDI_SysEx::rcv(const uint8_t c)
             break;
         }
         case MIDI_SYSEX_UPLOAD:
-            // TODO
+            if (external_sample_size == 0) {PRINTLN (("MIDI_SYSEX_UPLOAD msg BEGIN"));}
+            if (external_sample_size < MAX_EXTERNAL_SAMPLE_SIZE)
+            {
+              external_sample[external_sample_size] = c * 2;
+              external_sample_size++;
+            }
             break;
         default:
             break;
@@ -120,7 +151,6 @@ void MIDI_SysEx::rcv(const uint8_t c)
     m_idx++;
     // TODO!
 }
-      
 
 /*******************************************************************************
  *         MIDI_Msg
@@ -152,16 +182,15 @@ void MIDI_Msg::midi_event(void)
 
 void MIDI_Msg::rcv(const uint8_t c)
 {
-  if (sysex)
+  if (sysex.receiving())
   {
     if (c == 0xF7)
     {
-      delete sysex;
-      sysex = NULL;
+      sysex.execute();
     }
     else
     {
-      sysex->rcv(c);
+      sysex.rcv(c);
     }
   }
   else if (rem_bytes > 0)
@@ -195,7 +224,7 @@ void MIDI_Msg::rcv(const uint8_t c)
       // Only accept SYSEX for reprogrammation
       if (c == 0xF0)
       {
-        sysex = new MIDI_SysEx;
+        sysex.start_receiving();
       }
       else
       {
@@ -222,9 +251,8 @@ void MIDI_Msg::rcv(const uint8_t c)
 /*******************************************************************************
  *        EXTERNAL FUNCTIONS
  *******************************************************************************/
+static MIDI_Msg msg;
 void commmgt_rcv(const uint8_t c)
 {
-  static MIDI_Msg msg;
   msg.rcv(c);
-  
 }

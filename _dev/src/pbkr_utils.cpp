@@ -20,12 +20,16 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
+#include <ctime>
 
 // #define DEBUG_MIDI printf
 #define DEBUG_MIDI(...)
 
 // #define DEBUG_THREADS printf
 #define DEBUG_THREADS(...)
+
+#define DEBUG_WFS printf
+// #define DEBUG_WFS(...)
 
 /*******************************************************************************
  * LOCAL FUNCTIONS
@@ -41,6 +45,74 @@ static DISPLAY::DisplayManager& display (DISPLAY::DisplayManager::instance());
 } // namespace
 
 /*******************************************************************************
+ * WemosFileSender
+ *******************************************************************************/
+namespace PBKR
+{
+
+/*******************************************************************************/
+WemosFileSender::WemosFileSender(const string& filename):
+        Thread("WemosFileSender"),
+        mFilename(filename)
+{
+    DEBUG_WFS("WemosFileSender::WemosFileSender\n");
+    start(false);
+}
+
+/*******************************************************************************/
+WemosFileSender::~WemosFileSender(void)
+{
+
+}
+
+/*******************************************************************************/
+void
+WemosFileSender::body(void)
+{
+    DEBUG_WFS("WemosFileSender::body\n");
+
+    uint32_t nbSamplesSent(0);
+    const int tmax = time(NULL) + 3; /// MAX ~3 sec
+
+    return; // TODO: remove!
+    MidiOutMsg msg;
+    msg.push_back(0); // Reserved
+    try
+    {
+        WavFile8Mono file (mFilename);
+        DEBUG_WFS("FILE format OK\n");
+        while (file.is_open() and not (file.eof() or isExitting()))
+        {
+            for (int i(0); i < 100; i++)
+            {
+                const uint8_t b (file.readSample());
+                if (file.eof()) break;
+                msg.push_back(b/2); // On 7 bits!
+                nbSamplesSent++;
+            }
+
+            if (time(NULL) > tmax)
+            {
+                DEBUG_WFS("WemosFileSender: timeout after %d samples!\n", nbSamplesSent);
+                break;
+            }
+        }
+        printf ("\n");
+        wemosControl.pushSysExMessage(WemosControl::SYSEX_COMMAND_PLAY_SAMPLE, msg);
+        printf("Send SYS EX msg with size:%d\n", nbSamplesSent);
+        // printf("TODO!!\n"); // TODO
+    }
+    catch (...)
+    {
+        printf("Reading %s failed after %d samples!...\n", mFilename.c_str(), nbSamplesSent);
+    }
+
+
+}
+
+} // namespace
+
+/*******************************************************************************
  * EXTERNAL FUNCTIONS
  *******************************************************************************/
 namespace PBKR
@@ -48,7 +120,8 @@ namespace PBKR
 FileManager fileManager;
 
 /*******************************************************************************/
-Thread::Thread(const std::string& name): m_stop(false), _thread(-1),_attr(NULL),m_name(name)
+Thread::Thread(const std::string& name):
+        m_stop(false), m_done(false),_thread(-1),_attr(NULL),m_name(name)
 
 {
 }
@@ -83,6 +156,7 @@ void* Thread::real_start(void* param)
 	if (thr)
 	{
 		thr -> body ();
+	    thr->m_done = true;
 	}
 	return NULL;
 }
@@ -356,6 +430,8 @@ FileManager::FileManager (void):
         m_nbFiles(0),
         _file(NULL),
         _reading(false),
+        _starting(false),
+        mWemosFileSender(NULL),
         _paused(false),
         _lastL(0.0),
         _lastR(0.0),
@@ -368,6 +444,7 @@ FileManager::FileManager (void):
 FileManager::~FileManager (void)
 {
     if (_file) delete (_file);
+    if (mWemosFileSender) delete mWemosFileSender;
 }
 
 /*******************************************************************************/
@@ -482,6 +559,9 @@ void FileManager::startReading(void)
         {
             _file->reset();
             _reading = true;
+            _starting = true;
+            if (mWemosFileSender) delete mWemosFileSender;
+            mWemosFileSender = NULL;
             _paused = false;
             printf("Start reading...\n");
             display.onEvent(DISPLAY::DisplayManager::evPlay);
@@ -518,6 +598,7 @@ void FileManager::stopReading(void)
 {
     if (_file && _reading)
     {
+        _starting = false;
         _reading = false;
         printf("Stop reading\n");
         display.onEvent(DISPLAY::DisplayManager::evStop);
@@ -549,7 +630,35 @@ void FileManager::backward(void)
 void FileManager::getSample(float& l, float & r, int& midiB)
 {
     midiB = -1;
-    if (_reading && _file && (!_paused))
+    if (_starting)
+    {
+        if (mWemosFileSender)
+        {
+            // Already started... wait for the end
+            if (mWemosFileSender->isDone())
+            {
+                DEBUG_WFS("mWemosFileSender done\n");
+                delete mWemosFileSender;
+                mWemosFileSender = NULL;
+                _starting = false;
+            }
+        }
+        else
+        {
+            const string wavTitle(fileWavTitle(indexPlaying()));
+            if (wavTitle.length() > 0)
+            {
+                DEBUG_WFS("mWemosFileSender : %s\n", wavTitle.c_str());
+                mWemosFileSender = new WemosFileSender(wavTitle);
+            }
+            else
+            {
+                // No Wav title file, just start reading...
+                _starting = false;
+            }
+        }
+    }
+    else if (_reading && _file && (!_paused))
     {
         int16_t midiIn;
         if (not _file->getNextSample(l ,r, midiIn))
@@ -583,6 +692,13 @@ std::string FileManager::fileTitle(size_t idx)const
 {
     if (_pProject == NULL) return "";
     return _pProject->getByTrackId(idx).m_title;
+}
+
+/*******************************************************************************/
+std::string FileManager::fileWavTitle(size_t idx)const
+{
+    if (_pProject == NULL) return "";
+    return _pProject->getByTrackId(idx).m_wavTitle;
 }
 
 /*******************************************************************************/
@@ -639,7 +755,7 @@ bool FileManager::selectIndex(const size_t i)
     }
     if (_file->is_open())
     {
-        printf("Opened %s\n",_file->_filename.c_str());
+        printf("Opened %s\n",_file->mFilename.c_str());
 
         const string trackIdx(std::to_string(track.m_index));
         display.onEvent(DISPLAY::DisplayManager::evFile, track.m_title);
@@ -648,7 +764,7 @@ bool FileManager::selectIndex(const size_t i)
     }
     else
     {
-        printf("Failed to open <%s>\n",_file->_filename.c_str());
+        printf("Failed to open <%s>\n",_file->mFilename.c_str());
     }
     return false;
 
@@ -808,13 +924,13 @@ void WemosControl::sendByte(void)
     }
     else
     {
+        m_mutex.lock();
         if (not m_msgs.empty())
         {
-            m_mutex.lock();
             m_current = new MidiOutMsg (m_msgs.front());
             m_msgs.pop_front();
-            m_mutex.unlock();
         }
+        m_mutex.unlock();
 
         if (m_keepAlive.update())
         {

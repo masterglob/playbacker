@@ -15,43 +15,21 @@ namespace PBKR
 static const size_t WAV_NB_BUFFERS(2);
 static const size_t WAV_BUFFER_SAMPLES(1024);
 
-/** reading & chacking 3 track WAV file */
-class WavFileLRC
+/*******************************************************************************
+ * WavFile
+ *******************************************************************************/
+struct WavFile
 {
-public:
-    /* Check LRC format:
-     * - 44.1Khz
-     * - 3 channels
-     * - 16 bits
-     */
-    WavFileLRC (const std::string& path, const std::string& filename);
-    virtual  ~WavFileLRC (void);
+    WavFile (const std::string& filename);
+    virtual  ~WavFile (void);
+    virtual void reset(void);
 
     bool is_open(void);
-    /**
-     * Return True if the file is still reading. false when terminated
-     */
-    bool getNextSample(float & l, float & r, int16_t& midi);
+    bool eof(void);
 
-    /**
-     * false = backward.
-     */
-    void fastForward(bool forward, const int nbSeconds);
-    void reset(void);
-    string getTimeCode(void);
-    const std::string _filename;
+    const std::string mFilename;
 
-private:
-    std::ifstream _f;
-    size_t _hdrLen;
-    size_t _len;
-    Fader* _eof;  // Fade out
-    Fader* _bof;  // Fade in
-
-    inline void readFile(char* dest, const size_t s)
-    {
-        _f.read(dest,s);
-    }
+protected:
     /** WAV file format (https://fr.wikipedia.org/wiki/Waveform_Audio_File_Format)
      * http://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html */
     struct PACK WAVHdr
@@ -92,7 +70,47 @@ private:
         uint32_t DataSize; // Nombre d'octets des données de Data (= full size - 44)
         uint16_t Data[];
     };
+protected:
 
+    std::ifstream mIf;
+    size_t mHdrLen;
+    size_t mLen;
+
+    WAVHdr mWavHdr;
+    AudioHdr mAudioHdr;
+    AddHdr mAddHdr;
+
+};
+
+/*******************************************************************************
+ * WemosFileSender
+ *******************************************************************************/
+/** reading & chacking 3 track WAV file */
+class WavFileLRC : public WavFile
+{
+public:
+    /* Check LRC format:
+     * - 44.1Khz
+     * - 3 channels
+     * - 16 bits
+     */
+    WavFileLRC (const std::string& path, const std::string& filename);
+    virtual  ~WavFileLRC (void);
+    /**
+     * Return True if the file is still reading. false when terminated
+     */
+    bool getNextSample(float & l, float & r, int16_t& midi);
+
+    /**
+     * false = backward.
+     */
+    void fastForward(bool forward, const int nbSeconds);
+    string getTimeCode(void);
+
+    virtual void reset(void);
+private:
+    Fader* _eof;  // Fade out
+    Fader* _bof;  // Fade in
 
 
     struct PACK LRC_Sample
@@ -112,6 +130,17 @@ private:
     size_t _bufferIdx;
     std::mutex m_mutex;
     void readBuffer(size_t index);
+};
+
+/*******************************************************************************
+ * WavFile8Mono
+ *******************************************************************************/
+class WavFile8Mono : public WavFile
+{
+public:
+    WavFile8Mono (const std::string& filename);
+    virtual  ~WavFile8Mono (void);
+    uint8_t readSample(void);
 };
 } // namespace PBKR
 #endif // _pbkr_wav_h_
