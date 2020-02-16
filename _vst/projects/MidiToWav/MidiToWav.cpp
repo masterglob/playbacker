@@ -10,13 +10,12 @@ const int kNumPrograms = 8;
 static const double maxLevel(0.5);
 enum EParams
 {
-	kGainL = 0,
-	kGainR,
-	kMode,
+	kNoOffNotes = 0,
 	kNumParams
 };
 
-RawSerializer::RawSerializer(void):
+RawSerializer::RawSerializer(bool& sendOffNotes):
+	mSendOffNotes(sendOffNotes),
 	mLen(0),
 	mPos(-1),
 	mStop(true)
@@ -27,30 +26,6 @@ RawSerializer::RawSerializer(void):
 RawSerializer::~RawSerializer(void)
 {
 }
-	/*
-	int status = pMsg->StatusMsg();
-
-	switch (status)
-	{
-	case IMidiMsg::kNoteOn:
-	case IMidiMsg::kNoteOff:
-	{
-		int velocity = pMsg->Velocity();
-		int mNote = pMsg->NoteNumber();
-		break;
-	}
-	}
-		while (!mMidiQueue.Empty())
-		{
-			IMidiMsg* pMsg = mMidiQueue.Peek();
-			if (pMsg->mOffset > offset) break;
-			
-			mSerial.push(pMsg);
-
-			mMidiQueue.Remove();
-		}
-
-	*/
 
 double RawSerializer::getNextValue(const int& offset)
 {
@@ -77,7 +52,16 @@ double RawSerializer::getNextValue(const int& offset)
 		switch (cmd)
 		{
 		case 0x80: // Note Off event
+			if (!mSendOffNotes)
+			{
+				mLen = 0;
+			}
 		case 0x90: // Note On event. 
+			if (mCurMsg->mData2 == 0 && !mSendOffNotes)
+			{
+				mLen = 0;
+			}
+			break;
 		case 0xA0: // Polyphonic Key Pressure (Aftertouch). 
 		case 0xB0: // Control Change. 
 		case 0xE0: //Pitch Bend Change
@@ -111,23 +95,28 @@ double RawSerializer::getNextValue(const int& offset)
 
 IPlugMidiToWav::IPlugMidiToWav(IPlugInstanceInfo instanceInfo)
 	: IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo),
-	mSampleRate(44100.)
+	mSampleRate(44100.),
+	mSerial(mSendOffNotes)
 {
 	TRACE;
 
-	//arguments are: name, defaultVal, minVal, maxVal, step, label
-	GetParam(kGainL)->InitDouble("GainL", -12.0, -70.0, 12.0, 0.1, "dB");
-	GetParam(kGainR)->InitDouble("GainR", -12.0, -70.0, 12.0, 0.1, "dB");
-	GetParam(kMode)->InitEnum("Mode", 0, 6);
-	GetParam(kMode)->SetDisplayText(0, "a");
-	GetParam(kMode)->SetDisplayText(1, "b");
-	GetParam(kMode)->SetDisplayText(2, "c");
-	GetParam(kMode)->SetDisplayText(3, "d");
-	GetParam(kMode)->SetDisplayText(4, "e");
-	GetParam(kMode)->SetDisplayText(5, "f");
 
+	GetParam(kNoOffNotes)->InitBool("Send Off Notes", false, "button");
+
+	const IColor bgColor(255, 150, 150, 180);
 	IGraphics* pGraphics = MakeGraphics(this, kWidth, kHeight);
-	pGraphics->AttachBackground(BG_ID, BG_FN);
+	pGraphics->AttachPanelBackground(&bgColor);
+	//	pGraphics->AttachBackground(BG_ID, BG_FN);
+
+	/****************************/
+	// param kNoOffNotes	
+	IRECT tmpRect(kISwitchControl_OffNotes_X + 60 , kISwitchControl_OffNotes_Y, 200, 30);
+	IBitmap bitmap = pGraphics->LoadIBitmap(IRADIOBUTTONSCONTROL_ID, IRADIOBUTTONSCONTROL_FN, kIRadioButtonsControl_N);
+	pGraphics->AttachControl(new ISwitchControl(this, kISwitchControl_OffNotes_X, kISwitchControl_OffNotes_Y, kNoOffNotes, &bitmap));
+	IText textProps(24, &COLOR_BLACK, "Arial", IText::kStyleBold, IText::kAlignNear, 0, IText::kQualityDefault);
+	pGraphics->AttachControl(new ITextControl(this, tmpRect, &textProps, "Off notes"));
+
+	
 
 	IBitmap knob = pGraphics->LoadIBitmap(KNOB_ID, KNOB_FN, kKnobFrames);
 	IText text = IText(14);
@@ -180,10 +169,8 @@ void IPlugMidiToWav::OnParamChange(int paramIdx)
 
 	switch (paramIdx)
 	{
-	case kGainL:
-		break;
-	case kGainR:
-		break;
+	case kNoOffNotes:
+		mSendOffNotes = GetParam(paramIdx)->Bool();
 	default:
 		break;
 	}

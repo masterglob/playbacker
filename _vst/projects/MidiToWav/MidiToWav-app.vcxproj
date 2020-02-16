@@ -294,6 +294,15 @@
   <ItemGroup>
     <ResourceCompile Include="MidiToWav.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="bitmap1.bmp" />
+    <Image Include="resources\img\about.png" />
+    <Image Include="resources\img\bg.png" />
+    <Image Include="resources\img\bk.png" />
+    <Image Include="resources\img\IRadioButtonsControl_x2.png" />
+    <Image Include="resources\img\knob.png" />
+    <Image Include="resources\img\wk.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

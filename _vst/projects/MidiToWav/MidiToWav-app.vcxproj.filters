@@ -79,4 +79,13 @@
   <ItemGroup>
     <ResourceCompile Include="MidiToWav.rc" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="resources\img\IRadioButtonsControl_x2.png" />
+    <Image Include="bitmap1.bmp" />
+    <Image Include="resources\img\knob.png" />
+    <Image Include="resources\img\bg.png" />
+    <Image Include="resources\img\about.png" />
+    <Image Include="resources\img\wk.png" />
+    <Image Include="resources\img\bk.png" />
+  </ItemGroup>
 </Project>
