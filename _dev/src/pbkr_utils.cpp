@@ -700,7 +700,7 @@ const char* getIPAddr (const char* device)
            if (!ifa->ifa_addr) {
                continue;
            }
-           if (strcmp (ifa->ifa_name, device) != 0)
+           if (strcmp (ifa->ifa_name, device) == 0)
            {
                if (ifa->ifa_addr->sa_family == AF_INET)
                { // check it is IP4 is a valid IP4 Address

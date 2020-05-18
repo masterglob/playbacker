@@ -79,6 +79,9 @@ Console::body(void)
                 else
                     fileManager.startReading ();
                 break;
+            case 'n': // Enter Net menu
+                openNetMenuFromUSBMenu();
+                break;
             case 'c': // Goto COPY menu
                 openCopyFromUSBMenu();
                 break;

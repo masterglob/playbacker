@@ -116,6 +116,7 @@ struct NetShowMenuItem : ListMenuItem
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
 private:
+    const std::string menul(const bool line1);
     uint32_t m_upDownIdx;
     uint32_t m_upDownIdxMax;
 };
@@ -725,73 +726,57 @@ void NetShowMenuItem::onUpDownPress(const bool isUp)
 }
 
 /*******************************************************************************/
+const std::string NetShowMenuItem::menul(const bool line1)
+{
+    static const char * ETH_NAMES[] = {"ETH ", "WIFI"};
+    static const char * ETH_DEVS[] = {NET_DEV_ETH,NET_DEV_WIFI};
+    static const char * SUBMENU_NAME[] = {"IP ", "NETMSK", "NAME"};
+
+    static const std::string sharp("#");
+    static const std::string colon(":");
+    static const std::string slash("/");
+
+    if (m_lrIdx >= 2)
+    {
+        return (line1 ? sharp + std::to_string(m_lrIdx + 1) : "##noitem##");
+    }
+    const char* name = ETH_NAMES[m_lrIdx];
+    const char* dev = ETH_DEVS[m_lrIdx];
+    if (m_upDownIdx >= 3)
+    {
+        return (line1 ? name + colon : "##noitem##");
+    }
+    const std::string submenuname (SUBMENU_NAME[m_upDownIdx]);
+    if (line1)
+    {
+        return addVertArrow( name + slash + submenuname + colon);
+    }
+    else
+    {
+        switch (m_upDownIdx)
+        {
+        case 0:
+            return getIPAddr(dev);
+        case 1:
+            return getIPNetMask(dev);
+        case 2:
+            return dev;
+        default:
+            return "##noitem##";
+        }
+    }
+
+}
+/*******************************************************************************/
 const std::string NetShowMenuItem::menul1(void)
 {
-    switch (m_lrIdx)
-    {
-    case 0:
-        switch (m_upDownIdx)
-        {
-        case 0:
-            return addVertArrow("ETH / IP:");
-        case 1:
-            return addVertArrow("ETH / Netmsk:");
-        default:
-            break;
-        }
-        return addVertArrow ("ETH:");
-    case 1:
-        switch (m_upDownIdx)
-        {
-        case 0:
-            return addVertArrow ("WIFI / IP:");
-        case 1:
-            return addVertArrow ("WIFI / Netmsk:");
-        default:
-            break;
-        }
-        return addVertArrow ("WIFI:");
-    case 2:
-        return "#3";
-    case 3:
-        return "#4";
-    default:
-        break;
-    }
-    return "##noitem##";
+    return menul(true);
 }
 
 /*******************************************************************************/
 const std::string NetShowMenuItem::menul2(void)
 {
-    switch (m_lrIdx)
-    {
-    case 0:
-        switch (m_upDownIdx)
-        {
-        case 0:
-            return getIPAddr(NET_DEV_ETH);
-        case 1:
-            return getIPNetMask(NET_DEV_ETH);
-        default:
-            break;
-        }
-        break;
-    case 1:
-        switch (m_upDownIdx)
-        {
-        case 0:
-            return getIPAddr(NET_DEV_WIFI);
-        case 1:
-            return getIPNetMask(NET_DEV_WIFI);
-        default:
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-    return "##noitem##";
+    return menul(false);
 }
 
 /*******************************************************************************
@@ -1004,6 +989,7 @@ const std::string MenuItem::menul2(void)
 
 MainMenu& globalMenu(MainMenu::instance());
 void openCopyFromUSBMenu(){ globalMenu.setMenu(&copyFromUSBMenuItem);}
+void openNetMenuFromUSBMenu(){ globalMenu.setMenu(&netMenuItem);}
 void openDeleteProjectMenu(){ globalMenu.setMenu(&deleteInternalProjectMenuItem);}
 void SelectProjectMenu(Project* proj)
 {

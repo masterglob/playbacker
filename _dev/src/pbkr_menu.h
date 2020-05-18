@@ -86,6 +86,7 @@ private:
 extern MainMenu &globalMenu;
 extern void SelectProjectMenu(Project* proj);
 extern void openCopyFromUSBMenu();
+extern void openNetMenuFromUSBMenu();
 extern void openDeleteProjectMenu();
 
 void setDefaultProject(void);
