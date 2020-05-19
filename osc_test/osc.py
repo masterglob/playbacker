@@ -1,8 +1,10 @@
 import socket
 import sys
 from binascii import unhexlify
+from threading import Thread 
 
-UDP_IP = "192.168.22.101"
+#UDP_IP = "192.168.22.1"
+UDP_IP = "192.168.7.80"
 UDP_PORT_IN = 8000
 UDP_PORT_OUT = 9000
 
@@ -44,7 +46,24 @@ Fader:
 
 '''
 
-if __name__ == "__main__":
+class Receiver (Thread):
+    def __init__(self):
+        Thread.__init__(self)
+        self.done = False
+        self.start()
+    def run(self):
+        sock = socket.socket(socket.AF_INET, # Internet
+                             socket.SOCK_DGRAM) # UDP
+        sock.bind(("0.0.0.0",UDP_PORT_OUT)) 
+        sock.settimeout(0.02)
+        while not self.done:
+            try:
+                data, addr = sock.recvfrom(1024)
+                if data:
+                    print ("%s: [%s]" %(addr," ".join(["%02x"%c for c in data])))
+            except socket.timeout: pass
+    
+def main_send():
         
     sock = socket.socket(socket.AF_INET, # Internet
                          socket.SOCK_DGRAM) # UDP
@@ -65,6 +84,16 @@ if __name__ == "__main__":
         else:
             x +=  align_str (b",s")
             x +=  align_str (bytes(sys.argv[2],'latin-1'))
-            
     
-    sock.sendto(x, (UDP_IP, UDP_PORT_OUT))
+    sock.sendto(x, (UDP_IP, UDP_PORT_IN))
+if __name__ == "__main__":
+    if len(sys.argv) < 2: sys.argv=[sys.argv[0], "/ping"]
+    try:
+        receiver =  Receiver()
+        main_send()
+    finally:
+        pass
+    print ("\n")
+    input()
+    receiver.done = True
+    receiver.join()

@@ -57,4 +57,5 @@ wlan0     Link encap:Ethernet  HWaddr B8:27:EB:DD:B7:A4
 
 #define USB_MOUNT_POINT "/mnt/usb/PBKR"
 #define INTERNAL_MOUNT_POINT "/mnt/mmcblk0p2"
+#define WEB_ROOT_PATH "/home/www"
 #endif

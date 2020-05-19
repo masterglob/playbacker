@@ -1,0 +1,117 @@
+.cHidden
+{
+ visibility: hidden;
+}
+ 
+.cVisible1
+{
+ visibility: visible;
+ font-size : 200%; 
+ color: #DAEDFC;
+}
+
+body {
+    font-family: "arial";
+ font-size : 200%; 
+}
+
+#fr0 {
+    font-family: "arial";
+ font-size : 100%; 
+  color: #E0ED21;
+  border: 0px solid #E00D21;
+  padding: 5px;
+}
+#frYellow {
+    font-family: "arial";
+ font-size : 90%; 
+  color: #E0ED21;
+  border-radius: 8px;
+  border: 2px solid #E0ED21;
+  padding: 10px;
+}
+
+#frRed {
+    font-family: "arial";
+ font-size : 80%; 
+  color: #E0ED21;
+  border-radius: 8px;
+  border: 2px solid #E02D21;
+  padding: 10px;
+}
+
+#subFrame {
+  font-family: "arial";
+  font-size : 80%; 
+  color: #E00D21;
+  border: 0px solid #E00D21;
+  text-align: left;
+  padding: 5px;
+}
+
+.button {
+  opacity: 0.8;
+  transition-duration: 0.4s;
+  color: white;
+  height : 150px;
+  width : 150px;
+}
+
+.button:hover {
+  opacity: 1.0;
+  color: white;
+}
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buttonGreen{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #20ED21;
+}
+
+.buttonGray{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #808D81;
+}
+
+.buttonGraySmall{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #808D81;
+  height : 100px;
+  width : 95%;
+  font-size : 90%; 
+}
+
+.trackActive{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #30ED21;
+  height : 100px;
+  width : 95%;
+  font-size : 100%; 
+}
+
+.subFrame{
+  font-family: "arial";
+  font-size : 80%; 
+  color: #E00D21;
+  border: 0px solid #E00D21;
+  text-align: left;
+  padding: 5px;
+}
+
+.timecode{
+  opacity: 1.0;
+  font-family: "arial";
+  font-size : 180%; 
+  color: #4050F0;
+  border: 0px;
+  background-color: #1fe0;
+  width : 95%;
+  text-align: center;
+}

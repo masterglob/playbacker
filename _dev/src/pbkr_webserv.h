@@ -4,16 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <thread>
-#include <vector>
-
-#include "pbkr_config.h"
-#include "pbkr_utils.h"
-#include "pbkr_midi.h"
 
 namespace PBKR
 {
@@ -23,31 +15,6 @@ namespace WEB
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
-class WebSrv;
-
-class SockListener : Thread
-{
-public:
-    SockListener(WebSrv* srv, int id);
-    virtual ~SockListener(void);
-    // The thread implementation
-    void do_listen(int id);
-private:
-    void process_request(const std::string& req);
-    virtual void body(void);
-    WebSrv* m_srv;
-    int m_fd;
-    int m_id;
-};
-
-
-struct HTMLParam
-{
-    std::string name;
-    std::string value;
-};
-
-typedef std::vector<HTMLParam,std::allocator<HTMLParam>> ParamVect ;
 
 /*******************************************************************************
  * WEB SERVER
@@ -55,53 +22,21 @@ typedef std::vector<HTMLParam,std::allocator<HTMLParam>> ParamVect ;
 class WebSrv
 {
 public:
-    WebSrv (uint16_t port, size_t max_clients);
+    static WebSrv & instance (void);
     virtual ~WebSrv(void);
-    int sockfd(void)const{return m_sockfd;}
-    virtual std::string onGET (const std::string& page, const ParamVect& params) = 0;
+    void setValue(const std::string& name, const std::string& value);
 private:
-    int m_sockfd;
-    size_t m_nb_clients;
-    struct sockaddr_in m_serv_addr;
-    SockListener** m_listeners;
+    WebSrv ();
+    const std::string mResPath;
+    const std::string mWebResPath;
+    const std::string toSavePath(const std::string& name);
 };
 
-
-/*******************************************************************************
- * BasicWebSrv (exemple)
- *******************************************************************************/
-
-class BasicWebSrv : public WEB::WebSrv
-{
-public:
-    BasicWebSrv(FileManager& manager,
-            MIDI::MIDI_Controller_Mgr &midiMgr);
-    virtual ~BasicWebSrv(void);
-    virtual std::string onGET (const std::string& page, const WEB::ParamVect& params);
-    std::string pageRoot(const WEB::ParamVect& params);
-    std::string pageMIDI(const WEB::ParamVect& params);
-    std::string configureMIDI(const std::string& dev);
-
-    std::string pagePLAY(const WEB::ParamVect& params);
-
-    std::string pageTEST(const WEB::ParamVect& params);
-    static std::string findParamValue(
-            const WEB::ParamVect& params,
-            const std::string & name);
-private:
-    FileManager& m_manager;
-    MIDI::MIDI_Controller_Mgr& m_midiMgr;
-};
 
 
 /*******************************************************************************
  * UTILS
  *******************************************************************************/
-std::string toLink(const std::string& s,const std::string &hl);
-std::string toBold(const std::string& s);
-std::string toTitle1(const std::string& s);
-std::string toTitle2(const std::string& s);
-inline std::string newline(void){return "<BR>";}
 } // namespace WEB
 } // namespace PBKR
 

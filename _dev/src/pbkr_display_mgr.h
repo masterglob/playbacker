@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include <thread>
+#include <vector>
 #include <mutex>
 
 #include "pbkr_config.h"
@@ -18,6 +19,21 @@ namespace DISPLAY
 static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
 static const int MAX_NB_TRACKS (64);
+
+/*******************************************************************************
+ *   Property
+ *******************************************************************************/
+class Property
+{
+public:
+    Property (const std::string& name, const std::string & value);
+    void set (const std::string & value);
+    inline std::string get (void)const{return mValue;}
+    void refresh(void)const;
+private:
+    const std::string mName;
+    std::string mValue;
+};
 
 /*******************************************************************************
  *   DisplayManager
@@ -49,6 +65,7 @@ public:
     void startReading (void);
     void setProjectTitle (const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
+    void setTimeCode(const string & timecode);
     void forceRefresh(void);
     uint32_t printIdx(void)const{return m_printIdx;}
 private:
@@ -65,15 +82,19 @@ private:
     std::string m_warning;
     std::string m_line1;
     std::string m_line2;
-    std::string m_title;
+    Property m_title;
+    Property m_lMessage;
+    Property m_lTrack;
+    Property m_trackIdx;
+    Property m_timecode;
+    typedef std::vector<Property> Properties;
+    Properties m_trackName;
     std::string m_event;
     std::string m_filename;
-    std::string m_trackIdx;
     std::string m_trackCount;
     bool m_reading;
     bool m_pause;
     std::mutex m_mutex;
-    std::string m_trackNames[MAX_NB_TRACKS];
 }; // class
 
 }  // namespace DISPLAY

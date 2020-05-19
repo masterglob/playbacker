@@ -490,11 +490,8 @@ void FileManager::body(void)
         }
 
         // update timecode
-        if (OSC::p_osc_instance)
-        {
-            const string timecode (_file ? _file->getTimeCode() : "  :  ");
-            OSC::p_osc_instance-> setTimeCode(timecode);
-        }
+        const string timecode (_file ? _file->getTimeCode() : "  :  ");
+        display.setTimeCode(timecode);
     }
 }
 

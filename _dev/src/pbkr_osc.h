@@ -79,11 +79,10 @@ public:
     OSC_Controller(const OSC_Ctrl_Cfg& cfg);
     virtual ~OSC_Controller(void);
     void send(const OSC_Msg_To_Send& msg);
+    void setProperty(const std::string& name, const std::string& value);
     void setProjectName(const std::string& title);
-    void setFileName(const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
     void setActiveTrack (int trackIdx);
-    void sendLabelMessage(const std::string& msg);
     void setPbCtrlStatus(const bool isPlaying, const bool isPaused);
     void setClicVolume  (const float& v);
     void setMenuTxt  (const std::string& l1,const std::string& l2);
@@ -107,7 +106,6 @@ private:
     in_addr m_clientAddr;
     bool  m_isClientKnown;
     OSC_Msg_To_Send_Vect m_toSend;
-    string m_previoustc;
 }; // class OSC_Controller
 extern OSC_Controller* p_osc_instance;
 

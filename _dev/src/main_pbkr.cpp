@@ -121,7 +121,6 @@ int main (int argc, char**argv)
 
     static MIDI::MIDI_Controller_Mgr midiMgr;
 
-    WEB::BasicWebSrv srv(fileManager, midiMgr);
 	GPIOs::GPIO::begin();
 
 	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos

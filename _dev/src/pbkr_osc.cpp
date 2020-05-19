@@ -38,11 +38,16 @@ static const std::string osc_noType(",");
 static const std::string osc_intType(",i");
 static const std::string osc_stringType(",s");
 static const std::string osc_floatType(",f");
+static const std::string osc_prefix(OSC_NAME(""));
 inline void* MALLOC(size_t len)
 {
     void*res(malloc(len));
     if(!res) throw PBKR::EXCEPTION ("OOM!");
     return res;
+}
+
+inline std::string osc_name(const std::string & name){
+    return osc_prefix + name;
 }
 
 /*******************************************************************************/
@@ -209,12 +214,6 @@ OSC_Controller::~OSC_Controller(void)
 } // OSC_Controller::~OSC_Controller
 
 /*******************************************************************************/
-void OSC_Controller::sendLabelMessage(const std::string& msg)
-{
-    send (OSC_Msg_To_Send (OSC_NAME("lMessage"), msg));
-} // OSC_Controller::sendMessage
-
-/*******************************************************************************/
 void OSC_Controller::setPbCtrlStatus(const bool isPlaying, const bool isPaused)
 {
     const float playVal (isPlaying ? 1.0 : 0.0);
@@ -271,9 +270,7 @@ void OSC_Controller::CheckUSB(void)
 /*******************************************************************************/
 void OSC_Controller::setTimeCode(const string & timecode)
 {
-    if (m_previoustc != timecode)
-        send (OSC_Msg_To_Send (OSC_NAME("timecode"), timecode));
-    m_previoustc = timecode;
+    send (OSC_Msg_To_Send (OSC_NAME("timecode"), timecode));
 }
 
 /*******************************************************************************/
@@ -308,10 +305,17 @@ void OSC_Controller:: updateProjectList(void)
     }
 } // OSC_Controller::updateProjectList
 
+
+/*******************************************************************************/
+void OSC_Controller::setProperty(const std::string& name, const std::string& value)
+{
+    send (OSC_Msg_To_Send (osc_name(name), value));
+}
+
 /*******************************************************************************/
 void OSC_Controller::setProjectName(const std::string& title)
 {
-    send (OSC_Msg_To_Send (OSC_NAME("lPlaylist"), title));
+    setProperty ("lPlaylist", title);
 }
 
 /*******************************************************************************/
@@ -332,12 +336,6 @@ void OSC_Controller::setActiveTrack (int trackIdx)
         sprintf(buff,"/%s/mtTrackSel/%u/%u",OSC_PAGE,OSC_TRACK_NB_Y - Y,X+1);
         send (OSC_Msg_To_Send (buff, (int32_t) 1));
     }
-}
-
-/*******************************************************************************/
-void OSC_Controller::setFileName(const std::string& title)
-{
-    send (OSC_Msg_To_Send (OSC_NAME("lTrack"), title));
 }
 
 /*******************************************************************************/

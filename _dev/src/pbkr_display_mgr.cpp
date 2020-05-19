@@ -8,7 +8,9 @@
 
 #include "pbkr_menu.h"
 #include "pbkr_display_mgr.h"
+#include "pbkr_webserv.h"
 #include "pbkr_osc.h"
+#include "pbkr_api.h"
 
 // #define DEBUG_DISPLAY printf
 #define DEBUG_DISPLAY(...)
@@ -18,6 +20,29 @@ namespace PBKR
 namespace DISPLAY
 {
 
+/*******************************************************************************
+ *   Property
+ *******************************************************************************/
+Property::
+Property (const std::string& name, const std::string & value):
+    mName(name),
+    mValue(value)
+{
+}
+
+/*******************************************************************************/
+void Property::set (const std::string & value)
+{
+    mValue = value;
+    refresh();
+}
+
+void Property::refresh(void)const
+{
+    static WEB::WebSrv& web (WEB::WebSrv::instance());
+    web.setValue (mName, mValue);
+    if (OSC::p_osc_instance) OSC::p_osc_instance->setProperty(mName, mValue);
+}
 /*******************************************************************************
  *  DisplayManager
  *******************************************************************************/
@@ -37,14 +62,24 @@ DisplayManager::DisplayManager(void):
         m_printIdx(0),
         m_isInfo(true),
         m_canEvent(false),
-        m_title( "Unnamed project"),
+        m_title("projectName", "Unnamed project"),
+        m_lMessage("lMessage", " "),
+        m_lTrack("lTrack",""),
+        m_trackIdx("lTrackIdx",""),
+        m_timecode("timecode","  :  "),
         m_event(""),
         m_filename(""),
-        m_trackIdx(""),
         m_trackCount(""),
         m_reading(false),
         m_pause(false)
 {
+    static const std::string lTrack("lTrack");
+    for (int i = 0 ; i < MAX_NB_TRACKS ; i++)
+    {
+        const std::string name(lTrack + std::to_string(m_trackName.size()+1));
+        m_trackName.push_back(Property(name,""));
+        printf("Create (%d => %s)\n",m_trackName.size(), name.c_str());
+    }
     Thread::start();
 }
 
@@ -77,7 +112,7 @@ void DisplayManager::body(void)
 void DisplayManager::refresh(void)
 {
     if (!(m_ready&&m_canEvent)) return;
-    std::string l1 (m_title);
+    std::string l1 (m_title.get());
     std::string l2 ("");
     const uint32_t idx(m_printIdx%10);
     if (m_warning != "")
@@ -89,8 +124,7 @@ void DisplayManager::refresh(void)
             if (m_printIdx >= INFO_DISPLAY_SEC)
             {
                 m_warning = "";
-                if (OSC::p_osc_instance)
-                    OSC::p_osc_instance->sendLabelMessage("");
+                m_lMessage.set ("");
             }
         }
         else
@@ -99,8 +133,7 @@ void DisplayManager::refresh(void)
             if (m_printIdx >= WARNING_DISPLAY_SEC)
             {
                 m_warning = "";
-                if (OSC::p_osc_instance)
-                    OSC::p_osc_instance->sendLabelMessage("");
+                m_lMessage.set ("");
             }
         }
     }
@@ -108,17 +141,17 @@ void DisplayManager::refresh(void)
     {
         if (m_pause)
         {
-            l1 = m_title;
+            l1 = m_title.get();
             l2 = "Paused...";
         }
         else
         {
             if (idx < 3)
             {
-                l1 = m_title;
+                l1 = m_title.get();
             }
             else if (idx <6)
-                l1 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
+                l1 = std::string("Track ") + m_trackIdx.get() + "/" + m_trackCount;
             else
                 l1 ="Reading...";
             const char scroll[4] = {'/', '-', '/', '|'};
@@ -130,7 +163,7 @@ void DisplayManager::refresh(void)
         if (m_filename.length() >0)
         {
             if (idx < 4)
-                l2 = std::string("Track ") + m_trackIdx + "/" + m_trackCount;
+                l2 = std::string("Track ") + m_trackIdx.get() + "/" + m_trackCount;
             else if (idx < 6)
                 l2 = m_filename;
             else
@@ -178,8 +211,7 @@ void DisplayManager::info (const std::string& msg)
     m_warning = msg;
     m_isInfo = true;
     m_printIdx = 0;
-    if (OSC::p_osc_instance)
-        OSC::p_osc_instance->sendLabelMessage(std::string ("Info:" + msg));
+    m_lMessage.set (std::string ("Info:" + msg));
     refresh();
 
     m_mutex.unlock();
@@ -194,8 +226,7 @@ void DisplayManager::warning (const std::string& msg)
     m_warning = msg;
     m_isInfo = false;
     m_printIdx = 0;
-    if (OSC::p_osc_instance)
-        OSC::p_osc_instance->sendLabelMessage(std::string ("Warning:" + msg));
+    m_lMessage.set (std::string ("Warning:" + msg));
     refresh();
     m_mutex.unlock();
 } // DisplayManager::warning
@@ -203,28 +234,34 @@ void DisplayManager::warning (const std::string& msg)
 /*******************************************************************************/
 void  DisplayManager::setTrackName (const std::string& name, size_t trackIdx)
 {
+    printf("DisplayManager::setTrackName (%s, %d)\n", name.c_str(), trackIdx);
     if (trackIdx < MAX_NB_TRACKS)
     {
-            m_trackNames[trackIdx] = name;
-        if (OSC::p_osc_instance)
-        {
-            OSC::p_osc_instance->setTrackName(name, trackIdx);
-        }
+        printf("Set (%d => %s)\n",trackIdx,name.c_str());
+        m_trackName[trackIdx].set(substring (name, 0, 6));
     }
 } // DisplayManager::setTrackName
 
 /*******************************************************************************/
+void DisplayManager::setTimeCode(const string & timecode)
+{
+    const std::string prev (m_timecode.get());
+    if (prev != timecode)
+        m_timecode.set(timecode);
+}
+
+/*******************************************************************************/
 void DisplayManager::forceRefresh(void)
 {
+    m_title.refresh();
+    m_lTrack.set(m_filename);
+    for (auto iter (m_trackName.begin()) ; iter != m_trackName.end() ; ++iter){
+        Property& p(*iter);
+        p.refresh();
+    }
     if (OSC::p_osc_instance)
     {
-        OSC::p_osc_instance->setProjectName(m_title);
-        OSC::p_osc_instance->setFileName(m_filename);
-        OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
-        for (size_t i(0); i< MAX_NB_TRACKS;i++)
-        {
-            OSC::p_osc_instance->setTrackName(m_trackNames[i], i);
-        }
+        OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.get().c_str())-1);
     }
 }
 
@@ -238,21 +275,20 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_display.backlight();
         m_display.noBlink();
         m_display.noCursor();
+
+        m_lMessage.set ("Connected!");
+        m_lTrack.set("");
         if (OSC::p_osc_instance)
         {
             OSC::p_osc_instance->setProjectName("");
-            OSC::p_osc_instance->setFileName("");
-            OSC::p_osc_instance->sendLabelMessage("Connected!");
             if (OSC::p_osc_instance)
                 OSC::p_osc_instance->setActiveTrack(-1);
-            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
-                OSC::p_osc_instance->setTrackName("", i);
         }
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
-            m_trackNames[i] = "";
+            m_trackName[i].set ("");
         }
-        m_title = "No project";
+        m_title.set ("No project");
         m_event = "Starting...";
         m_filename = "";
         m_ready = true;
@@ -262,73 +298,71 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_display.noBacklight();
         m_display.noDisplay();
         m_display.noCursor();
+        m_lMessage.set ("Disconnected...");
+        m_lTrack.set("");
         if (OSC::p_osc_instance)
         {
-            OSC::p_osc_instance->sendLabelMessage("Disconnected...");
             OSC::p_osc_instance->setProjectName("");
-            OSC::p_osc_instance->setFileName("");
             if (OSC::p_osc_instance)
                 OSC::p_osc_instance->setActiveTrack(-1);
-            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
-                OSC::p_osc_instance->setTrackName("", i);
         }
-        m_title = "";
+        for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+            setTrackName("", i);
+        m_title.set ("");
         m_event = "Exiting...";
         m_filename = "";
         m_reading = false;
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
-            m_trackNames[i] = "";
+            m_trackName[i].set ("");
         }
         break;
     case evProjectTrackCount:
         m_trackCount = param;
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
-            m_trackNames[i] = "";
+            m_trackName[i].set ("");
         }
         break;
     case evUsbIn:
-        m_title = "";
+        m_title.set ("");
         m_event = "Reading USB...";
         m_filename = "";
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
-            m_trackNames[i] = "";
+            m_trackName[i].set ("");
         }
+        m_lTrack.set("...reading USB...");
         if (OSC::p_osc_instance)
         {
             OSC::p_osc_instance->setProjectName("...reading USB...");
-            OSC::p_osc_instance->setFileName("...reading USB...");
-            for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
-                OSC::p_osc_instance->setTrackName("", i);
         }
+        for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
+            setTrackName("", i);
         break;
     case evUsbOut:
-        m_title = "No USB key";
+        m_title.set ("No USB key");
         m_event = "USB unplugged!";
         m_filename = "";
         m_trackCount = "";
-        m_trackIdx = "";
+        m_trackIdx.set("");
         for (size_t i(0); i< MAX_NB_TRACKS;i++)
         {
-            m_trackNames[i] = "";
+            m_trackName[i].set ("");
         }
         if (OSC::p_osc_instance) OSC::p_osc_instance->setProjectName("No USB Key...");
         for (size_t i(0); i< OSC::NB_OSC_TRACK ;++i)
-            OSC::p_osc_instance->setTrackName("", i);
+            setTrackName("", i);
         break;
     case evProjectTitle:
-        m_title = param;
-        if (OSC::p_osc_instance)
-            OSC::p_osc_instance->setProjectName(m_title);
+        m_title.set (param);
         break;
     case evTrack:
-        m_trackIdx = param;
+        m_trackIdx.set(param);
         try
         {
             if (OSC::p_osc_instance)
-                OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.c_str())-1);
+                OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.get().c_str())-1);
         } catch (...) {}
         break;
     case evPause:
@@ -348,8 +382,7 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
     case evFile:
         m_event = std::string ("Reading ") + param;
         m_filename = param;
-        if (OSC::p_osc_instance)
-            OSC::p_osc_instance->setFileName(m_filename);
+        m_lTrack.set(m_filename);
         break;
     default:
         break;
@@ -360,7 +393,7 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
     if (OSC::p_osc_instance)
     {
         OSC::p_osc_instance->setPbCtrlStatus(m_reading, m_pause);
-        OSC::p_osc_instance->sendLabelMessage("");
+        m_lMessage.set ("");
     }
     m_printIdx = 0;
     refresh();

@@ -21,6 +21,8 @@ ifconfig wlan0 192.168.22.1 netmask 255.255.255.0
 /usr/local/bin/hostapd -B /usr/local/etc/hostapd.conf
 udhcpd /etc/udhcpd.conf
 
+sudo date -s 2020.05.20-12:00
+
 ld environment
 mkdir -p /tmp/_dev
 chmod 777 /tmp/_dev
@@ -31,4 +33,6 @@ chmod 777 /tmp/_dev
 stty -F /dev/ttyAMA0  115200 -evenp
 
 # start application
-(sleep 5 && cd /root/pbkr && ./pbkr.sh)
+(sleep 2 && cd /root/pbkr && ./pbkr.sh)
+# To start samba when loade : smbd
+
