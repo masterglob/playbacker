@@ -7,6 +7,8 @@
 #include <string>
 #include <unistd.h>
 
+#include "pbkr_utils.h"
+
 namespace PBKR
 {
 
@@ -19,7 +21,7 @@ namespace WEB
 /*******************************************************************************
  * WEB SERVER
  *******************************************************************************/
-class WebSrv
+class WebSrv : private Thread
 {
 public:
     static WebSrv & instance (void);
@@ -27,6 +29,8 @@ public:
     void setValue(const std::string& name, const std::string& value);
 private:
     WebSrv ();
+    virtual void body(void);
+    void process(const std::string& line);
     const std::string mResPath;
     const std::string mWebResPath;
     const std::string toSavePath(const std::string& name);

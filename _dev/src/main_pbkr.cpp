@@ -19,13 +19,13 @@
 #include "pbkr_utils.h"
 #include "pbkr_snd.h"
 #include "pbkr_midi.h"
-#include "pbkr_webserv.h"
 #include "pbkr_osc.h"
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
 #include "pbkr_projects.h"
 #include "pbkr_console.h"
 #include "pbkr_api.h"
+#include "pbkr_websrv.h"
 
 
 /*******************************************************************************

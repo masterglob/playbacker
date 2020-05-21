@@ -42,4 +42,8 @@ static inline void fread(std::ifstream& f, char* buffer, size_t count)
 }
 #define FOR(it, obj) for (auto it(obj.begin()); it != obj.end(); it ++)
 
+static inline bool starts_with(const std::string& str, const std::string& prefix)
+{
+    return (prefix == str.substr(0,prefix.length()));
+}
 #endif // I_pbkr_types_h_I

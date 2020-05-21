@@ -8,31 +8,34 @@
 
 <script type="text/javascript" src="index.js"></script>
 
-<div id="bip" class="display">DIV</div>
-<BR>
+<div class="tab">
+  <button class="tablinks" onclick="openTab(event, 'Control')" id="defaultOpen">Control</button>
+  <button class="tablinks" onclick="openTab(event, 'Keyb')">Keyboard</button>
+  <button class="tablinks" onclick="openTab(event, 'Setup')">Setup</button>
+</div>
 
-
+<div id="Control" class="tabcontent">
 <table id="fr0">
 	<tr>
-		<td  rowspan="2" id="frYellow">
+		<td  rowspan="2" id="frYellow" width="140">
 			PLAYBACK CONTROL
-			<table id="subFrame" width="140">
+			<table id="subFrame">
 			<tr>
 				<td colspan="1" id="subFrame" width="50%"> PLAY</td>
 				<td colspan="1" id="subFrame" width="50%"> STOP</td>
 			</tr>
 			<tr>
-				<td><button class="button buttonGreen" onclick=""/></td>
-				<td><button class="button buttonGray" onclick=""/></td>
+				<td><button class="button buttonGreen" onclick="sendCmd('pPlay')"/></td>
+				<td><button class="button buttonGray" onclick="sendCmd('pStop')"/></td>
 			</tr>
 			</table>
 		</td>
 		<td colspan="1" id="frYellow">
 			<table id="subFrame" style="table-layout: fixed; width: 100%;">
 			<tr>
-				<td><button class="button buttonGraySmall" width="33%">&lt;&lt;</button></td>
-				<td><button class="button buttonGraySmall" width="33%">&gt;&gt;</button></td>
-				<td id="timecode" width="33%">&nbsp;&nbsp;:&nbsp;&nbsp;</td>
+				<td><button class="button buttonGraySmall" width="40%" onclick="sendCmd('pBackward')">&lt;&lt;</button></td>
+				<td><button class="button buttonGraySmall" width="40%" onclick="sendCmd('pFastForward')">&gt;&gt;</button></td>
+				<td id="timecode" width="20%">&nbsp;&nbsp;:&nbsp;&nbsp;</td>
 			</tr>
 			</table>
 		</td>
@@ -77,7 +80,10 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
         for ($j = 1; $j <= $nbCol; $j++)
         {
             $trackId = $j + $i * $nbCol;
-            echo '<td><button id="lTrack'.$trackId.'" class="button buttonGraySmall">'.$trackId.'</button></td>';
+            echo '<td><button id="lTrack'.$trackId.'" class="button trackInactive" ';
+            echo 'onclick="sendCmd(\'mtTrackSel/' . $trackId. '\')">';
+            echo $trackId;
+            echo '</button></td>';
         };
         echo "</tr>";
     }
@@ -86,6 +92,18 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 		</td>
 	</tr>
 </table>
+</div>
+
+<div id="Control" class="tabcontent">
+</div>
+<div id="Keyb" class="tabcontent">
+</div>
+
 
 </body>
+
+<script>
+// Get the element with id="defaultOpen" and click on it
+document.getElementById("defaultOpen").click();
+</script>
 </html> 

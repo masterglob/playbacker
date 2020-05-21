@@ -1,5 +1,6 @@
-#include "pbkr_webserv.h"
+#include "pbkr_websrv.h"
 #include "pbkr_config.h"
+#include "pbkr_api.h"
 
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -27,6 +28,7 @@ WebSrv& webInstance (WebSrv::instance());
 
 /*******************************************************************************/
 WebSrv::WebSrv():
+    Thread("WebSrv-cmds"),
     mWebResPath(std::string (WEB_ROOT_PATH) + "/res")
 {
     if (! checkDir (mWebResPath))
@@ -37,6 +39,7 @@ WebSrv::WebSrv():
             printf ("Failed to create  WEB path : %s\n", mWebResPath.c_str());
         }
     }
+    start (false);
 }
 
 /*******************************************************************************/
@@ -71,6 +74,73 @@ WebSrv::setValue(const std::string& name, const std::string& value)
     myfile.close();
 } // WebSrv::setValue
 
+/*******************************************************************************/
+void
+WebSrv::body(void)
+{
+    static const std::string filename (std::string (WEB_ROOT_PATH) + "/cmd");
+    static std::ifstream file(filename);
+    std::string line;
+    while (not isExitting())
+    {
+        if (std::getline(file, line))
+        {
+            process (line);
+        }
+        else
+        {
+            usleep(1000*100);
+            file.close();
+            file.open(filename);
+        }
+    }
+} // WebSrv::body
+
+
+/*******************************************************************************/
+void
+WebSrv::process(const std::string& line)
+{
+    const size_t slashPos (line.find("/"));
+    const string cmd (substring (line, 0, slashPos));
+    const string param (substring (line, slashPos + 1));
+
+    /*printf ("WebSrv::process (\"%s\"). Cmd = %s, param = %s\n" ,
+            line.c_str(),
+            cmd.c_str(),
+            param.c_str());*/
+
+    if (cmd == "pPlay")
+    {
+        API::onPlayEvent();
+    }
+    else if (cmd == "pStop")
+    {
+        API::onStopEvent();
+    }
+    if (cmd == "pBackward")
+    {
+        API::onBackward();
+    }
+    if (cmd == "pFastForward")
+    {
+        API::onFastForward();
+    }
+    else if (cmd == "pRefresh")
+    {
+        // refresh all
+        API::forceRefresh();
+    }
+    else if (cmd == "mtTrackSel")
+    {
+        try {
+            const int tid(std::atoi (param.c_str())-1);
+            API::onChangeTrack(tid);
+        } catch (...) {
+            printf("Invalid parameters in mtTrackSel.IGNORED\n");
+        }
+    }
+}
 
 /*******************************************************************************
  * UTILS

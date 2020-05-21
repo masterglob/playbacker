@@ -8,9 +8,9 @@
 
 #include "pbkr_menu.h"
 #include "pbkr_display_mgr.h"
-#include "pbkr_webserv.h"
 #include "pbkr_osc.h"
 #include "pbkr_api.h"
+#include "pbkr_websrv.h"
 
 // #define DEBUG_DISPLAY printf
 #define DEBUG_DISPLAY(...)
@@ -78,7 +78,7 @@ DisplayManager::DisplayManager(void):
     {
         const std::string name(lTrack + std::to_string(m_trackName.size()+1));
         m_trackName.push_back(Property(name,""));
-        printf("Create (%d => %s)\n",m_trackName.size(), name.c_str());
+        // printf("Create (%d => %s)\n",m_trackName.size(), name.c_str());
     }
     Thread::start();
 }
@@ -234,11 +234,11 @@ void DisplayManager::warning (const std::string& msg)
 /*******************************************************************************/
 void  DisplayManager::setTrackName (const std::string& name, size_t trackIdx)
 {
-    printf("DisplayManager::setTrackName (%s, %d)\n", name.c_str(), trackIdx);
+    // printf("DisplayManager::setTrackName (%s, %d)\n", name.c_str(), trackIdx);
     if (trackIdx < MAX_NB_TRACKS)
     {
-        printf("Set (%d => %s)\n",trackIdx,name.c_str());
-        m_trackName[trackIdx].set(substring (name, 0, 6));
+        // printf("Set (%d => %s)\n",trackIdx,name.c_str());
+        m_trackName[trackIdx].set(substring (name, 0, 10));
     }
 } // DisplayManager::setTrackName
 
