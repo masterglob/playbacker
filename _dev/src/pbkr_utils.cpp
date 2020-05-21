@@ -534,7 +534,7 @@ void FileManager::body(void)
         }
 
         // update timecode
-        const string timecode (_file ? _file->getTimeCode() : "  :  ");
+        const string timecode (_file ? _file->getTimeCode() : " ");
         display.setTimeCode(timecode);
     }
 }
@@ -564,6 +564,7 @@ FileManager::loadProject (Project* proj)
     printf("Loaded project '%s' (%d tracks)\n",m_title.c_str(), m_nbFiles);
     selectIndex (proj->getFirstTrackIndex());
 
+    display.updateProjectList();
     if (OSC::p_osc_instance) OSC::p_osc_instance->updateProjectList();
     return true;
 }  // FileManager::loadProject

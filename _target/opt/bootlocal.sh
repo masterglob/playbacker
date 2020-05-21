@@ -29,15 +29,18 @@ chmod 777 /tmp/_dev
 
 # mkfifo /tmp/virt_kbd
 
+mkdir -p /home/www/res
 rm -f /home/www/cmd 2>/dev/null
 mkfifo /home/www/cmd
-chmod 777 /home/www/cmd
+chmod -R 777 /home/www
 
 # configure serial link
 stty -F /dev/ttyAMA0  115200 -evenp
 
 # start application
 (sleep 2 && cd /root/pbkr && ./pbkr.sh)
+echo "" > /usr/local/apache2/htdocs/index.html
+
 # To start samba when loaded : smbd
-# To start http when loaded : httpd
+httpd
 

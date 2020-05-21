@@ -15,31 +15,26 @@
 </div>
 
 <div id="Control" class="tabcontent">
-<table id="fr0">
+<table id="fr0" width="100%">
 	<tr>
-		<td  rowspan="2" id="frYellow" width="140">
+		<td id="frYellow">
 			PLAYBACK CONTROL
-			<table id="subFrame">
-			<tr>
-				<td colspan="1" id="subFrame" width="50%"> PLAY</td>
-				<td colspan="1" id="subFrame" width="50%"> STOP</td>
-			</tr>
-			<tr>
-				<td><button class="button buttonGreen" onclick="sendCmd('pPlay')"/></td>
-				<td><button class="button buttonGray" onclick="sendCmd('pStop')"/></td>
-			</tr>
-			</table>
-		</td>
-		<td colspan="1" id="frYellow">
 			<table id="subFrame" style="table-layout: fixed; width: 100%;">
+			<tr style=" height: 240px;">
+				<td><button class="button buttonGreen" onclick="sendCmd('pPlay')"/>PLAY</td>
+				<td><button class="button buttonRed" onclick="sendCmd('pStop')"/>STOP</td>
+				<td><button class="button buttonGray" width="40%" onclick="sendCmd('pBackward')">&lt;&lt;</button></td>
+				<td><button class="button buttonGray" width="40%" onclick="sendCmd('pFastForward')">&gt;&gt;</button></td>
+			</tr>
 			<tr>
-				<td><button class="button buttonGraySmall" width="40%" onclick="sendCmd('pBackward')">&lt;&lt;</button></td>
-				<td><button class="button buttonGraySmall" width="40%" onclick="sendCmd('pFastForward')">&gt;&gt;</button></td>
-				<td id="timecode" width="20%">&nbsp;&nbsp;:&nbsp;&nbsp;</td>
+			<td colspan="2" id="lPlayStatus"></td>
+			<td colspan="2" id="timecode">&nbsp;&nbsp;:&nbsp;&nbsp;</td>
 			</tr>
 			</table>
 		</td>
 	</tr>
+	
+	<?php /*
 	<tr>
 		<td colspan="2" id="frYellow">
 		Message:
@@ -50,6 +45,9 @@
 			</table>
 		</td>
 	</tr>
+	*/
+	?>
+	
 	<tr>
 		<td colspan="2" id="frYellow">
 			<table>
@@ -65,7 +63,7 @@
 			<table style="table-layout: fixed; width: 100%;">
 				<tr>
 <?php
-$nbCol=5;
+$nbCol=3;
 echo '	<td width ="30%" colspan="'.$nbCol.'"> Current Track</td>';
 echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 ?>
@@ -73,14 +71,15 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 			</table>
 			<table style="table-layout: fixed; width: 100%;">
 				<tr>
-<?php			
-    for ($i = 0; $i < 3; $i++) 
+<?php
+    $nTrack=20;
+    for ($i = 0; $i < $nTrack / $nbCol; $i++) 
     {
         echo "<tr>";
         for ($j = 1; $j <= $nbCol; $j++)
         {
             $trackId = $j + $i * $nbCol;
-            echo '<td><button id="lTrack'.$trackId.'" class="button trackInactive" ';
+            echo '<td height="200"><button id="lTrack'.$trackId.'" class="button trackInactive" ';
             echo 'onclick="sendCmd(\'mtTrackSel/' . $trackId. '\')">';
             echo $trackId;
             echo '</button></td>';
@@ -94,9 +93,39 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 </table>
 </div>
 
-<div id="Control" class="tabcontent">
+<?php 
+/*******************************************************/
+/*******************************************************/
+    /* onglet "SETUP"  */
+?>
+<div id="Setup" class="tabcontent">
+
+<table id="fr0" width="100%">
+	<tr>
+		<td  rowspan="2" id="frYellow" width="140">
+			PROJECTS
+			<table id="subFrame" width="100%">
+
+<?php 
+for ($i = 1; $i < 6 ; $i++) 
+{
+    echo '<tr><td height=150><button id="project'. $i .'" class="projectSel" onclick="sendCmd(\'project/' . $i. '\')"></button></td></tr>';
+}
+?>
+			</table>
+		</td>
+	</tr>
+</table>
 </div>
+
+
+<?php 
+/*******************************************************/
+/*******************************************************/
+    /* onglet "KEYBOARD"  */
+?>
 <div id="Keyb" class="tabcontent">
+	<div id="lConsole"></div>
 </div>
 
 
@@ -105,5 +134,12 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 <script>
 // Get the element with id="defaultOpen" and click on it
 document.getElementById("defaultOpen").click();
+
+const width  = window.innerWidth || document.documentElement.clientWidth || 
+document.body.clientWidth;
+const height = window.innerHeight|| document.documentElement.clientHeight|| 
+document.body.clientHeight;
+
+document.getElementById("lConsole").innerHTML = "W=" + width + ",H=" +height;
 </script>
 </html> 

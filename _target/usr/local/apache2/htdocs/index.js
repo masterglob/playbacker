@@ -51,6 +51,29 @@ function reqRefrReady(xhr)
 					elt.className =  "button trackInactive";
 				}
 			}
+			for(let i = 1; i < 10; i++)
+			{	
+				var currProject = data.getAttribute ("projectName");
+				var name =  "project"  + (i);
+				var elt = document.getElementById(name);
+				if (elt ==null) continue;
+				var attrVal = data.getAttribute (name);
+				if (attrVal != "")
+				{
+					if (currProject == attrVal)
+					{
+						elt.className =  "button projectLoaded";
+					}
+					else
+					{
+						elt.className =  "button projectReady";
+					}
+				}
+				else
+				{
+					elt.className =  "button projectEmpty";
+				}
+			}
 		}
     }
 }

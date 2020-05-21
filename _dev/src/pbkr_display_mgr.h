@@ -19,6 +19,7 @@ namespace DISPLAY
 static const int WARNING_DISPLAY_SEC(3);
 static const int INFO_DISPLAY_SEC(2);
 static const int MAX_NB_TRACKS (64);
+static const int MAX_NB_PROJECTS (10);
 
 /*******************************************************************************
  *   Property
@@ -61,13 +62,12 @@ public:
     void warning (const std::string& msg);
     void onEvent (const Event e, const std::string& param="");
     void setFilename (const std::string& filename);
-    void stopReading (void);
-    void startReading (void);
     void setProjectTitle (const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
     void setTimeCode(const string & timecode);
     void forceRefresh(void);
     uint32_t printIdx(void)const{return m_printIdx;}
+    void updateProjectList(void);
 private:
     DisplayManager(void);
     virtual ~DisplayManager(void);
@@ -87,8 +87,10 @@ private:
     Property m_lTrack;
     Property m_trackIdx;
     Property m_timecode;
+    Property m_lPlayStatus;
     typedef std::vector<Property> Properties;
     Properties m_trackName;
+    Properties m_projectNames;
     std::string m_event;
     std::string m_filename;
     std::string m_trackCount;

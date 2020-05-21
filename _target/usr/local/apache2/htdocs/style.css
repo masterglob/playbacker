@@ -24,7 +24,7 @@ body {
 }
 #frYellow {
     font-family: "arial";
- font-size : 90%; 
+ font-size : 200%; 
   color: #E0ED21;
   border-radius: 8px;
   border: 2px solid #E0ED21;
@@ -53,8 +53,9 @@ body {
   opacity: 0.8;
   transition-duration: 0.4s;
   color: white;
-  height : 120px;
-  width : 120px;
+  height : 200px;
+  width : 95%;
+  font-size : 120%; 
 }
 
 .button:hover {
@@ -72,44 +73,77 @@ body {
   background-color: #20ED21;
 }
 
+.buttonRed{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #E02D31;
+}
+
 .buttonGray{
   border-radius: 8px;
   border: 0px;
   background-color: #808D81;
 }
 
-.buttonGraySmall{
-  border-radius: 8px;
-  border: 0px;
-  background-color: #808D81;
-  height : 100px;
-  width : 95%;
-  font-size : 90%; 
-}
-
 .trackInactive{
   border-radius: 8px;
   border: 0px;
   background-color: #808D81;
-  height : 100px;
+  height : 90%;
   width : 95%;
-  font-size : 70%; 
+  font-size : 100%; 
 }
 
 .trackActive{
   border-radius: 8px;
   border: 0px;
   background-color: #30ED21;
-  height : 100px;
+  height : 95%;
   width : 95%;
-  font-size : 75%; 
+  font-size : 110%; 
+  align: center;
+}
+
+.projectLoaded{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #382;
+  height : 95%;
+  width : 95%;
+  font-size : 110%; 
+  align: center;
+  pointer-events:none;
+}
+
+
+.projectEmpty{
+  opacity: 0.0;
+  border-radius: 8px;
+  border: 0px;
+  background-color: #382;
+  height : 95%;
+  width : 95%;
+  font-size : 110%; 
+  align: center;
+  pointer-events:none;
+}
+
+.projectReady{
+  border-radius: 8px;
+  border: 0px;
+  background-color: #328;
+  height : 95%;
+  width : 95%;
+  font-size : 110%; 
+  align: center;
+  pointer-events: yes;
 }
 
 .subFrame{
   font-family: "arial";
-  font-size : 80%; 
-  color: #E00D21;
-  border: 0px solid #E00D21;
+  font-size : 130%; 
+  color: #E0D0F0;
+  border: 0px solid ;
   text-align: left;
   padding: 5px;
 }
@@ -117,13 +151,34 @@ body {
 #timecode{
   opacity: 1.0;
   font-family: "arial";
-  font-size : 180%; 
-  color: #4050F0;
+  font-size : 200%; 
+  color: #5060F0;
   border: 0px;
   background-color: #1fe0;
   width : 50%;
-  text-align: center;
+  text-align: right;
 }
+
+#lPlayStatus{
+  opacity: 1.0;
+  font-family: "arial";
+  font-size : 220%; 
+  color: #E0D0F0;
+  border: 0px;
+  background-color: #1fe0;
+  width : 50%;
+  text-align: left;
+}
+
+.projectSel {
+  transition-duration: 0.4s;
+  color: white;
+  height : 100px;
+  width : 95%;
+  font-size : 60%; 
+  background-color: #1fe0;
+}
+
 
 /* Style the tab */
 .tab {
@@ -135,6 +190,7 @@ body {
 
 /* Style the buttons that are used to open the tab content */
 .tab button {
+ font-size : 200%; 
   background-color: inherit;
   float: left;
   border: none;

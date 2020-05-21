@@ -1,6 +1,7 @@
 #include "pbkr_websrv.h"
 #include "pbkr_config.h"
 #include "pbkr_api.h"
+#include "pbkr_projects.h"
 
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -139,6 +140,31 @@ WebSrv::process(const std::string& line)
         } catch (...) {
             printf("Invalid parameters in mtTrackSel.IGNORED\n");
         }
+    }
+    else if (cmd == "project")
+    {
+        ProjectVect list;
+        getProjects (list, projectSourceInternal);
+        try
+        {
+            const size_t pid(std::atoi (param.c_str())-1);
+            if (pid < list.size()){
+                Project* p(list[pid]);
+                fileManager.loadProject(p);
+            }
+            else
+            {
+                printf ("Bad project Id:%u\n",pid);
+            }
+        }
+        catch(...) {};
+    }
+    else
+    {
+        printf ("WebSrv::process (\"%s\"). UNKNOWN  Cmd = %s, param = %s\n" ,
+                    line.c_str(),
+                    cmd.c_str(),
+                    param.c_str());
     }
 }
 

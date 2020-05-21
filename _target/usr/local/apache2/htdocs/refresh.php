@@ -25,9 +25,13 @@ dataValue("lTrack");
 for ($i = 0; $i < 64; $i++) {
     dataValue("lTrack".($i+1));
 }
+for ($i = 0; $i < 10; $i++) {
+    dataValue("project".($i+1));
+}
 dataValue("lTrackIdx");
 dataValue("timecode");
 dataValue("lMessage");
+dataValue("lPlayStatus");
 
 echo "/>"
 ?>
