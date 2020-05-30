@@ -343,7 +343,6 @@ void OSC_Controller::send(const OSC_Msg_To_Send& msg)
 {
     if (!m_isClientKnown)
     {
-        m_toSend.push_back(OSC_Msg_To_Send(msg));
         return;
     }
 
@@ -409,15 +408,8 @@ void OSC_Controller::body(void)
                 continue;
             }
             m_clientAddr = cliaddr.sin_addr;
-            processMsg(buffer, n);
             m_isClientKnown = true;
-
-            for (auto it(m_toSend.begin()); it != m_toSend.end(); it++)
-            {
-                OSC_Msg_To_Send& msg (*it);
-                send(msg);
-            }
-            m_toSend.clear();
+            processMsg(buffer, n);
         }
     }
     catch (...)

@@ -3,10 +3,12 @@ BUILD=.build
 OUT=out
 CC=g++
 CFLAGS= -O1 -Wall -I/usr/local/include/libxml2
-LIBS=-lwiringPi
+# CFLAG += -g
+LIBS=-lwiringPi 
 LIBS+=-lasound
 LIBS+=-lpthread
 # LIBS+=-lxml2
+# LIBS +=  -g
 
 LCD_OBJS=$(BUILD)/pbkr_display.cpp.o $(BUILD)/pbkr_gpio.cpp.o
 default:all
