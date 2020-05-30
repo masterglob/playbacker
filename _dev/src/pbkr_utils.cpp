@@ -875,7 +875,7 @@ const char* getIPAddr (const char* device)
 
 const char* getIPNetMask (const char* device)
 {
-    static char ipaddr[INET_ADDRSTRLEN];
+    static char ipaddr[INET_ADDRSTRLEN+1];
     struct ifaddrs * ifAddrStruct=NULL;
     struct ifaddrs * ifa=NULL;
     void * tmpAddrPtr=NULL;
@@ -887,7 +887,7 @@ const char* getIPNetMask (const char* device)
            if (!ifa->ifa_netmask) {
                continue;
            }
-           if (strcmp (ifa->ifa_name, device) != 0)
+           if (strcmp (ifa->ifa_name, device) == 0)
            {
                if (ifa->ifa_netmask->sa_family == AF_INET)
                { // check it is IP4 is a valid IP4 Address
