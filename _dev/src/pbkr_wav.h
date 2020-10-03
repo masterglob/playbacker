@@ -85,7 +85,7 @@ protected:
 /*******************************************************************************
  * WemosFileSender
  *******************************************************************************/
-/** reading & chacking 3 track WAV file */
+/** reading & checking 3 track WAV file */
 class WavFileLRC : public WavFile
 {
 public:
@@ -113,19 +113,36 @@ private:
     Fader* _eof;  // Fade out
     Fader* _bof;  // Fade in
 
+    /**
+     * if _hasMidiTrack is true, we use a 3 track WAV file and 3rd track is embedded midi
+     * */
+    const bool _hasMidiTrack;
+    const size_t _eltSize;
 
-    struct PACK LRC_Sample
+
+    struct PACK LRC_SampleWithMidi
     {
         int16_t l;
         int16_t r;
         int16_t midi;
     };
 
+    struct PACK LRC_SampleWithoutMidi
+    {
+        int16_t l;
+        int16_t r;
+    };
+
     struct Buffer
     {
-        Buffer (void):_pos(WAV_BUFFER_SAMPLES){ZERO(_data);}
+        Buffer (void):_pos(WAV_BUFFER_SAMPLES){ZERO(_samples);}
         size_t _pos; // Reading Pos
-        LRC_Sample _data[WAV_BUFFER_SAMPLES];
+        union
+        {
+            char _buffer;
+            LRC_SampleWithMidi _data3[WAV_BUFFER_SAMPLES];
+            LRC_SampleWithoutMidi _data2[WAV_BUFFER_SAMPLES];
+        } _samples;
     };
     Buffer _buffers[WAV_NB_BUFFERS];
     size_t _bufferIdx;

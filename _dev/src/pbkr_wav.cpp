@@ -157,9 +157,15 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
                 WavFile(path + "/" + filename),
                 _eof(NULL),
                 _bof(NULL),
+                _hasMidiTrack(mAudioHdr.nChannels == 3),
+                _eltSize(_hasMidiTrack ? sizeof(LRC_SampleWithMidi) : sizeof(LRC_SampleWithoutMidi) ),
                 _bufferIdx(0)
 {
-    CHECK_FIELD("NB Channels", mAudioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
+    if (mAudioHdr.nChannels != 2 && mAudioHdr.nChannels != 3)
+    {
+        CHECK_FIELD("NB Channels =2 or 3", mAudioHdr.nChannels, -1);
+    }
+
     CHECK_FIELD("Sampling rate", actualSampleRate.supported(mAudioHdr.nSamplesPerSec), true);
 
     CHECK_FIELD("bit depth", mAudioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
@@ -190,8 +196,9 @@ WavFileLRC::reset(void)
     _eof=NULL;
     WavFile::reset();
     // read first buffer
-    ZERO(_buffers[0]._data);
-    fread(mIf, (char*)_buffers[0]._data, sizeof(_buffers[0]._data));
+    ZERO(_buffers[0]._samples);
+    fread(mIf, &_buffers[0]._samples._buffer, _eltSize * WAV_BUFFER_SAMPLES);
+
     _buffers[0]._pos = 0;
     for (size_t i(0) ; i < WAV_NB_BUFFERS ; i++)
     {
@@ -259,11 +266,21 @@ WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
             return false;
         }
     }
-    LRC_Sample& sample (b->_data[b->_pos++]);
-    l = ((float)sample.l) * READ_VOLUME;
-    r = ((float)sample.r) * READ_VOLUME;
+    if (_hasMidiTrack)
+    {
+        LRC_SampleWithMidi& sample (b->_samples._data3[b->_pos++]);
+        l = ((float)sample.l) * READ_VOLUME;
+        r = ((float)sample.r) * READ_VOLUME;
 
-    midi = sample.midi;
+        midi = sample.midi;
+    }
+    else
+    {
+        LRC_SampleWithoutMidi& sample (b->_samples._data2[b->_pos++]);
+        l = ((float)sample.l) * READ_VOLUME;
+        r = ((float)sample.r) * READ_VOLUME;
+        midi = 0;
+    }
 
     if (_bof)
     {
@@ -292,10 +309,10 @@ void
 WavFileLRC::readBuffer(size_t index)
 {
     Buffer& b(_buffers[index]);
-    ZERO(b._data);
+    ZERO(b._samples);
     if (!_eof)
     {
-        fread(mIf, (char*)b._data, sizeof(b._data));
+        fread(mIf, &b._samples._buffer, _eltSize * WAV_BUFFER_SAMPLES);
         //fread (_f, (char*)b._data, sizeof(b._data));
         if (!mIf)
         {
