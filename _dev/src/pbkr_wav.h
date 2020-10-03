@@ -90,7 +90,7 @@ class WavFileLRC : public WavFile
 {
 public:
     /* Check LRC format:
-     * - 44.1Khz
+     * - Sample rate : check in "Utils::SampleRate"
      * - 3 channels
      * - 16 bits
      */
@@ -107,6 +107,7 @@ public:
     void fastForward(bool forward, const int nbSeconds);
     string getTimeCode(void);
 
+    inline SampleRate::Frequency frequency(void)const{return mAudioHdr.nSamplesPerSec;}
     virtual void reset(void);
 private:
     Fader* _eof;  // Fade out

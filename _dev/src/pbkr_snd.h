@@ -5,6 +5,7 @@
 #include <sys/select.h>
 #include <sys/types.h>
 #include <string>
+#include <mutex>
 #include "pbkr_utils.h"
 
 #include <alsa/asoundlib.h>
@@ -28,22 +29,28 @@ class SoundPlayer
 public:
 	SoundPlayer(const char * device_name = "hw:0");
 	virtual ~SoundPlayer(void);
+
+	/**
+	 * Change sample rate frequency
+	 */
+    void set_sample_rate(const SampleRate::Frequency freq);
+    inline SampleRate::Frequency sample_rate(void)const{return mSampleRate;}
+
 	const char* pcm_name(void)const{return _pcm_name;}
+
 	/* Append samples in buffer.
 	 * Plays only when buffer is full
 	 * @param count number of elemetns in samples
 	 */
 	void fill(const StereoSample* samples, snd_pcm_uframes_t count);
-	/*
-	 * Directly plays a buffer
-	 */
-	void play(unsigned char * data, int frames);
 
 	/* Append 1 sample (L+R) in buffer. Applies the volume level.
 	 * @param l,r :value between -1 and 1. values above will saturate
 	 */
 	inline void write_sample (float l, float r);
 private:
+	void clear(void);
+	void setup(void);
 	void fail(const std::string& msg);
 	/* Handle for the PCM device */
 	snd_pcm_t *pcm_handle;
@@ -54,8 +61,10 @@ private:
 	/* configuration to be used for the PCM stream. */
 	snd_pcm_hw_params_t *hwparams;
 	/* Name of the PCM device, default = hw:0,0          */
-	char* _pcm_name;
+	char* const _pcm_name;
+	std::mutex mMutex;
 
+	unsigned int mSampleRate;
 	StereoSample* _samples;
 	StereoSample* _sampleFill;
 

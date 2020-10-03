@@ -205,6 +205,50 @@ void setRealTimePriority(void)
 }
 
 /*******************************************************************************
+ * SAMPLE_RATE
+ *******************************************************************************/
+SampleRate::SampleRate(void)
+{
+    mSupportedRates.push_back(44100u);
+    mSupportedRates.push_back(48000u);
+    mCurrent = mSupportedRates[0];
+}
+
+/*******************************************************************************/
+bool SampleRate::supported (const Frequency rate)
+{
+    FOR(it,mSupportedRates)
+    {
+        const Frequency r(*it);
+
+        if (rate == r)
+        {
+            // DEBUG_WFS("Supported sample rate:%lu\n",rate);
+            return true;
+        }
+    }
+    DEBUG_WFS("Unsupported sample rate:%lu\n",rate);
+    return false;
+}
+/*******************************************************************************/
+bool SampleRate::set(const Frequency rate)
+{
+    if (supported(rate))
+    {
+        if (mCurrent != rate)
+        {
+            // DEBUG_WFS ("Request Sample Rate to %lu\n",rate);
+        }
+        mCurrent =rate;
+        return true;
+    }
+    return false;
+}
+
+// Static fields for SampleRate
+SampleRate actualSampleRate;
+
+/*******************************************************************************
  * VIRTUAL TIME
  *******************************************************************************/
 const VirtualTime::Time VirtualTime::zero_time ({0,0});
@@ -232,7 +276,7 @@ VirtualTime::Time VirtualTime::Time::operator- (VirtualTime::Time const&r)const
 	result.nbSec -= r.nbSec;
 	if (result.samples < r.samples)
 	{
-		result.samples+=FREQUENCY_HZ;
+		result.samples+=CURRENT_FREQUENCY;
 		result.nbSec--;
 	}
 	result.samples -= r.samples;
@@ -246,9 +290,9 @@ VirtualTime::Time VirtualTime::Time::operator+ (VirtualTime::Time const&r)const
 	VirtualTime::Time result (*this);
 	result.nbSec += r.nbSec;
 	result.samples += r.samples;
-	if (result.samples>=FREQUENCY_HZ)
+	if (result.samples>=CURRENT_FREQUENCY)
 	{
-		result.samples-=FREQUENCY_HZ;
+		result.samples-=CURRENT_FREQUENCY;
 		result.nbSec++;
 	}
 	return result;
@@ -258,9 +302,9 @@ VirtualTime::Time VirtualTime::Time::operator+ (VirtualTime::Time const&r)const
 void VirtualTime::elapseSample(void)
 {
 	_currTime.samples ++;
-	if (_currTime.samples>=FREQUENCY_HZ)
+	if (_currTime.samples>=CURRENT_FREQUENCY)
 	{
-		_currTime.samples-=FREQUENCY_HZ;
+		_currTime.samples-=CURRENT_FREQUENCY;
 		_currTime.nbSec++;
 	}
 }
@@ -269,14 +313,14 @@ void VirtualTime::elapseSample(void)
 unsigned long VirtualTime::delta(const Time& t0, const Time& t1)
 {
 	unsigned long result (t1.samples - t0.samples);
-	result += FREQUENCY_HZ * (t1.nbSec -t0.nbSec);
+	result += CURRENT_FREQUENCY * (t1.nbSec -t0.nbSec);
 	return result;
 }
 
 /*******************************************************************************/
 float VirtualTime::toS(const Time& s)
 {
-	const float res (s.nbSec + ((float)s.samples) /FREQUENCY_HZ);
+	const float res (s.nbSec + ((float)s.samples) /CURRENT_FREQUENCY);
 	return res;
 }
 
@@ -290,12 +334,12 @@ VirtualTime::Time VirtualTime::inS(float s)
 		result.nbSec = intsec;
 		s -= intsec;
 
-		const unsigned long toSamples (s * FREQUENCY_HZ);
+		const unsigned long toSamples (s * CURRENT_FREQUENCY);
 
 		result.samples = toSamples;
-		if (result.samples>FREQUENCY_HZ)
+		if (result.samples>CURRENT_FREQUENCY)
 		{
-			result.samples-=FREQUENCY_HZ;
+			result.samples-=CURRENT_FREQUENCY;
 			result.nbSec++;
 		}
 	}
@@ -753,7 +797,7 @@ bool FileManager::selectIndex(const size_t i)
     if (_file->is_open())
     {
         printf("Opened %s\n",_file->mFilename.c_str());
-
+        actualSampleRate.set(_file->frequency());
         const string trackIdx(std::to_string(track.m_index));
         display.onEvent(DISPLAY::DisplayManager::evFile, track.m_title);
         display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);

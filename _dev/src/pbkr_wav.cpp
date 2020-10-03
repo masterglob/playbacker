@@ -22,7 +22,6 @@ static const int WAV_HDR_WAVE (0x45564157u);
 static const int WAV_HDR_FMT  (0x20746D66u);
 static const int WAV_FMT_PCM  (0x0001u);
 static const int NB_INTERLEAVED_CHANNELS  (3u);
-static const int NB_SAMPLES_PER_SEC (44100u);
 static const int NB_BYTES_PER_SAMPLE (2u);
 static const int SUB_FORMAT_MASK (0xFFFEu);
 size_t fileLength(std::ifstream& f)
@@ -161,7 +160,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
                 _bufferIdx(0)
 {
     CHECK_FIELD("NB Channels", mAudioHdr.nChannels, NB_INTERLEAVED_CHANNELS);
-    CHECK_FIELD("Sampling rate", mAudioHdr.nSamplesPerSec, NB_SAMPLES_PER_SEC);
+    CHECK_FIELD("Sampling rate", actualSampleRate.supported(mAudioHdr.nSamplesPerSec), true);
 
     CHECK_FIELD("bit depth", mAudioHdr.wBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
     CHECK_FIELD("Blk size", mAudioHdr.nBlockAlign, mAudioHdr.nChannels * NB_BYTES_PER_SAMPLE);
@@ -171,6 +170,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
         CHECK_FIELD("bit depth2", mAddHdr.wValidBitsPerSample, 8 * NB_BYTES_PER_SAMPLE);
         CHECK_FIELD("Sub PCM type", mAddHdr.wFormatTag, WAV_FMT_PCM);
     }
+
 }
 
 /*******************************************************************************/
@@ -207,7 +207,7 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
 {
     m_mutex.lock();
     // Note : 6 bytes per sample
-    static const int bytesPerSeconde (FREQUENCY_HZ * 6);
+    static const int bytesPerSeconde (mAudioHdr.nSamplesPerSec * 6);
     const streamoff offset(bytesPerSeconde * nbSeconds);
     const int sign(forward ? 1 : -1);
     mIf.seekg(offset * sign, ios_base::cur);
@@ -227,7 +227,7 @@ WavFileLRC::getTimeCode(void)
     {
         const size_t currBytePos ((size_t)mIf.tellg());
         const size_t samplePos ((currBytePos - mHdrLen) / (NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE));
-        const size_t posSec ((samplePos) / (NB_SAMPLES_PER_SEC));
+        const size_t posSec ((samplePos) / mAudioHdr.nSamplesPerSec);
         char s[10];
         snprintf(s, 10, "%02d:%02d\n",posSec/60, posSec%60);
         return s;

@@ -140,7 +140,7 @@ int main (int argc, char**argv)
         int midi;
 		float phase = 0;
         float volume(0.9);
-		const float phasestep=(TWO_PI * 440.0)/ 44100.0;
+		const float phasestep=(TWO_PI * 440.0)/ 44100.0; // TODO PHASE!
 		SOUND::SoundPlayer playerHifi (hifidac);
 
 		setRealTimePriority();
@@ -150,7 +150,7 @@ int main (int argc, char**argv)
 		while (!Thread::isExitting())
 		{
 			// if (BTN.pressed()) break;
-
+		    // Check if freq changed
 			if (console.doSine)
 			{
 
@@ -162,6 +162,10 @@ int main (int argc, char**argv)
 			    fileManager.getSample(l,r,midi);
                 l *=  volume;
                 r *=  volume;
+                if (CURRENT_FREQUENCY != playerHifi.sample_rate())
+                {
+                    playerHifi.set_sample_rate(CURRENT_FREQUENCY);
+                }
 			}
 
 			VirtualTime::elapseSample();

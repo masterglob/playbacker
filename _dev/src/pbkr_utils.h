@@ -35,7 +35,7 @@ class WavFileLRC;
 
 #define PI 3.14159265
 #define TWO_PI (2.0*PI)
-#define FREQUENCY_HZ (44100u)
+#define DEFAULT_FREQUENCY_HZ (44100u)
 
 /*******************************************************************************
  * THREADS
@@ -76,6 +76,29 @@ private:
 	pthread_attr_t* _attr;
 	const std::string m_name;
 };
+
+/*******************************************************************************
+ * SAMPLE_RATE
+ *******************************************************************************/
+class SampleRate
+{
+public:
+    typedef unsigned long Frequency;
+    SampleRate(void);
+    /**
+     * Set curent sample rate
+     * @return true if successfull. false if unknown sample rate
+     */
+    bool set(const Frequency rate);
+    bool supported (const Frequency rate);
+    inline Frequency get(void)const{return mCurrent;}
+private:
+    std::vector<Frequency> mSupportedRates;
+    Frequency mCurrent;
+};
+extern SampleRate actualSampleRate;
+
+#define CURRENT_FREQUENCY (actualSampleRate.get())
 
 /*******************************************************************************
  * VIRTUAL TIME
