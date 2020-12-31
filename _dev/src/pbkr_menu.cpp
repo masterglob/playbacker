@@ -7,6 +7,7 @@
 #include "pbkr_display_mgr.h"
 #include "pbkr_projects.h"
 #include "pbkr_utils.h"
+#include "pbkr_version.h"
 
 namespace
 {
@@ -18,6 +19,7 @@ using namespace PBKR;
 struct ListMenuItem;
 struct PlayMenuItem;
 struct NetShowMenuItem;
+struct SettingsMenuItem;
 struct SelectProjectShowMenuItem;
 struct ClicSettingsMenuItem;
 struct CopyFromUSBMenuItem;
@@ -121,6 +123,19 @@ private:
     uint32_t m_upDownIdxMax;
 };
 NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
+
+
+/*******************************************************************************/
+struct SettingsMenuItem : MenuItem
+{
+    SettingsMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~SettingsMenuItem(void){}
+    virtual void onLeftRightPress(const bool isLeft){}
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+protected:
+};
+SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
 
 /*******************************************************************************/
 struct SelectProjectShowMenuItem : ListMenuItem
@@ -777,6 +792,34 @@ const std::string NetShowMenuItem::menul1(void)
 const std::string NetShowMenuItem::menul2(void)
 {
     return menul(false);
+}
+
+
+/*******************************************************************************
+ *
+ ######  ######## ######## ######## #### ##    ##  ######    ######
+##    ## ##          ##       ##     ##  ###   ## ##    ##  ##    ##
+##       ##          ##       ##     ##  ####  ## ##        ##
+ ######  ######      ##       ##     ##  ## ## ## ##   ####  ######
+      ## ##          ##       ##     ##  ##  #### ##    ##        ##
+##    ## ##          ##       ##     ##  ##   ### ##    ##  ##    ##
+ ######  ########    ##       ##    #### ##    ##  ######    ######
+*******************************************************************************/
+SettingsMenuItem::SettingsMenuItem(const std::string & title, MenuItem* parent)
+:
+        MenuItem(title,parent)
+{
+
+}
+const std::string SettingsMenuItem::menul1(void)
+{
+    return "Version";
+}
+const std::string SettingsMenuItem::menul2(void)
+{
+    static const std::string version (PBKR_VERSION);
+    static const std::string build (std::to_string(PBKR_BUILD_ID));
+    return version+" b"+build;
 }
 
 /*******************************************************************************
