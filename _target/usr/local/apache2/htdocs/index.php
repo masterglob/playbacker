@@ -10,8 +10,8 @@
 
 <div class="tab">
   <button class="tablinks" onclick="openTab(event, 'Control')" id="defaultOpen">Control</button>
-  <button class="tablinks" onclick="openTab(event, 'Keyb')">Keyboard</button>
-  <button class="tablinks" onclick="openTab(event, 'Setup')">Setup</button>
+  <button class="tablinks" onclick="openTab(event, 'Project')">Project</button>
+  <button class="tablinks" onclick="openTab(event, 'Config')">Config</button>
 </div>
 
 <div id="Control" class="tabcontent">
@@ -96,9 +96,9 @@ echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
 <?php 
 /*******************************************************/
 /*******************************************************/
-    /* onglet "SETUP"  */
+    /* "PROJECTS" tab */
 ?>
-<div id="Setup" class="tabcontent">
+<div id="Project" class="tabcontent">
 
 <table id="fr0" width="100%">
 	<tr>
@@ -122,10 +122,21 @@ for ($i = 1; $i < 6 ; $i++)
 <?php 
 /*******************************************************/
 /*******************************************************/
-    /* onglet "KEYBOARD"  */
+    /* "CONFIG" tab  */
 ?>
-<div id="Keyb" class="tabcontent">
-	<div id="lConsole"></div>
+<div id="Config" class="tabcontent">
+<!-- 	<div id="lConsole"></div> -->
+<table id="fr0" width="100%">
+	<tr>
+	<td>Version </td>
+	<td id="lVersion"/>
+	</tr>
+	<tr>
+	<td>Build </td>
+	<td id="lBuild"/>
+	</tr>
+</table>
+	
 </div>
 
 
@@ -141,5 +152,6 @@ const height = window.innerHeight|| document.documentElement.clientHeight||
 document.body.clientHeight;
 
 document.getElementById("lConsole").innerHTML = "W=" + width + ",H=" +height;
+
 </script>
 </html> 

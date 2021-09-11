@@ -29,6 +29,7 @@ Property (const std::string& name, const std::string & value):
     mName(name),
     mValue(value)
 {
+    refresh();
 }
 
 /*******************************************************************************/
@@ -69,6 +70,8 @@ DisplayManager::DisplayManager(void):
         m_trackIdx("lTrackIdx",""),
         m_timecode("timecode",""),
         m_lPlayStatus("lPlayStatus",""),
+        m_lBuild("lBuild", std::to_string(PBKR_BUILD_ID)),
+        m_lVersion("lVersion",PBKR_VERSION),
         m_event(""),
         m_filename(""),
         m_trackCount(""),

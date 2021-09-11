@@ -88,6 +88,8 @@ private:
     Property m_trackIdx;
     Property m_timecode;
     Property m_lPlayStatus;
+    Property m_lBuild;
+    Property m_lVersion;
     typedef std::vector<Property> Properties;
     Properties m_trackName;
     Properties m_projectNames;

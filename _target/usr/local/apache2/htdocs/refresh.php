@@ -32,6 +32,8 @@ dataValue("lTrackIdx");
 dataValue("timecode");
 dataValue("lMessage");
 dataValue("lPlayStatus");
+dataValue("lVersion");
+dataValue("lBuild");
 
 echo "/>"
 ?>
