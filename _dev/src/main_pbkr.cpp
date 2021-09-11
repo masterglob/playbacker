@@ -178,7 +178,7 @@ int main (int argc, char**argv)
 			playerHifi.write_sample(l,r);
 			if (midi >=0)
 			{
-			    midiCmdToWemos.push_back(midi);
+			    midiCmdToWemos.push_back(midiLatency.putSample(midi));
 			}
 			else if (midiCmdToWemos.size() > 0)
 			{

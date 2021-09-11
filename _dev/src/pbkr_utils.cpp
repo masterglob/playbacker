@@ -987,52 +987,9 @@ void WemosControl::sendByte(void)
  * LATENCY MANAGER
  *******************************************************************************/
 
-Latency::Latency(void):m_pos(0),m_size(0),m_buffer(NULL){}
-Latency::~Latency(void)
-{
-    if (m_buffer) delete m_buffer;
-}
-
-void Latency::setMs(uint8_t latency)
-{
-    // how many samples? 1000 ms => 44100u
-    const size_t newSize ((441*latency) / 10);
-    if (newSize == m_size)
-    {
-        printf("latency unchanged to %d ms = %d samples\n", latency,m_size);
-        return;
-    }
-    m_pos = 0;
-    if (m_size == 0 && m_buffer)
-    {
-        delete m_buffer;
-        m_buffer = NULL;
-    }
-
-    if (newSize > m_size)
-    {
-        if (m_buffer) delete m_buffer;
-        m_buffer = (float*) malloc (newSize * sizeof(float));
-        if (m_buffer)
-            memset (m_buffer, 0, newSize * sizeof(float));
-    }
-    m_size = newSize;
-    printf("Changed latency to %d ms = %d samples\n", latency,m_size);
-}
-
-float Latency::putSample(float & newSample)
-{
-    if (!m_buffer) return newSample;
-
-    float& ref (m_buffer[m_pos]);
-    const float res (ref);
-    ref = newSample;
-    m_pos ++;
-    if (m_pos >= m_size) m_pos = 0;
-    return res;
-}
-Latency leftLatency;
-Latency rightLatency;
+Latency<int> midiLatency;
+Latency<float> leftLatency;
+Latency<float> rightLatency;
 
 WemosControl wemosControl("/dev/ttyAMA0");
 } // namespace PBKR

@@ -257,20 +257,22 @@ extern FileManager fileManager;
 /*******************************************************************************
  * LATENCY MANAGER
  *******************************************************************************/
+template<typename T>
 class Latency
 {
 public:
     Latency(void);
     ~Latency(void);
     void setMs(uint8_t latency);
-    float putSample(float & newSample); // return a latency over newSample
+    T putSample(T & newSample); // return a latency over newSample
 private:
     size_t m_pos;
     size_t m_size;
-    float* m_buffer;
+    T* m_buffer;
 };
-extern Latency leftLatency;
-extern Latency rightLatency;
+extern Latency<int> midiLatency;
+extern Latency<float> leftLatency;
+extern Latency<float> rightLatency;
 
 /*******************************************************************************
  * SEND MESSAGES TO WEMOS
@@ -314,6 +316,72 @@ extern const char* NET_DEV_ETH;
 /** Return the IP address*/
 const char* getIPAddr (const char* device);
 const char* getIPNetMask (const char* device);
+
+
+
+
+/*******************************************************************************
+ * TEMPLATE DEFINITIONS
+ *******************************************************************************/
+
+/*******************************************************************************/
+template <typename T>
+Latency<T>::Latency(void):m_pos(0),m_size(0),m_buffer(NULL){}
+/*******************************************************************************/
+template <typename T>
+Latency<T>::~Latency(void)
+{
+    if (m_buffer) delete m_buffer;
+}
+
+/*******************************************************************************/
+template <typename T>
+void Latency<T>::setMs(uint8_t latency)
+{
+    // how many samples? 1000 ms => 44100u
+    if (latency < 0)
+    {
+        latency = 0;
+    }
+
+    const size_t newSize ((441*latency) / 10);
+    if (newSize == m_size)
+    {
+        printf("latency unchanged to %d ms = %d samples\n", latency,m_size);
+        return;
+    }
+    m_pos = 0;
+    if (m_size == 0 && m_buffer)
+    {
+        delete m_buffer;
+        m_buffer = NULL;
+    }
+
+    if (newSize > m_size)
+    {
+        if (m_buffer) delete m_buffer;
+        m_buffer = (T*) malloc (newSize * sizeof(T));
+        if (m_buffer)
+            memset (m_buffer, 0, newSize * sizeof(T));
+    }
+    m_size = newSize;
+    printf("Changed latency to %d ms = %d samples\n", latency,m_size);
+}
+
+/*******************************************************************************/
+template <typename T>
+T Latency<T>::putSample(T & newSample)
+{
+    if (!m_buffer) return newSample;
+
+    T& ref (m_buffer[m_pos]);
+    const T res (ref);
+    ref = newSample;
+    m_pos ++;
+    if (m_pos >= m_size) m_pos = 0;
+    return res;
+}
+
 
 }
 #endif // _pbkr_utils_h_
