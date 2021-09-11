@@ -172,13 +172,16 @@ int main (int argc, char**argv)
             phase += phasestep;
             if (phase > TWO_PI) phase -=TWO_PI;
 
+            // apply latency
             l = leftLatency.putSample(l);
             r = rightLatency.putSample (r);
+            midi = midiLatency.putSample(midi);
 
 			playerHifi.write_sample(l,r);
 			if (midi >=0)
 			{
-			    midiCmdToWemos.push_back(midiLatency.putSample(midi));
+			    // printf("TODO : MIDI byte to send: %02X\n",midi);
+			    midiCmdToWemos.push_back(midi);
 			}
 			else if (midiCmdToWemos.size() > 0)
 			{
@@ -186,7 +189,6 @@ int main (int argc, char**argv)
 			    midiCmdToWemos.clear();
 			}
 
-            // printf("TODO : MIDI byte to send: %02X\n",midi);
 			wemosControl.sendByte();
 
 			if (ledFader->update())
