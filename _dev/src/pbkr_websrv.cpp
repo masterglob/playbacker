@@ -2,6 +2,7 @@
 #include "pbkr_config.h"
 #include "pbkr_api.h"
 #include "pbkr_projects.h"
+#include "pbkr_menu.h"
 
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -119,11 +120,11 @@ WebSrv::process(const std::string& line)
     {
         API::onStopEvent();
     }
-    if (cmd == "pBackward")
+    else if (cmd == "pBackward")
     {
         API::onBackward();
     }
-    if (cmd == "pFastForward")
+    else if (cmd == "pFastForward")
     {
         API::onFastForward();
     }
@@ -158,6 +159,30 @@ WebSrv::process(const std::string& line)
             }
         }
         catch(...) {};
+    }
+    else if (cmd == "pUp")
+    {
+        globalMenu.pressKey(MainMenu::KEY_UP);
+    }
+    else if (cmd == "pDown")
+    {
+        globalMenu.pressKey(MainMenu::KEY_DOWN);
+    }
+    else if (cmd == "pLeft")
+    {
+        globalMenu.pressKey(MainMenu::KEY_LEFT);
+    }
+    else if (cmd == "pRight")
+    {
+        globalMenu.pressKey(MainMenu::KEY_RIGHT);
+    }
+    else if (cmd == "pOk")
+    {
+        globalMenu.pressKey(MainMenu::KEY_OK);
+    }
+    else if (cmd == "pClose")
+    {
+        globalMenu.pressKey(MainMenu::KEY_CANCEL);
     }
     else
     {

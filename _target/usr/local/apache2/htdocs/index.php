@@ -128,13 +128,50 @@ for ($i = 1; $i < 6 ; $i++)
 <!-- 	<div id="lConsole"></div> -->
 <table id="fr0" width="100%">
 	<tr>
-	<td>Version </td>
+	<td width="30%">Version </td>
 	<td id="lVersion"/>
 	</tr>
 	<tr>
-	<td>Build </td>
+	<td width="30%">Build </td>
 	<td id="lBuild"/>
 	</tr>
+	<tr>
+	<td width="30%">Message </td>
+	<td id="lMessage"/>
+	</tr>
+	
+</table>
+
+<table  id="frYellow" width="100%">
+	<tr>
+	<td width="30%">Menu L1 </td>
+	<td id="lMenuL1"/>
+	</tr>
+	
+	<tr>
+	<td width="30%">Menu L2 </td>
+	<td id="lMenuL2"/>
+	</tr>
+	
+	<tr>
+		<table id="subFrame" style="table-layout: fixed; width: 100%;">
+			<tr style=" height: 240px;">
+				<td width="20%"></td>
+				<td width="20%"><button class="button buttonGray" onclick="sendCmd('pUp')">UP</button></td>
+				<td width="20%"></td>
+				<td width="20%"><button class="button buttonGreen" onclick="sendCmd('pOk')">OK</button></td>
+				<td width="20%"><button class="button buttonRed" onclick="sendCmd('pClose')">CLOSE</button></td>
+			</tr><tr>
+				<td width="20%"><button class="button buttonGray" onclick="sendCmd('pLeft')"/>LEFT</td>
+				<td width="20%"><button class="button buttonGray" onclick="sendCmd('pDown')">DOWN</button></td>
+				<td width="20%"><button class="button buttonGray" onclick="sendCmd('pRight')"/>RIGHT</td>
+				<td width="40%"></td>
+			</tr><tr>
+				<td width="20%"></td>
+				<td width="60%"></td>
+			</tr>
+		</table>
+
 </table>
 	
 </div>
@@ -146,12 +183,12 @@ for ($i = 1; $i < 6 ; $i++)
 // Get the element with id="defaultOpen" and click on it
 document.getElementById("defaultOpen").click();
 
-const width  = window.innerWidth || document.documentElement.clientWidth || 
-document.body.clientWidth;
-const height = window.innerHeight|| document.documentElement.clientHeight|| 
-document.body.clientHeight;
+// const width  = window.innerWidth || document.documentElement.clientWidth || 
+// document.body.clientWidth;
+// const height = window.innerHeight|| document.documentElement.clientHeight|| 
+// document.body.clientHeight;
 
-document.getElementById("lConsole").innerHTML = "W=" + width + ",H=" +height;
+// document.getElementById("lConsole").innerHTML = "W=" + width + ",H=" +height;
 
 </script>
 </html> 

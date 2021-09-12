@@ -68,6 +68,7 @@ public:
     void forceRefresh(void);
     uint32_t printIdx(void)const{return m_printIdx;}
     void updateProjectList(void);
+    void updateMenu(void);
 private:
     DisplayManager(void);
     virtual ~DisplayManager(void);
@@ -90,6 +91,8 @@ private:
     Property m_lPlayStatus;
     Property m_lBuild;
     Property m_lVersion;
+    Property m_lMenuL1;
+    Property m_lMenuL2;
     typedef std::vector<Property> Properties;
     Properties m_trackName;
     Properties m_projectNames;

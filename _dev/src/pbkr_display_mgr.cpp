@@ -72,6 +72,8 @@ DisplayManager::DisplayManager(void):
         m_lPlayStatus("lPlayStatus",""),
         m_lBuild("lBuild", std::to_string(PBKR_BUILD_ID)),
         m_lVersion("lVersion",PBKR_VERSION),
+        m_lMenuL1("lMenuL1",globalMenu.menul1()),
+        m_lMenuL2("lMenuL2",globalMenu.menul2()),
         m_event(""),
         m_filename(""),
         m_trackCount(""),
@@ -212,6 +214,7 @@ void DisplayManager::refresh(void)
         m_display.setCursor(0, 1);
         m_display.print(l2.c_str());
         if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuTxt(l1, l2);
+        updateMenu();
     }
     m_canEvent = false;
 } // DisplayManager::refresh
@@ -252,7 +255,7 @@ void  DisplayManager::setTrackName (const std::string& name, size_t trackIdx)
     if (trackIdx < MAX_NB_TRACKS)
     {
         // printf("Set (%d => %s)\n",trackIdx,name.c_str());
-        m_trackName[trackIdx].set(substring (name, 0, 10));
+        m_trackName[trackIdx].set(substring (name, 0, 13));
     }
 } // DisplayManager::setTrackName
 
@@ -264,6 +267,13 @@ void DisplayManager::setTimeCode(const string & timecode)
         m_timecode.set(timecode);
 }
 
+
+/*******************************************************************************/
+void DisplayManager::updateMenu(void)
+{
+    m_lMenuL1.set(globalMenu.menul1());
+    m_lMenuL2.set(globalMenu.menul2());
+}
 
 /*******************************************************************************/
 void DisplayManager:: updateProjectList(void)

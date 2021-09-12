@@ -10,6 +10,7 @@ function dataValue ($name)
 	    $f =  fopen("/home/www/res/".$name, "r") ;
 		
 		$s =  fread($f, 50);
+		$s = preg_replace('/[^A-Za-z0-9:;,\(\)+ \-]/', '', $s);
 	}
 	else
 	{
@@ -34,6 +35,8 @@ dataValue("lMessage");
 dataValue("lPlayStatus");
 dataValue("lVersion");
 dataValue("lBuild");
+dataValue("lMenuL1");
+dataValue("lMenuL2");
 
 echo "/>"
 ?>
