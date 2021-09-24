@@ -57,7 +57,7 @@ class _Manager:
             trId.grid(row =1, column = 1)
             l = tk.Entry(fr2, textvariable = title.name, width = 25, state="readonly")
             l.grid(row =1, column = 2)
-            wTitle = tk.Entry(fr2, textvariable = title.title, width = 10, state="normal")
+            wTitle = tk.Entry(fr2, textvariable = title.title, width = 20, state="normal")
             wTitle.grid(row =1, column = 3)
             wTitle.bind('<Return>', lambda event,i=i:self.onWidgetEnterKey(i))
             self.wtitles.append(wTitle)
