@@ -10,7 +10,7 @@ function dataValue ($name)
 	    $f =  fopen("/home/www/res/".$name, "r") ;
 		
 		$s =  fread($f, 50);
-		$s = preg_replace('/[^A-Za-z0-9:;,\(\)+ \-]/', '', $s);
+		$s = preg_replace('/[^A-Za-z0-9:;,\(\)+ \.\>\<\- ]/', '', $s);
 	}
 	else
 	{
