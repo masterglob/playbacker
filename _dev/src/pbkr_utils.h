@@ -263,7 +263,7 @@ class Latency
 public:
     Latency(void);
     ~Latency(void);
-    void setMs(int8_t latency);
+    void setMs(int latency);
     T putSample(T newSample); // return a latency over newSample
 private:
     size_t m_pos;
@@ -336,7 +336,7 @@ Latency<T>::~Latency(void)
 
 /*******************************************************************************/
 template <typename T>
-void Latency<T>::setMs(int8_t latency)
+void Latency<T>::setMs(int latency)
 {
     // how many samples? 1000 ms => 48000u
     if (latency < 0)
@@ -375,7 +375,7 @@ T Latency<T>::putSample(T newSample)
     if (!m_buffer) return newSample;
 
     T& ref (m_buffer[m_pos]);
-    const T& res (ref);
+    const T res (ref);
     ref = newSample;
     m_pos ++;
     if (m_pos >= m_size) m_pos = 0;

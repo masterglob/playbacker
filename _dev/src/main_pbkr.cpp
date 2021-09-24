@@ -140,7 +140,7 @@ int main (int argc, char**argv)
         int midi;
 		float phase = 0;
         float volume(0.9);
-		const float phasestep=(TWO_PI * 440.0)/ 44100.0; // TODO PHASE!
+		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
 		SOUND::SoundPlayer playerHifi (hifidac);
 
 		setRealTimePriority();

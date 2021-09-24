@@ -836,16 +836,16 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
 :
         ListMenuItem(title, parent, ID_COUNT),
          m_pVolume(NumParam("Volume", "", 100, 10, 10, 90)),
-         m_pLatency(NumParam("Latency", "ms", 30, -30, 2, 2)),
+         m_pLatency(NumParam("Latency", "ms", 50, -60, 2, 2)),
          m_pChannL(FixedNumParam ("Left Chann.", "", 15)),
          m_pChannR(FixedNumParam ("Right Chann.", "", 16)),
          m_pPriNote(FixedNumParam ("Primary Note", "", 24)),
          m_pSecNote(FixedNumParam ("Second. Note", "", 25)),
         m_param{&m_pVolume, &m_pLatency,&m_pChannL,&m_pChannR, &m_pPriNote,&m_pSecNote}
 {
-    m_pVolume.m_val = Config::instance().loadInt("MIDI_VOLUME", 90);
+    m_pVolume.m_val = Config::instance().loadInt("MIDI_VOLUME", 60);
     sendVolume ();
-    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", 2));
+    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", -20));
     setLatency ();
 }
 
