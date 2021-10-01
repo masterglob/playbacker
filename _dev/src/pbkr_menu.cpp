@@ -233,6 +233,11 @@ private:
 };
 ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
 
+void refreshMidiVolume    (void)
+{
+    clicSettingsMenuItem.sendVolume();
+}
+
 
 /*******************************************************************************
  *******************************************************************************
