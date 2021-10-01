@@ -2,6 +2,7 @@
 #include "pbkr_display_mgr.h"
 #include "pbkr_wav.h"
 #include "pbkr_osc.h"
+#include "pbkr_menu.h"
 #include "pbkr_projects.h"
 
 #include <math.h>
@@ -799,6 +800,7 @@ bool FileManager::selectIndex(const size_t i)
     {
         printf("Opened %s\n",_file->mFilename.c_str());
         actualSampleRate.set(_file->frequency());
+        refreshMidiVolume();
         const string trackIdx(std::to_string(track.m_index));
         display.onEvent(DISPLAY::DisplayManager::evFile, track.m_title);
         display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);

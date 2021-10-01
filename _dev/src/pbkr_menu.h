@@ -89,5 +89,7 @@ extern void openCopyFromUSBMenu();
 extern void openNetMenuFromUSBMenu();
 extern void openDeleteProjectMenu();
 
+extern void refreshMidiVolume    (void);
+
 void setDefaultProject(void);
 } // namespace PBKR

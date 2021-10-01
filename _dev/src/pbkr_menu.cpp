@@ -210,9 +210,9 @@ struct ClicSettingsMenuItem : ListMenuItem
     virtual void onUpDownPress(const bool isUp);
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
+    void sendVolume(void);
 private:
     static int paramToVolume(const int param){return (param * 127) /100;}
-    void sendVolume(void);
     void setLatency(void);
     typedef enum {
         ID_VOLUME = 0,
@@ -948,6 +948,11 @@ const std::string ClicSettingsMenuItem::menul2(void)
 
 namespace PBKR
 {
+
+void refreshMidiVolume    (void)
+{
+    ::clicSettingsMenuItem.sendVolume();
+}
 
 /*******************************************************************************
 
