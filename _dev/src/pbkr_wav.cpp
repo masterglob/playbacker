@@ -21,7 +21,6 @@ static const int WAV_HDR_RIFF (0x46464952u);
 static const int WAV_HDR_WAVE (0x45564157u);
 static const int WAV_HDR_FMT  (0x20746D66u);
 static const int WAV_FMT_PCM  (0x0001u);
-static const int NB_INTERLEAVED_CHANNELS  (3u);
 static const int NB_BYTES_PER_SAMPLE (2u);
 static const int SUB_FORMAT_MASK (0xFFFEu);
 size_t fileLength(std::ifstream& f)
@@ -233,7 +232,7 @@ WavFileLRC::getTimeCode(void)
     if (mIf.good())
     {
         const size_t currBytePos ((size_t)mIf.tellg());
-        const size_t samplePos ((currBytePos - mHdrLen) / (NB_INTERLEAVED_CHANNELS * NB_BYTES_PER_SAMPLE));
+        const size_t samplePos ((currBytePos - mHdrLen) / (mAudioHdr.nChannels * NB_BYTES_PER_SAMPLE));
         const size_t posSec ((samplePos) / mAudioHdr.nSamplesPerSec);
         char s[10];
         snprintf(s, 10, "%02d:%02d\n",posSec/60, posSec%60);
