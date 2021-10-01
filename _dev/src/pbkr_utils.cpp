@@ -670,7 +670,7 @@ void FileManager::backward(void)
 } // FileManager:: backward
 
 /*******************************************************************************/
-void FileManager::getSample(float& l, float & r, int& midiB)
+void FileManager::getSample( float& l, float & r, float& l2, float & r2, int& midiB)
 {
     midiB = -1;
     if (_starting)
@@ -992,6 +992,8 @@ void WemosControl::sendByte(void)
 Latency<int> midiLatency;
 Latency<float> leftLatency;
 Latency<float> rightLatency;
+Latency<float> leftClicLatency;
+Latency<float> rightClicLatency;
 
 WemosControl wemosControl("/dev/ttyAMA0");
 } // namespace PBKR

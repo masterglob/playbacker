@@ -89,7 +89,9 @@ int main (int argc, char**argv)
      */
     int argi(1);
     bool interactive_console(false);
-    const char* hifidac = "hw:0";
+    int dacIdx = 0;
+    const char* hifidac = "hw:1";
+    const char *hdmidac = "hw:0,1";
     while (argi < argc)
     {
         const char* const cmd(argv[argi++]);
@@ -109,8 +111,20 @@ int main (int argc, char**argv)
         }
         else
         {
-            hifidac = cmd; // TODO : autodetect "sndrpihifiberry"
-            break;
+            if (dacIdx == 0)
+            {
+                hifidac = cmd; // TODO : autodetect "sndrpihifiberry"
+            }
+            else if (dacIdx == 1)
+            {
+                hdmidac = cmd; // TODO : autodetect "sndrpihifiberry"
+            }
+            else
+            {
+                printf("Unexpected parameter : %s\n", cmd);
+                print_help(argv[0]);
+                return 0;
+            }
         }
     }
 
@@ -136,12 +150,16 @@ int main (int argc, char**argv)
 		bool  led_on(true);
 		//led.set (led_on);
 
-        float l,r;
+		// l/r is the output sample
+		// l2/r2 is the clic outputs
+        float l,r, l2, r2;
         int midi;
 		float phase = 0;
         float volume(0.9);
+        float clicVolume(0.9);
 		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
-		SOUND::SoundPlayer playerHifi (hifidac);
+        SOUND::SoundPlayer playerHifi (hifidac);
+        SOUND::SoundPlayer playerClic (hdmidac);
 
 		setRealTimePriority();
 
@@ -159,12 +177,16 @@ int main (int argc, char**argv)
 			}
 			else
 			{
-			    fileManager.getSample(l,r,midi);
+			    fileManager.getSample(l,r, l2, r2 ,midi);
+			    // TODO : manage volume & clicVolume
                 l *=  volume;
                 r *=  volume;
+                l2 *= clicVolume;
+                r2 *= clicVolume;
                 if (CURRENT_FREQUENCY != playerHifi.sample_rate())
                 {
                     playerHifi.set_sample_rate(CURRENT_FREQUENCY);
+                    playerClic.set_sample_rate(CURRENT_FREQUENCY);
                 }
 			}
 
@@ -175,9 +197,12 @@ int main (int argc, char**argv)
             // apply latency
             l = leftLatency.putSample(l);
             r = rightLatency.putSample (r);
+            l2 = leftClicLatency.putSample(l2);
+            r2 = rightClicLatency.putSample (r2);
             midi = midiLatency.putSample(midi);
 
-			playerHifi.write_sample(l,r);
+            playerHifi.write_sample(l,r);
+            playerClic.write_sample(l2,r2);
 			if (midi >=0)
 			{
 			    // printf("TODO : MIDI byte to send: %02X\n",midi);

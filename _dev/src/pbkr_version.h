@@ -14,6 +14,7 @@ extern const int PBKR_BUILD_ID;
    - Latency & ESP self-test do not takie into account actual
        sample rate (44100/48000)
    - Default MIDI volume is not applied until it is manually changed
-
+ TODO:
+   - Manage volume & clicVolume (See main_pkbr.cpp)
  */
 

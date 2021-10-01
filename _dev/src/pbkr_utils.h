@@ -222,7 +222,13 @@ public:
     void startReading(void);
     void fastForward(void);
     void backward(void);
-    void getSample( float& l, float & r, int& midiB);
+    /**
+     * Automatically retreive L/R and clic1/clic2 + MIDI informations
+     * - Stereo track : Clic1/Clic2 & MIDI are set to 0
+     * - 3-track files : Clic1/Clic2 are set to 0
+     * - 4-track files : MIDI is set to 0
+     */
+    void getSample( float& l, float & r, float& l2, float & r2, int& midiB);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return m_title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}
@@ -273,6 +279,8 @@ private:
 extern Latency<int> midiLatency;
 extern Latency<float> leftLatency;
 extern Latency<float> rightLatency;
+extern Latency<float> leftClicLatency;
+extern Latency<float> rightClicLatency;
 
 /*******************************************************************************
  * SEND MESSAGES TO WEMOS

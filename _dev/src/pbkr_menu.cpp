@@ -875,6 +875,8 @@ void  ClicSettingsMenuItem::setLatency(void)
 {
     leftLatency.setMs(m_pLatency.m_val);
     rightLatency.setMs(m_pLatency.m_val);
+    leftClicLatency.setMs(-m_pLatency.m_val);
+    rightClicLatency.setMs(-m_pLatency.m_val);
     midiLatency.setMs(-m_pLatency.m_val);
 }
 
