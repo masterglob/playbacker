@@ -45,7 +45,8 @@ namespace SOUND
 {
 /*******************************************************************************/
 SoundPlayer::SoundPlayer(const char * device_name):
-    _pcm_name (strdup (device_name))
+    _pcm_name (strdup (device_name)),
+    mPaused(true)
 {
     snd_pcm_hw_params_malloc (&hwparams);
     mSampleRate = DEFAULT_FREQUENCY_HZ;
@@ -72,19 +73,23 @@ SoundPlayer::~SoundPlayer(void)
 /*******************************************************************************/
 void SoundPlayer::clear(void)
 {
-    if (pcm_handle)
+    if (pcm_handle and not mPaused)
     {
         /* Stop PCM device and drop pending frames */
         snd_pcm_drop(pcm_handle);
         snd_pcm_close(pcm_handle);
         pcm_handle = NULL;
+        mPaused = true;
     }
 } // SoundPlayer::clear
 
 /*******************************************************************************/
 void SoundPlayer::setup(void)
 {
-
+    if (not mPaused)
+    {
+        clear();
+    }
     /* Open PCM. The last parameter of this function is the mode. */
     /* If this is set to 0, the standard mode is used. Possible   */
     /* other values are SND_PCM_NONBLOCK and SND_PCM_ASYNC.       */
@@ -153,6 +158,7 @@ void SoundPlayer::setup(void)
     if (snd_pcm_hw_params(pcm_handle, hwparams) < 0) {
         fail("Error setting HW params.");
     }
+    mPaused = false;
     DEBUG_SND("SoundPlayer(%s) opened at %d Hz\n",pcm_name(),mSampleRate);
 
 } // SoundPlayer::setup
@@ -179,18 +185,36 @@ void SoundPlayer::set_sample_rate(const SampleRate::Frequency freq)
         setup();
         mMutex.unlock();
     }
-    else
-    {
-        err_printf("Cannot use sample rate %s: Unknown\n", freq);
-    }
 } // SoundPlayer::set_sample_rate
+
+/*******************************************************************************/
+void SoundPlayer::pause(void)
+{
+    mMutex.lock();
+    clear();
+    mMutex.unlock();
+}
+
+/*******************************************************************************/
+void SoundPlayer::unpause(void)
+{
+    mMutex.lock();
+    if (mPaused)
+    {
+        setup();
+    }
+    mMutex.unlock();
+}
 
 /*******************************************************************************/
 void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
 {
 	// TODO : convert to a non-blocking call...
 	/*DEBUG_SND("fill(%p,%u)\n",samples,count);*/
-
+    if (mPaused)
+    {
+        setup();
+    }
     if (mMutex.try_lock())
     {
         snd_pcm_sframes_t pcmreturn;

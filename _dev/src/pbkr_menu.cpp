@@ -211,6 +211,7 @@ struct ClicSettingsMenuItem : ListMenuItem
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
     void sendVolume(void);
+    void refreshLatency(void);
 private:
     static int paramToVolume(const int param){return (param * 127) /100;}
     void setLatency(void);
@@ -232,12 +233,6 @@ private:
     NumParam* m_param[ID_COUNT];
 };
 ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
-
-void refreshMidiVolume    (void)
-{
-    clicSettingsMenuItem.sendVolume();
-}
-
 
 /*******************************************************************************
  *******************************************************************************
@@ -850,7 +845,7 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
 {
     m_pVolume.m_val = Config::instance().loadInt("MIDI_VOLUME", 60);
     sendVolume ();
-    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", -20));
+    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", 4));
     setLatency ();
 }
 
@@ -868,6 +863,16 @@ void  ClicSettingsMenuItem::sendVolume(void)
     MidiOutMsg msg;
     msg.push_back(vol8); // Volume value
     wemosControl.pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
+}
+
+/*******************************************************************************/
+void  ClicSettingsMenuItem::refreshLatency(void)
+{
+    const int prevLatency (m_pLatency.m_val);
+    m_pLatency.m_val = 0;
+    setLatency();
+    m_pLatency.m_val = prevLatency;
+    setLatency();
 }
 
 /*******************************************************************************/
@@ -961,6 +966,10 @@ void refreshMidiVolume    (void)
     ::clicSettingsMenuItem.sendVolume();
 }
 
+void refreshLatency(void)
+{
+    ::clicSettingsMenuItem.refreshLatency();
+}
 /*******************************************************************************
 
 

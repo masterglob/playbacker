@@ -8,7 +8,10 @@ extern const int PBKR_BUILD_ID;
    - Add "negative" latency (applied to MIDI instead of samples)
    - Add version & build on "config WEB page" + refactor tabs
  New in V1.0.3:
-   - TODO
+   - Correction for MIDI Volume issue (not checked)
+ New in V2.0.0:
+   - Add support for 4 channels audio file. 2 additional channels
+       provide left & right click directly (WIP)
 
  Known bugs:
    - Latency & ESP self-test do not takie into account actual

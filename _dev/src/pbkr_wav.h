@@ -99,7 +99,7 @@ public:
     /**
      * Return True if the file is still reading. false when terminated
      */
-    bool getNextSample(float & l, float & r, int16_t& midi);
+    bool getNextSample(float & l, float & r, float& l2, float & r2, int16_t& midi);
 
     /**
      * false = backward.
@@ -117,6 +117,7 @@ private:
      * if _hasMidiTrack is true, we use a 3 track WAV file and 3rd track is embedded midi
      * */
     const bool _hasMidiTrack;
+    const bool _hasAudioClickTrack;
     const size_t _eltSize;
 
 
@@ -127,7 +128,15 @@ private:
         int16_t midi;
     };
 
-    struct PACK LRC_SampleWithoutMidi
+    struct PACK LRC_SampleWithAudioClick
+    {
+        int16_t l;
+        int16_t r;
+        int16_t lClick;
+        int16_t rClick;
+    };
+
+    struct PACK LRC_SampleStereo
     {
         int16_t l;
         int16_t r;
@@ -140,8 +149,9 @@ private:
         union
         {
             char _buffer;
-            LRC_SampleWithMidi _data3[WAV_BUFFER_SAMPLES];
-            LRC_SampleWithoutMidi _data2[WAV_BUFFER_SAMPLES];
+            LRC_SampleStereo            _data2[WAV_BUFFER_SAMPLES];
+            LRC_SampleWithMidi          _data3[WAV_BUFFER_SAMPLES];
+            LRC_SampleWithAudioClick    _data4[WAV_BUFFER_SAMPLES];
         } _samples;
     };
     Buffer _buffers[WAV_NB_BUFFERS];

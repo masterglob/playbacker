@@ -670,7 +670,7 @@ void FileManager::backward(void)
 } // FileManager:: backward
 
 /*******************************************************************************/
-void FileManager::getSample( float& l, float & r, float& l2, float & r2, int& midiB)
+bool FileManager::getSample( float& l, float & r, float& l2, float & r2, int& midiB)
 {
     midiB = -1;
     if (_starting)
@@ -704,17 +704,20 @@ void FileManager::getSample( float& l, float & r, float& l2, float & r2, int& mi
     else if (_reading && _file && (!_paused))
     {
         int16_t midiIn;
-        if (not _file->getNextSample(l ,r, midiIn))
+        if (not _file->getNextSample(l ,r, l2, r2, midiIn))
         {
             stopReading();
         }
 
         midiB = _midiDecoder.receive(midiIn);
-        return;
+        return true;
     }
 
     l = _lastL;
     r = _lastR;
+    l2 = 0;
+    r2 = 0;
+    return false;
 } // FileManager::getSample
 
 /*******************************************************************************/

@@ -44,7 +44,7 @@ namespace
 
 void print_help(const char* name)
 {
-    printf("Usage: %s [-h] [-i] <pbdevice=hw:0> <clickdevice=hw:1>\n", name);
+    printf("Usage: %s [-h] [-i] <pbdevice=hw:1> <clickdevice=hw:0,1>\n", name);
     printf("Options:\n");
     printf(" -h  This help:\n");
     printf(" -v  Show version & exit\n");
@@ -125,6 +125,7 @@ int main (int argc, char**argv)
                 print_help(argv[0]);
                 return 0;
             }
+            dacIdx++;
         }
     }
 
@@ -167,28 +168,41 @@ int main (int argc, char**argv)
 
 		while (!Thread::isExitting())
 		{
-			// if (BTN.pressed()) break;
-		    // Check if freq changed
-			if (console.doSine)
-			{
-
-			    l = sin (phase) * volume * console.volume();
-			    r = l;
-			}
-			else
-			{
-			    fileManager.getSample(l,r, l2, r2 ,midi);
-			    // TODO : manage volume & clicVolume
-                l *=  volume;
-                r *=  volume;
-                l2 *= clicVolume;
-                r2 *= clicVolume;
-                if (CURRENT_FREQUENCY != playerHifi.sample_rate())
+		    // if (BTN.pressed()) break;
+		    bool playing = fileManager.getSample(l,r, l2, r2 ,midi);
+		    if (!playing)
+		    {
+                playerHifi.pause();
+                playerClic.pause();
+                while (!playing && !Thread::isExitting())
                 {
-                    playerHifi.set_sample_rate(CURRENT_FREQUENCY);
-                    playerClic.set_sample_rate(CURRENT_FREQUENCY);
+                    usleep(1000*10);
+                    playing = fileManager.getSample(l,r, l2, r2 ,midi);
                 }
-			}
+                // Unpause both first, so that putting samples start exactly
+                // at the same time
+                refreshLatency();
+                playerHifi.unpause();
+                playerClic.unpause();
+		    }
+		    // TODO : manage volume & clicVolume
+		    l *=  volume;
+		    r *=  volume;
+		    l2 *= clicVolume;
+		    r2 *= clicVolume;
+		    if (CURRENT_FREQUENCY != playerHifi.sample_rate())
+		    {
+	            // Check if freq changed
+		        playerHifi.set_sample_rate(CURRENT_FREQUENCY);
+		        playerClic.set_sample_rate(CURRENT_FREQUENCY);
+		    }
+		    if (console.doSine)
+		    {
+
+		        l2 = sin (phase) * volume * console.volume();
+		        r2 = l2;
+		    }
+		    else
 
 			VirtualTime::elapseSample();
             phase += phasestep;

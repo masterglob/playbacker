@@ -227,8 +227,9 @@ public:
      * - Stereo track : Clic1/Clic2 & MIDI are set to 0
      * - 3-track files : Clic1/Clic2 are set to 0
      * - 4-track files : MIDI is set to 0
+     * @return true is sound is playing
      */
-    void getSample( float& l, float & r, float& l2, float & r2, int& midiB);
+    bool getSample( float& l, float & r, float& l2, float & r2, int& midiB);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return m_title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}

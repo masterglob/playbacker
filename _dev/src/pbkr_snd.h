@@ -48,6 +48,9 @@ public:
 	 * @param l,r :value between -1 and 1. values above will saturate
 	 */
 	inline void write_sample (float l, float r);
+
+    void pause(void);
+    void unpause(void);
 private:
 	void clear(void);
 	void setup(void);
@@ -67,6 +70,7 @@ private:
 	unsigned int mSampleRate;
 	StereoSample* _samples;
 	StereoSample* _sampleFill;
+	bool mPaused;
 
 	/* 0 = buffer empty */
 	size_t _sampleToFill;

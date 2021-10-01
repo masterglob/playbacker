@@ -157,12 +157,15 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
                 _eof(NULL),
                 _bof(NULL),
                 _hasMidiTrack(mAudioHdr.nChannels == 3),
-                _eltSize(_hasMidiTrack ? sizeof(LRC_SampleWithMidi) : sizeof(LRC_SampleWithoutMidi) ),
+                _hasAudioClickTrack(mAudioHdr.nChannels == 4),
+                _eltSize(_hasMidiTrack ? sizeof(LRC_SampleWithMidi) :
+                            (_hasAudioClickTrack ? sizeof(LRC_SampleWithAudioClick) :
+                                    sizeof(LRC_SampleStereo))),
                 _bufferIdx(0)
 {
-    if (mAudioHdr.nChannels != 2 && mAudioHdr.nChannels != 3)
+    if (mAudioHdr.nChannels < 2 || mAudioHdr.nChannels > 4)
     {
-        CHECK_FIELD("NB Channels =2 or 3", mAudioHdr.nChannels, -1);
+        CHECK_FIELD("NB Channels  in [2 .. 4]", mAudioHdr.nChannels, -1);
     }
 
     CHECK_FIELD("Sampling rate", actualSampleRate.supported(mAudioHdr.nSamplesPerSec), true);
@@ -243,7 +246,7 @@ WavFileLRC::getTimeCode(void)
 
 /*******************************************************************************/
 bool
-WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
+WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, int16_t& midi)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
     Buffer* b(&_buffers[_bufferIdx]);
@@ -261,31 +264,49 @@ WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
             // underrun from input (EOF)?
             l = 0.0;
             r = 0.0;
+            l2 = 0.0;
+            r2 = 0.0;
             midi = -1;
             return false;
         }
     }
     if (_hasMidiTrack)
-    {
-        LRC_SampleWithMidi& sample (b->_samples._data3[b->_pos++]);
-        l = ((float)sample.l) * READ_VOLUME;
-        r = ((float)sample.r) * READ_VOLUME;
+       {
+           LRC_SampleWithMidi& sample (b->_samples._data3[b->_pos++]);
+           l = ((float)sample.l) * READ_VOLUME;
+           r = ((float)sample.r) * READ_VOLUME;
 
-        midi = sample.midi;
-    }
-    else
-    {
-        LRC_SampleWithoutMidi& sample (b->_samples._data2[b->_pos++]);
-        l = ((float)sample.l) * READ_VOLUME;
-        r = ((float)sample.r) * READ_VOLUME;
-        midi = 0;
-    }
+           l2 = 0.0;
+           r2 = 0.0;
+           midi = sample.midi;
+       }
+       else if (_hasAudioClickTrack)
+       {
+           LRC_SampleWithAudioClick& sample (b->_samples._data4[b->_pos++]);
+           l = ((float)sample.l) * READ_VOLUME;
+           r = ((float)sample.r) * READ_VOLUME;
+           l2 = ((float)sample.lClick) * READ_VOLUME;
+           r2 = ((float)sample.rClick) * READ_VOLUME;
+
+           midi = 0;
+       }
+       else
+       {
+           LRC_SampleStereo& sample (b->_samples._data2[b->_pos++]);
+           l = ((float)sample.l) * READ_VOLUME;
+           r = ((float)sample.r) * READ_VOLUME;
+           l2 = 0.0;
+           r2 = 0.0;
+           midi = 0;
+       }
 
     if (_bof)
     {
         const float fadevol(_bof->position());
         l *= fadevol;
         r *= fadevol;
+        l2 *= fadevol;
+        r2 *= fadevol;
         if (_bof->done())
         {
             delete _bof;
@@ -298,6 +319,8 @@ WavFileLRC::getNextSample(float & l, float & r, int16_t& midi)
         const float fadevol(_eof->position());
         l *= fadevol;
         r *= fadevol;
+        l2 *= fadevol;
+        r2 *= fadevol;
         if (_eof->done()) return false;
     }
     return true;
