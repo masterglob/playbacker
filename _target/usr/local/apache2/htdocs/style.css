@@ -29,6 +29,7 @@ body {
   border-radius: 8px;
   border: 2px solid #E0ED21;
   padding: 10px;
+  overflow: hidden;
 }
 
 #frRed {
@@ -162,7 +163,7 @@ body {
 #lPlayStatus{
   opacity: 1.0;
   font-family: "arial";
-  font-size : 220%; 
+  font-size : 160%; 
   color: #E0D0F0;
   border: 0px;
   background-color: #1fe0;
@@ -170,6 +171,27 @@ body {
   text-align: left;
 }
 
+#projectName{
+  opacity: 1.0;
+  font-family: "arial";
+  font-size : 120%; 
+  color: #E0D0F0;
+  border: 0px;
+  background-color: #1fe0;
+  width : 50%;
+  text-align: left;
+}
+
+#lTrack{
+  opacity: 1.0;
+  font-family: "arial";
+  font-size : 120%; 
+  color: #E0D0F0;
+  border: 0px;
+  background-color: #1fe0;
+  width : 50%;
+  text-align: left;
+}
 .projectSel {
   transition-duration: 0.4s;
   color: white;

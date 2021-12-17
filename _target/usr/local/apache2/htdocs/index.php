@@ -18,8 +18,11 @@
 <table id="fr0" width="100%">
 	<tr>
 		<td id="frYellow">
-			PLAYBACK CONTROL
 			<table id="subFrame" style="table-layout: fixed; width: 100%;">
+			<tr><td colspan="1" id="fr0">Playlist</td>
+			<td> <div id="projectName"></div></td>
+			<td colspan="2"> <div id="lTrack"></div></td>
+			</tr>
 			<tr style=" height: 240px;">
 				<td><button class="button buttonGreen" onclick="sendCmd('pPlay')"/>PLAY</td>
 				<td><button class="button buttonRed" onclick="sendCmd('pStop')"/>STOP</td>
@@ -33,6 +36,7 @@
 			</table>
 		</td>
 	</tr>
+</table>
 	
 	<?php /*
 	<tr>
@@ -48,29 +52,19 @@
 	*/
 	?>
 	
-	<tr>
-		<td colspan="2" id="frYellow">
-			<table>
-				<tr>
-					<td> Playlist</td>
-					<td class="subFrame"><div id="projectName"></div></td>
-				</tr>
-			</table>
-		</td>
-	</tr>
-	<tr>
-		<td colspan="2" id="frYellow">
-			<table style="table-layout: fixed; width: 100%;">
-				<tr>
 <?php
 $nbCol=3;
-echo '	<td width ="30%" colspan="'.$nbCol.'"> Current Track</td>';
-echo '	<td width ="70%" id= "lTrack" class="subFrame"></td>';
+//echo '        <tr>';
+//echo '			<td colspan="2" id="frYellow">';
+//echo '				<table style="table-layout: fixed; width: 100%;">';
+//echo '					<tr>';
+//echo '						<td width ="30%" colspan="'.$nbCol.'"> Current Track</td>';
+//echo '						<td width ="70%" id= "lTrack" class="subFrame"></td>';
+//echo '				    </tr>';
 ?>
-				</tr>
-			</table>
-			<table style="table-layout: fixed; width: 100%;">
-				<tr>
+
+<table id="frYellow">
+	<tr>
 <?php
     $nTrack=20;
     for ($i = 0; $i < $nTrack / $nbCol; $i++) 
