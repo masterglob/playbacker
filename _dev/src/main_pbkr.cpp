@@ -90,8 +90,9 @@ int main (int argc, char**argv)
     int argi(1);
     bool interactive_console(false);
     int dacIdx = 0;
-    const char* hifidac = "hw:1";
-    const char *hdmidac = "hw:0,1";
+    const char* hifidac = "hw:0";
+    const char *hdmidac = "hw:1,0";
+    const char *hdphdac = "hw:1,1";
     while (argi < argc)
     {
         const char* const cmd(argv[argi++]);
@@ -117,7 +118,11 @@ int main (int argc, char**argv)
             }
             else if (dacIdx == 1)
             {
-                hdmidac = cmd; // TODO : autodetect "sndrpihifiberry"
+                hdmidac = cmd; // TODO : autodetect "HDMI"
+            }
+            else if (dacIdx == 2)
+            {
+                hdphdac = cmd; // TODO : autodetect "HEADPHONES"
             }
             else
             {
@@ -159,8 +164,13 @@ int main (int argc, char**argv)
         float volume(0.9);
         float clicVolume(0.9);
 		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
+
         SOUND::SoundPlayer playerHifi (hifidac);
-        SOUND::SoundPlayer playerClic (hdmidac);
+        (void)hdmidac;
+        // SOUND::SoundPlayer playerClic1 (hdmidac); // TODO : cannot open both at the same time.
+        SOUND::SoundPlayer playerClic2 (hdphdac);
+        // const bool usingHdmi (false); // TODO => make this dynamic
+        SOUND::SoundPlayer* playerClic( &playerClic2);
 
 		setRealTimePriority();
 
@@ -173,7 +183,7 @@ int main (int argc, char**argv)
 		    if (!playing)
 		    {
                 playerHifi.pause();
-                playerClic.pause();
+                playerClic->pause();
                 while (!playing && !Thread::isExitting())
                 {
                     usleep(1000*10);
@@ -183,7 +193,7 @@ int main (int argc, char**argv)
                 // at the same time
                 refreshLatency();
                 playerHifi.unpause();
-                playerClic.unpause();
+                playerClic->unpause();
 		    }
 		    // TODO : manage volume & clicVolume
 		    l *=  volume;
@@ -194,7 +204,7 @@ int main (int argc, char**argv)
 		    {
 	            // Check if freq changed
 		        playerHifi.set_sample_rate(CURRENT_FREQUENCY);
-		        playerClic.set_sample_rate(CURRENT_FREQUENCY);
+		        playerClic->set_sample_rate(CURRENT_FREQUENCY);
 		    }
 		    if (console.doSine)
 		    {
@@ -216,7 +226,7 @@ int main (int argc, char**argv)
             midi = midiLatency.putSample(midi);
 
             playerHifi.write_sample(l,r);
-            playerClic.write_sample(l2,r2);
+            playerClic->write_sample(l2,r2);
 			if (midi >=0)
 			{
 			    // printf("TODO : MIDI byte to send: %02X\n",midi);

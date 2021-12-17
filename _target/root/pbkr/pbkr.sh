@@ -2,8 +2,9 @@ cd /root/pbkr
 
 gethw()
 {
-  NAME=$1
-  aplay -l|grep "device 0"|grep "$NAME"|sed "s/card \([0-9]*\).*$/hw:\1/"
+  DEV=$1
+  NAME=$2
+  aplay -l|grep "^card .*$DEV.*device.*\[$NAME\]"|sed 's/^card *\([0-9]*\):.*device *\([0-9]\).*$/hw:\1,\2/'
 }
 
 while true ; do
@@ -26,15 +27,17 @@ while true ; do
        echo "I2S card OK"
     fi
 
-    I2S_DEV=$(gethw "sndrpihifiberry")
-    ALSA_DEV=$(gethw "ALSA")
-    echo "Starting PBKR $I2S_DEV $ALSA_DEV" |tee /dev/kmsg
-    ./pbkr $I2S_DEV $ALSA_DEV
+	I2S_DEV=$(gethw "sndrpihifiberry" "")
+	HDMI_DEV=$(gethw "bcm2835 ALSA" "bcm2835 IEC958/HDMI")
+	HDPH_DEV=$(gethw "bcm2835 ALSA" "bcm2835 ALSA")
+    echo "Starting PBKR $I2S_DEV $HDMI_DEV $HDPH_DEV" |tee /dev/kmsg
+    ./pbkr $I2S_DEV $HDMI_DEV $HDPH_DEV
     echo "PBKR stopped unexpectedly" |tee /dev/kmsg
     sleep 1
     echo "Press enter to restart"
     #read i
 done
+
 
 
 
