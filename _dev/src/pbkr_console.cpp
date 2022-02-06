@@ -44,12 +44,15 @@ Console::body(void)
     printf("Console Ready\n");
     while (not isExitting())
     {
-        printf("> ");
-        fflush(stdoutCpy);
-        const char c ( getch());
         if (m_escape <0)
         {
-            printf("%c\n",c);
+            printf("> ");
+            fflush(stdoutCpy);
+        }
+        const char c ( getch());
+        // printf("%02X(%c)\n",c,(c> 0x20? c: ' '));
+        if (m_escape <0)
+        {
             switch (c) {
             case 0x1B:
                 m_escape = 0;
@@ -71,6 +74,10 @@ Console::body(void)
                 break;
             case 'v':
                 printf("Current volume = %d%%\n", (int)(_volume *100));
+                break;
+            case 0x7F:
+            case 0x0D:
+                processEscape(c);
                 break;
             case 0x0A:
             case ' ':
@@ -103,16 +110,21 @@ Console::body(void)
                 fileManager.selectIndex (c - '0');
                 break;
             default:
-                printf("Unknown command :(0x%02X)\n",c);
+                processEscape(c);
                 break;
             }
         }
         else if (m_escape == 0)
         {
-            cout << endl;
+            // cout << endl;
             if (c == 0x5B)
             {
                 m_escape = 0x100 + c;
+            }
+            else if (c == 0x1B)
+            {
+                processEscape((m_escape <<8) + c);
+                m_escape = -1;
             }
             else
             {
@@ -122,17 +134,52 @@ Console::body(void)
         }
         else
         {
-            const int esc(m_escape & 0xFF);
+            processEscape((m_escape <<8) + c);
             m_escape = -1;
-            if (esc == 0x5B)
-            {
-                continue;
-            }
-            printf("Unknown Escape sequence :(0x1B %02X %02X)\n", esc, c);
         }
     }
     printf("Console Exiting\n");
     Thread::doExit();
+}
+
+/*******************************************************************************/
+void
+Console::processEscape(const int code)
+{
+    bool displayMenu=true;
+    switch (code) {
+    case 0x6D: // 'm' just show menu
+        break;
+    case 0x0D:
+        globalMenu.pressKey(MainMenu::KEY_OK);
+        break;
+    case 0x1B:
+    case 0x7F:
+        globalMenu.pressKey(MainMenu::KEY_CANCEL);
+        break;
+    case 0x15B41:
+        globalMenu.pressKey(MainMenu::KEY_UP);
+        break;
+    case 0x15B42:
+        globalMenu.pressKey(MainMenu::KEY_DOWN);
+        break;
+    case 0x15B44:
+        globalMenu.pressKey(MainMenu::KEY_LEFT);
+        break;
+    case 0x15B43:
+        globalMenu.pressKey(MainMenu::KEY_RIGHT);
+        break;
+    default:
+        printf("Unknown Escape sequence :(0x%X)\n", code);
+        displayMenu = false;
+        break;
+    }
+    if (displayMenu)
+    {
+        cout << endl
+             << "*** " << globalMenu.menul1() << endl
+             << "*** " << globalMenu.menul2() << endl;
+    }
 }
 
 /*******************************************************************************/

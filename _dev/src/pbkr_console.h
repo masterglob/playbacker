@@ -23,6 +23,7 @@ public:
     float volume(void);
     void changeVolume (float v, const float duration = volumeFaderDurationS);
 private:
+    void processEscape(const int code);
     void show_current_infos(void)const;
     static const float volumeFaderDurationS;
     static Console* m_instance;
