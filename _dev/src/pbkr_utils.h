@@ -286,7 +286,28 @@ extern Latency<float> rightClicLatency;
 /*******************************************************************************
  * SEND MESSAGES TO WEMOS
  *******************************************************************************/
-typedef std::deque<uint8_t, std::allocator<uint8_t>> MidiOutMsg;
+class ByteQueue
+{
+public:
+    inline void push_back(const uint8_t u8)
+    {
+        m_queue.push_back(u8);
+    }
+    void push_back(const ByteQueue& queue);
+    inline bool empty(void) const
+    {
+        return m_queue.empty();
+    }
+    uint8_t pop_front(void);
+    inline void clear(void)
+    {
+        m_queue.clear();
+    }
+private:
+    typedef std::deque<uint8_t, std::allocator<uint8_t>> m_Queue;
+    m_Queue m_queue;
+};
+typedef ByteQueue MidiOutMsg;
 
 class WemosControl
 {
@@ -304,10 +325,8 @@ public:
     void sendByte(void);
     void check(void);
 private:
-    typedef std::deque<MidiOutMsg, std::allocator<MidiOutMsg>> MsgQueue;
-    MsgQueue m_msgs;
+    ByteQueue m_msgs;
     std::mutex m_mutex;
-    MidiOutMsg* m_current;
     int m_handle;
     Fader m_keepAlive;
 };

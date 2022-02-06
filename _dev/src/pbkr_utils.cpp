@@ -911,7 +911,6 @@ const char* getIPNetMask (const char* device)
  * SEND MESSAGES TO WEMOS
  *******************************************************************************/
 WemosControl::WemosControl(const char* filename):
-    m_current(0),
     m_handle (file_open_write (filename)),
     m_keepAlive(2, 0.0, 0.0)
 {
@@ -923,7 +922,6 @@ WemosControl::WemosControl(const char* filename):
 WemosControl::~WemosControl(void)
 {
     close(m_handle);
-    if (m_current) delete m_current;
 }
 
 void WemosControl::pushMessage(const MidiOutMsg& msg)
@@ -941,11 +939,7 @@ void WemosControl::pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& m
     sysMsg.push_back(0x4D);
     sysMsg.push_back(0x4D);
     sysMsg.push_back((uint8_t) cmd);
-    for (auto it = msg.begin(); it != msg.end(); it++ )
-    {
-        const uint8_t& byte(*it);
-        sysMsg.push_back(byte);
-    }
+    sysMsg.push_back(msg);
     sysMsg.push_back(0xF7);
     m_msgs.push_back(sysMsg);
     m_mutex.unlock();
@@ -953,32 +947,17 @@ void WemosControl::pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& m
 
 void WemosControl::sendByte(void)
 {
-    if (m_current)
+    if (not m_msgs.empty())
     {
-        if (m_current->size() > 0)
+        const uint8_t byte (m_msgs.pop_front());
+        write(m_handle, &byte, 1);
+        if (m_msgs.empty())
         {
-            const uint8_t byte (m_current->front());
-            m_current->pop_front();
-            write(m_handle, &byte, 1);
-        }
-        else
-        {
-            delete m_current;
-            m_current = 0;
-
             m_keepAlive.restart();
         }
     }
     else
     {
-        m_mutex.lock();
-        if (not m_msgs.empty())
-        {
-            m_current = new MidiOutMsg (m_msgs.front());
-            m_msgs.pop_front();
-        }
-        m_mutex.unlock();
-
         if (m_keepAlive.update())
         {
             m_keepAlive.restart();
@@ -986,6 +965,23 @@ void WemosControl::sendByte(void)
             pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
         }
     }
+}
+
+void ByteQueue::push_back(const ByteQueue& queue)
+{
+    m_queue.insert(m_queue.end(), queue.m_queue.begin(), queue.m_queue.end());
+    m_queue.push_back(0);
+}
+
+uint8_t ByteQueue::pop_front(void)
+{
+    if(m_queue.empty())
+    {
+        return 0;
+    }
+    const uint8_t result = m_queue.front();
+    m_queue.pop_front();
+    return result;
 }
 
 /*******************************************************************************

@@ -232,7 +232,7 @@ int main (int argc, char**argv)
 			    // printf("TODO : MIDI byte to send: %02X\n",midi);
 			    midiCmdToWemos.push_back(midi);
 			}
-			else if (midiCmdToWemos.size() > 0)
+			else if (not midiCmdToWemos.empty())
 			{
 			    wemosControl.pushMessage(midiCmdToWemos);
 			    midiCmdToWemos.clear();
