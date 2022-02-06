@@ -73,6 +73,34 @@ void alarmHandler(int sig)
 
 static Console console;
 
+static GPIOs::Led redLed(GPIOs::GPIO_13_PIN33);
+void manageLed(const bool hasSig)
+{
+    static bool isRedLedOn = false;
+    static Fader ledFader(0.05, 0.0, 1.0);
+    if (hasSig)
+    {
+        if (not isRedLedOn)
+        {
+            redLed.on();
+            isRedLedOn = true;
+        }
+        ledFader.restart();
+    }
+    else
+    {
+        ledFader.update();
+        if (ledFader.done())
+        {
+            if (isRedLedOn)
+            {
+                redLed.off();
+                isRedLedOn = false;
+            }
+        }
+    }
+}
+
 } // namsepace
 
 /*******************************************************************************
@@ -227,6 +255,7 @@ int main (int argc, char**argv)
 
             playerHifi.write_sample(l,r);
             playerClic->write_sample(l2,r2);
+            ::manageLed(abs(l2)+abs(r2) > 0.05);
 			if (midi >=0)
 			{
 			    // printf("TODO : MIDI byte to send: %02X\n",midi);
