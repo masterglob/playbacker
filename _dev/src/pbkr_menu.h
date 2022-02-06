@@ -39,7 +39,8 @@ struct MenuCfg
     const Button rightGpio;
     const Button upGpio;
     const Button downGpio;
-    const Button selectGpio;
+    const Button enterGpio;
+    const Button exitGpio;
 };
 
 class MainMenu;
@@ -49,8 +50,8 @@ class MenuItem
 public:
     MenuItem(const std::string & title, MenuItem* parent = 0);
     virtual ~MenuItem(void){}
-    virtual void onSelPressShort(void);
-    virtual void onSelPressLong(void);
+    virtual void onEnter(void);
+    virtual void onExit(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onUpDownPress(const bool isUp){}
     virtual const std::string menul1(void);
