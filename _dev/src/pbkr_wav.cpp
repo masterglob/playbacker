@@ -238,7 +238,7 @@ WavFileLRC::getTimeCode(void)
         const size_t samplePos ((currBytePos - mHdrLen) / (mAudioHdr.nChannels * NB_BYTES_PER_SAMPLE));
         const size_t posSec ((samplePos) / mAudioHdr.nSamplesPerSec);
         char s[10];
-        snprintf(s, 10, "%02d:%02d\n",posSec/60, posSec%60);
+        snprintf(s, 10, "%02d:%02d\n", (posSec/60) % 100, posSec%60);
         return s;
     }
     else return "  :  ";
