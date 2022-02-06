@@ -2,13 +2,13 @@ Q=@
 BUILD=.build
 OUT=out
 CC=g++
-CFLAGS= -O1 -Wall -I/usr/local/include/libxml2
+CFLAGS= -O1 -Wall -I/usr/local/include/libxml2 -g
 # CFLAG += -g
 LIBS=-lwiringPi 
 LIBS+=-lasound
 LIBS+=-lpthread
 # LIBS+=-lxml2
-# LIBS +=  -g
+LIBS +=  -g
 
 LCD_OBJS=$(BUILD)/pbkr_display.cpp.o $(BUILD)/pbkr_gpio.cpp.o
 default:all
