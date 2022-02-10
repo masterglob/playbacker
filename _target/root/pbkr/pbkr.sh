@@ -4,7 +4,7 @@ gethw()
 {
   DEV=$1
   NAME=$2
-  aplay -l|grep "^card .*$DEV.*device.*\[$NAME\]"|sed 's/^card *\([0-9]*\):.*device *\([0-9]\).*$/hw:\1,\2/'
+  aplay -l|grep "^card .*$DEV.*device.*"|sed 's/^card *\([0-9]*\):.*device *\([0-9]\).*$/hw:\1,\2/'
 }
 
 while true ; do
@@ -28,12 +28,13 @@ while true ; do
     fi
 
 	I2S_DEV=$(gethw "sndrpihifiberry" "")
-	HDMI_DEV=$(gethw "bcm2835 ALSA" "bcm2835 IEC958/HDMI")
-	HDPH_DEV=$(gethw "bcm2835 ALSA" "bcm2835 ALSA")
+	HDMI_DEV=$(gethw "bcm2835 HDMI 1")
+	HDPH_DEV=$(gethw "Headphones")
     echo "Starting PBKR $I2S_DEV $HDMI_DEV $HDPH_DEV" |tee /dev/kmsg
     ./pbkr $I2S_DEV $HDMI_DEV $HDPH_DEV
     echo "PBKR stopped unexpectedly" |tee /dev/kmsg
-    sleep 1
+    exit
+	sleep 1
     echo "Press enter to restart"
     #read i
 done
