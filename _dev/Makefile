@@ -15,9 +15,12 @@ default:all
 obj :
 	@echo "== COMPILE $(FILE)..."
 	$(Q)$(CC) $(CFLAGS) -DBUILD_ID=$(BUILD_ID) -c  -o $(BUILD)/$(FILE).o src/$(FILE) -Isrc
-prepare:
+cleanB:
 	@echo "== CLEAN... "
-	rm -rf $(BUILD) &&  mkdir -p $(BUILD) && chmod -R 777  $(BUILD)
+	rm -rf $(BUILD)
+prepare:
+	@echo "== PREPARE... "
+	mkdir -p $(BUILD) && chmod -R 777  $(BUILD)
 link:
 	@echo "== BUILD ID=$(BUILD_ID)"
 	$(Q)make obj FILE=pbkr_version.cpp --no-print-directory 
@@ -32,7 +35,7 @@ link_display:
 	$(Q)$(CC) -o $(OUT)/lcd_display $(LCD_OBJS) $(BUILD)/main_lcd_display.* $(LIBS)
 compile:
 	@for i in $$(cd src && ls -1 *.c[p]*); do make obj FILE=$$i --no-print-directory || exit 1; done
-all:prepare compile link_pbkr
+all:cleanB prepare compile link_pbkr
 test:
 	$(Q)make obj FILE=main_test.cpp --no-print-directory 
 	$(Q)make link TARGET=test --no-print-directory 
@@ -79,8 +82,8 @@ api:
 websrv:
 	$(Q)make obj FILE=pbkr_websrv.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
-lcd_display:
-	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory &
+lcd_display:prepare
+	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_display.cpp --no-print-directory 
 	$(Q)make obj FILE=main_lcd_display.cpp --no-print-directory
 	$(Q)make link_display --no-print-directory
