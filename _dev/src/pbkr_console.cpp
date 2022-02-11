@@ -76,11 +76,10 @@ Console::body(void)
                 printf("Current volume = %d%%\n", (int)(_volume *100));
                 break;
             case 0x7F:
-            case 0x0D:
+            case ' ':
                 processEscape(c);
                 break;
-            case 0x0A:
-            case ' ':
+            case 'p':
                 if (fileManager.reading())
                     fileManager.stopReading();
                 else
@@ -150,7 +149,7 @@ Console::processEscape(const int code)
     switch (code) {
     case 0x6D: // 'm' just show menu
         break;
-    case 0x0D:
+    case ' ':
         globalMenu.pressKey(MainMenu::KEY_OK);
         break;
     case 0x1B:
