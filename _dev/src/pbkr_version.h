@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.0"
+#define PBKR_VERSION "2.0.1"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -12,12 +12,16 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.0:
    - Add support for 4 channels audio file. 2 additional channels
        provide left & right click directly (WIP)
+ New in V2.0.1:
+   - Modification for RPI 3B+:
+   - Remove WEMOS and reuse WEMOS button for Enter Menu
+   - Red LED is now driven by clic (flashes when signal on CLIC line)
 
  Known bugs:
-   - Latency & ESP self-test do not takie into account actual
-       sample rate (44100/48000)
    - Default MIDI volume is not applied until it is manually changed
  TODO:
    - Manage volume & clicVolume (See main_pkbr.cpp)
+   - Auto-identify HW ? (currently set by caller script in argv[])
+
  */
 
