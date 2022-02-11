@@ -118,9 +118,9 @@ int main (int argc, char**argv)
     int argi(1);
     bool interactive_console(false);
     int dacIdx = 0;
-    const char* hifidac = "hw:0";
-    const char *hdmidac = "hw:1,0";
-    const char *hdphdac = "hw:1,1";
+    const char* hifidac = NULL;
+    const char *hdmidac = NULL;
+    const char *hdphdac = NULL;
     while (argi < argc)
     {
         const char* const cmd(argv[argi++]);
@@ -143,14 +143,17 @@ int main (int argc, char**argv)
             if (dacIdx == 0)
             {
                 hifidac = cmd; // TODO : autodetect "sndrpihifiberry"
+                printf("Using <%s> as HIFIDAC (Playback)\n", hifidac);
             }
             else if (dacIdx == 1)
             {
                 hdmidac = cmd; // TODO : autodetect "HDMI"
+                printf("Using <%s> as HDMI (Not used)\n", hdmidac);
             }
             else if (dacIdx == 2)
             {
                 hdphdac = cmd; // TODO : autodetect "HEADPHONES"
+                printf("Using <%s> as HEADPHONES (Clics)\n", hdphdac);
             }
             else
             {
@@ -163,6 +166,12 @@ int main (int argc, char**argv)
     }
 
     print_version();
+
+    if (hifidac == NULL || hdphdac == NULL)
+    {
+        print_help(argv[0]);
+        return 0;
+    }
 
     static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
     static OSC::OSC_Controller osc(oscCfg);
