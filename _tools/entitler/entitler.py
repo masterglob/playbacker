@@ -137,7 +137,10 @@ class _Manager:
     def refresh(self, recurse= False):
         f = self.data["inFolder"].get()
         if not f:return
-        tFiles= [_TrackedFile(self,file) for file in os.listdir(f) if file.upper().endswith(".WAV")]
+        try:
+            tFiles = [_TrackedFile(self,file) for file in os.listdir(f) if file.upper().endswith(".WAV")]
+        except:
+            tFiles = []
         tFiles.sort(reverse=False)
         print (tFiles)
         
