@@ -217,8 +217,14 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
     m_mutex.lock();
     // Note : 6 bytes per sample
     static const int bytesPerSeconde (mAudioHdr.nSamplesPerSec * 6);
-    const streamoff offset(bytesPerSeconde * nbSeconds);
+    streamoff offset(bytesPerSeconde * nbSeconds);
     const int sign(forward ? 1 : -1);
+    const int curPos = mIf.tellg();
+    if (!forward && curPos < offset)
+    {
+        // Avoid underflow when rewinding
+        offset = curPos;
+    }
     mIf.seekg(offset * sign, ios_base::cur);
     cout << "FF, sec= "<< nbSeconds << ", dir=" << sign << ", EOF =" << mIf.eof() << ", GOOD=" << mIf.good() << endl;
     if (mIf.good())
