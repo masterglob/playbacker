@@ -126,6 +126,21 @@ NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
 
 
 /*******************************************************************************/
+struct NetConnMenuItem : ListMenuItem
+{
+    NetConnMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~NetConnMenuItem(void){}
+    virtual void onUpDownPress(const bool isUp);
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+private:
+    uint32_t m_upDownIdx;
+    uint32_t m_upDownIdxMax;
+};
+NetConnMenuItem netConnMenuItem ("Show conns", &netMenuItem);
+
+
+/*******************************************************************************/
 struct SettingsMenuItem : MenuItem
 {
     SettingsMenuItem(const std::string & title, MenuItem* parent);
@@ -780,8 +795,8 @@ const std::string NetShowMenuItem::menul(const bool line1)
             return "##noitem##";
         }
     }
-
 }
+
 /*******************************************************************************/
 const std::string NetShowMenuItem::menul1(void)
 {
@@ -792,6 +807,45 @@ const std::string NetShowMenuItem::menul1(void)
 const std::string NetShowMenuItem::menul2(void)
 {
     return menul(false);
+}
+
+/*******************************************************************************
+*******************************************************************************/
+NetConnMenuItem::NetConnMenuItem (const std::string & title, MenuItem* parent)
+:
+        ListMenuItem(title, parent, 1),
+        m_upDownIdx(0),
+        m_upDownIdxMax(0)
+{}
+
+/*******************************************************************************/
+void NetConnMenuItem::onUpDownPress(const bool isUp)
+{}
+
+/*******************************************************************************/
+const std::string NetConnMenuItem::menul1(void)
+{
+    return "OSC control:";
+}
+
+/*******************************************************************************/
+const std::string NetConnMenuItem::menul2(void)
+{
+    using namespace OSC;
+    OSC_Controller* inst = p_osc_instance;
+    if (inst)
+    {
+        uint32_t addr = inst->clientConnected();
+        static char res[17];
+        memset(res, 0, sizeof(res));
+        snprintf(res, sizeof(res), "%d.%d.%d.%d",
+                (uint8_t)(addr),
+                (uint8_t)(addr>>8),
+                (uint8_t)(addr>>16),
+                (uint8_t)(addr>>24));
+        return res;
+    }
+    return "";
 }
 
 

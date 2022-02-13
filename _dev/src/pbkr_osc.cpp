@@ -380,7 +380,7 @@ void OSC_Controller::body(void)
 {
 
     static const size_t MAXLSIZE(256);
-    void * buffer = malloc(MAXLSIZE);
+    void * buffer = malloc(MAXLSIZE+1);
     if (!buffer)
         throw EXCEPTION(std::string ("OSC_Controller : OOM!1"));
 
@@ -409,6 +409,15 @@ void OSC_Controller::body(void)
             }
             m_clientAddr = cliaddr.sin_addr;
             m_isClientKnown = true;
+            if (0) // For debug
+            {
+                ((char*)buffer)[MAXLSIZE] = 0;
+                uint32_t addr = cliaddr.sin_addr.s_addr;
+                printf("OSC_Controller received '%s' from %d.%d.%d.%d\n",
+                        (char*)buffer,
+                        addr & 0xFF, (addr>>8) & 0xFF, (addr>>16) & 0xFF, (addr>>24) & 0xFF);
+            }
+
             processMsg(buffer, n);
         }
     }

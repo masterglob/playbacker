@@ -90,6 +90,7 @@ public:
     void updateProjectList(void);
     void CheckUSB(void);
     void setTimeCode(const string & timecode);
+    uint32_t clientConnected(void)const{return m_clientAddr.s_addr;}
 private:
     virtual void body(void);
     void processMsg(const void* buff, const size_t len);
