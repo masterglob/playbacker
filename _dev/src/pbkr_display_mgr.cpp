@@ -130,7 +130,7 @@ void DisplayManager::refresh(void)
     if (!(m_ready&&m_canEvent)) return;
     std::string l1 (m_title.get());
     std::string l2 ("");
-    const uint32_t idx(m_printIdx%10);
+    const uint32_t idx(m_printIdx%20);
     if (m_warning != "")
     {
         l2 = m_warning;
@@ -162,11 +162,11 @@ void DisplayManager::refresh(void)
         }
         else
         {
-            if (idx < 3)
+            if (idx < 8)
             {
                 l1 = m_title.get();
             }
-            else if (idx <6)
+            else if (idx <12)
                 l1 = std::string("Track ") + m_trackIdx.get() + "/" + m_trackCount;
             else
                 l1 ="Reading...";
@@ -178,16 +178,16 @@ void DisplayManager::refresh(void)
     {
         if (m_filename.length() >0)
         {
-            if (idx < 4)
+            if (idx < 8)
                 l2 = std::string("Track ") + m_trackIdx.get() + "/" + m_trackCount;
-            else if (idx < 6)
+            else if (idx < 12)
                 l2 = m_filename;
             else
                 l2 = "Stopped";
         }
         else
         {
-            if (idx < 2)
+            if (idx < 6)
                 l2 = "No sel. track";
             else
                 l2 = std::string("Track -") + "/" + m_trackCount;
