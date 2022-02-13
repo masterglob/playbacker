@@ -216,12 +216,13 @@ OSC_Controller::~OSC_Controller(void)
 /*******************************************************************************/
 void OSC_Controller::setPbCtrlStatus(const bool isPlaying, const bool isPaused)
 {
-    const float playVal (isPlaying ? 1.0 : 0.0);
-    const float stopVal (isPaused || (!isPlaying) ? 1.0 : 0.0);
-    static const float recVal (0.0);
+    const bool isStopped = !isPlaying;
+    const float playVal (isPaused || isStopped ? 1.0 : 0.0);
+    const float stopVal (isPlaying ? 1.0 : 0.0);
+    const float pauseVal (isPlaying && (!isPaused) ? 1.0 : 0.0);
     send (OSC_Msg_To_Send (OSC_NAME("pPlay"), playVal));
     send (OSC_Msg_To_Send (OSC_NAME("pStop"),  stopVal));
-    send (OSC_Msg_To_Send (OSC_NAME("pRec"),  recVal));
+    send (OSC_Msg_To_Send (OSC_NAME("pPause"),  pauseVal));
 } // OSC_Controller::setPbCtrlStatus
 
 /*******************************************************************************/
@@ -409,7 +410,7 @@ void OSC_Controller::body(void)
             }
             m_clientAddr = cliaddr.sin_addr;
             m_isClientKnown = true;
-            if (0) // For debug
+            if (1) // For debug
             {
                 ((char*)buffer)[MAXLSIZE] = 0;
                 uint32_t addr = cliaddr.sin_addr.s_addr;
@@ -531,6 +532,10 @@ void OSC_Controller::processPlaylist(const std::string key,
     else if (key == "pStop")
     {
         API::onStopEvent();
+    }
+    else if (key == "pPause")
+    {
+        API::onPauseEvent();
     }
     if (key == "pBackward")
     {

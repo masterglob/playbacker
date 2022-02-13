@@ -72,6 +72,7 @@ std::string onKeyboardCmd  (const std::string& msg)
 
 /*******************************************************************************/
 void onPlayEvent    (void){fileManager.startReading ();}
+void onPauseEvent    (void){fileManager.pauseReading ();}
 void onStopEvent    (void){fileManager.stopReading ();}
 void onBackward     (void){fileManager.backward ();}
 void onFastForward     (void){fileManager.fastForward ();}
