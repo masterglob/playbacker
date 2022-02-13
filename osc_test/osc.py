@@ -3,8 +3,9 @@ import sys
 from binascii import unhexlify
 from threading import Thread 
 
-#UDP_IP = "192.168.22.1"
-UDP_IP = "192.168.7.80"
+UDP_IP = "192.168.22.1"
+#UDP_IP = "192.168.7.80"
+#UDP_IP = "192.168.1.20"
 UDP_PORT_IN = 8000
 UDP_PORT_OUT = 9000
 
@@ -69,7 +70,11 @@ def main_send():
                          socket.SOCK_DGRAM) # UDP
 
     x = bytes()
-    x +=  align_str (bytes(sys.argv[1],'latin-1'))
+    try:
+        b = bytes(sys.argv[1],'latin-1')
+    except:
+        b= bytes(sys.argv[1])
+    x +=  align_str (b)
     if (len (sys.argv) > 3):
         val = sys.argv[2]
         
@@ -89,7 +94,7 @@ def main_send():
 if __name__ == "__main__":
     if len(sys.argv) < 2: sys.argv=[sys.argv[0], "/ping"]
     try:
-        receiver =  Receiver()
+        # receiver =  Receiver()
         main_send()
     finally:
         pass
