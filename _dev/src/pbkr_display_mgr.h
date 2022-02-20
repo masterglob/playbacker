@@ -57,7 +57,7 @@ public:
         evProjectTitle, evProjectTrackCount,
         evUsbIn, evUsbOut,
         evPlay, evStop, evPause,
-        evTrack, evFile};
+        evTrack, evFile, evRefresh};
     void info (const std::string& msg);
     void warning (const std::string& msg);
     void onEvent (const Event e, const std::string& param="");

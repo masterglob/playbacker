@@ -410,7 +410,7 @@ void OSC_Controller::body(void)
             }
             m_clientAddr = cliaddr.sin_addr;
             m_isClientKnown = true;
-            if (1) // For debug
+            if (0) // For debug
             {
                 ((char*)buffer)[MAXLSIZE] = 0;
                 uint32_t addr = cliaddr.sin_addr.s_addr;

@@ -204,6 +204,8 @@ void DisplayManager::refresh(void)
     {
         l2 = l2_menu;
     }
+
+    if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuTxt(l1, l2);
     if (m_line1 != l1 || m_line2 != l2)
     {
         m_line1 = l1;
@@ -213,7 +215,6 @@ void DisplayManager::refresh(void)
         m_display.print(l1.c_str());
         m_display.setCursor(0, 1);
         m_display.print(l2.c_str());
-        if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuTxt(l1, l2);
         updateMenu();
     }
     m_canEvent = false;
@@ -307,6 +308,8 @@ void DisplayManager::forceRefresh(void)
     m_title.refresh();
     m_lTrack.set(m_filename);
     updateProjectList();
+
+    onEvent(evRefresh);
     FOR (iter, m_trackName){
         Property& p(*iter);
         p.refresh();
@@ -437,6 +440,8 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_event = std::string ("Reading ") + param;
         m_filename = param;
         m_lTrack.set(m_filename);
+        break;
+    case evRefresh:
         break;
     default:
         break;
