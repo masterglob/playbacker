@@ -552,7 +552,7 @@ CopyFromUSBMenuItem::menul2(void)
         // CM_OVERWRITE ,CM_COMPLETE, CM_BACKUP, CM_CANCEL
         case ProjectCopier::CM_OVERWRITE:return "<Overwrite>";
         case ProjectCopier::CM_COMPLETE:return "<Complete>";
-        case ProjectCopier::CM_BACKUP:return "<Beckup>";
+        case ProjectCopier::CM_BACKUP:return "<Backup>";
         case ProjectCopier::CM_CANCEL:return "<Cancel>";
         default: break;
         }
