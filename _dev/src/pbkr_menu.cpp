@@ -88,6 +88,7 @@ struct PlayMenuItem : MenuItem
     virtual ~PlayMenuItem(void){}
     virtual void onExit(void);
     virtual void onEnter(void);
+    virtual void onUpDownPress(const bool isUp);
     virtual void onLeftRightPress(const bool isLeft);
     virtual const std::string menul1(void){return "";}
     virtual const std::string menul2(void){return "";}
@@ -312,14 +313,26 @@ void PlayMenuItem::onExit(void)
 }
 
 /*******************************************************************************/
-void PlayMenuItem::onLeftRightPress(const bool isLeft)
+void PlayMenuItem::onUpDownPress(const bool isUp)
 {
-    if (isLeft)
+    if (!isUp)
         fileManager.prevTrack();
     else
         fileManager.nextTrack();
 }
 
+/*******************************************************************************/
+void PlayMenuItem::onLeftRightPress(const bool isLeft)
+{
+    if (isLeft)
+    {
+        fileManager.backward();
+    }
+    else
+    {
+        fileManager.fastForward();
+    }
+}
 
 /*******************************************************************************
 ########  ######## ##       ######## ######## ########    ########  ########   #######        ##
