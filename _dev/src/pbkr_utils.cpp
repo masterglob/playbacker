@@ -525,11 +525,11 @@ void FileManager::body(void)
             m_usbMounted = usbMounted;
             if (m_usbMounted)
             {
-                DisplayManager::instance().warning("USB plugged");
+                DisplayManager::instance().info("USB plugged");
             }
             else
             {
-                DisplayManager::instance().warning("USB unplugged");
+                DisplayManager::instance().info("USB unplugged");
             }
             if (OSC::p_osc_instance) OSC::p_osc_instance->CheckUSB();
         }
