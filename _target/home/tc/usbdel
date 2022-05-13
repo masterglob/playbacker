@@ -1,9 +1,15 @@
-[ "$1" != "$(cat /tmp/usb.mounted)" ] && exit
+MOUNT_PT=/mnt/usb
+LOG=/tmp/LOG
+DEV=/dev/$1
+[ "$DEV" != "$(cat /tmp/usb.mounted)" ] && exit
 
-(date && echo "  => USB removed $* on /mnt/usb") >> /tmp/LOG
+(echo && date && echo " => USB removed $* on /mnt/usb") >> $LOG
 
-echo "Trying to unmount $1"
-umount  /mnt/usb >> /tmp/LOG 2>> /tmp/LOG
-[[ 0 == $?  ]] && echo "try umount -l /mnt/usb" && umount -l /mnt/usb >> /tmp/LOG 2>> /tmp/LOG
-rm -f /tmp/usb.mounted >> /tmp/LOG 2>> /tmp/LOG
+echo "   => Unmounting previous USB (umount $MOUNT_PT)" >> $LOG
+umount $MOUNT_PT >> $LOG 2>> $LOG
+if mount | grep -q "$DEV" ; then
+	echo "   => (Failed) try umount -l $MOUNT_PT"
+	umount -l $MOUNT_PT >> /tmp/LOG 2>> $LOG
+fi
+rm -f /tmp/usb.mounted >> $LOG 2>> $LOG
 

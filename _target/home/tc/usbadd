@@ -1,8 +1,30 @@
-
-(date && echo "  => USB plugged $* on /mnt/usb") >> /tmp/LOG
+MOUNT_PT=/mnt/usb
+LOG=/tmp/LOG
+DEV=/dev/$1
+(echo && date && echo " => USB plugged $* on $MOUNT_PT") >> $LOG
 mkdir -p /mnt/usb
-umount /mnt/usb
-mount -r "/dev/$1" /mnt/usb >> /tmp/LOG 2>> /tmp/LOG
-echo "$1" > /tmp/usb.mounted
+if mount | grep -q "$MOUNT_PT" ; then
+	echo "  => Unmounting previous USB" >> $LOG
+	umount $MOUNT_PT >> $LOG 2>> $LOG
+fi
+rm -f /tmp/usb.mounted /tmp/usb.mounted 2> /dev/null
+
+# Check mount type
+OPT=""
+USBTYPE=$(busybox fdisk -l |grep sda1 |sed "s/.* //")
+(echo "$USBTYPE" |grep -q -i "NTFS") && OPT="$OPT -t ntfs"
+
+mount $OPT -r "$DEV" $MOUNT_PT >> $LOG 2>> $LOG
+
+if mount | grep -q "$DEV" ; then
+	echo "$DEV" > /tmp/usb.mounted
+	echo "  => Mounting $DEV to $MOUNT_PT Succeeded" >> $LOG
+	if test -d $MOUNT_PT/PBKR ; then
+		echo 'USB key contains projects ['$(ls $MOUNT_PT/PBKR/)']' >> $LOG
+	fi
+	echo "List"
+else
+	echo "Mounting failed" >> $LOG
+fi
 
 

@@ -2,6 +2,7 @@
 . /etc/init.d/tc-functions
 useBusybox
 # put user shutdown commands here
+(cd /root/pbkr ; ./lcd_display i +b +c +B t "Shutting down..." 2>/dev/null)&
 
 # If no backup of home was done then loop through valid users to clean up.
 if [ ! -e /tmp/backup_done ] || ! grep -q "^home" /opt/.filetool.lst; then
