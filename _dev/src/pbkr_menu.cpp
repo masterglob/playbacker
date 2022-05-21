@@ -163,8 +163,6 @@ struct SelectProjectShowMenuItem : ListMenuItem
     void setDefaultProject(void);
     static const string m_saveSection;
 private:
-    uint32_t m_upDownIdx;
-    uint32_t m_upDownIdxMax;
     string m_projectTitle;
     ProjectVect m_allproj;
 };
@@ -715,9 +713,7 @@ CopyFromUSBMenuItem::onEnter(void)
 *******************************************************************************/
 SelectProjectShowMenuItem::SelectProjectShowMenuItem (const std::string & title, MenuItem* parent)
 :
-        ListMenuItem(title, parent, 4),
-        m_upDownIdx(0),
-        m_upDownIdxMax(3),
+        ListMenuItem(title, parent, 8),
         m_projectTitle("")
 {
 }
