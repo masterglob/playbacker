@@ -4,6 +4,7 @@
 #include "pbkr_display_mgr.h"
 #include "pbkr_osc.h"
 #include "pbkr_cfg.h"
+#include "pbkr_menu.h"
 #include "pbkr_version.h"
 
 #include <stdlib.h>
@@ -127,12 +128,12 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                 static const uint8_t PAD_BOTT_RIGHT(0x02);
                 if (b1 == PAD_BOTT_LEFT)
                 {
-                    DISPLAY::DisplayManager::instance().info("Not ass.:NBL");
+                    PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_OK);
                     return;
                 }
                 if (b1 == PAD_BOTT_RIGHT)
                 {
-                    DISPLAY::DisplayManager::instance().info("Not ass.:NBR");
+                    PBKR::globalMenu.pressKey( PBKR::MainMenu::KEY_CANCEL);
                     return;
                 }
             }
