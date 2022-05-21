@@ -309,7 +309,14 @@ void PlayMenuItem::onEnter(void)
 /*******************************************************************************/
 void PlayMenuItem::onExit(void)
 {
-    globalMenu.setMenu(&mainMenuItem);
+    if (fileManager.reading())
+    {
+        fileManager.stopReading();
+    }
+    else
+    {
+        globalMenu.setMenu(&mainMenuItem);
+    }
 }
 
 /*******************************************************************************/
