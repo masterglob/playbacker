@@ -57,6 +57,10 @@ class _ProjectUI():
         btn.grid(row = 1)
         self._btns.append(btn)
         
+        btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
+        btn.grid(row = 1, column=2)
+        self._btns.append(btn)
+        
         self.readOnly = tk.BooleanVar(value = True)
         btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
         btn.grid(row = 2)
@@ -126,7 +130,7 @@ class _ProjectUI():
     
     def onTitleEdit(self, song):
         if self.readOnly.get():return 
-        title = askstring('Edit Title (%s)'%song.name, 'Enter new title', initialvalue=song.getTitle())
+        title = askstring('Edit Title (%s)'%song.name, 'Enter new title for file (%s)'%song.name, initialvalue=song.getTitle())
         if title:
             if '\\' in title:
                 messagebox.showerror("Bad title", "Cannot use '\\' in title")
@@ -135,7 +139,17 @@ class _ProjectUI():
             if song.getTitle() != title:
                 print("New title : <%s>"%title)
                 song.setTitle(self.mgr, title)
-
+    def __delete(self):
+        # delete current project
+        if self.readOnly.get():return 
+        confirm = askstring('Confirm deletion', 'Enter the project title to confirm its deletion',
+                             initialvalue="")
+        if confirm == self.mgr.currentProjectName():
+            self.mgr.deleteCurrentProject()
+        else:
+            messagebox.showerror("Bad confirmation", "bad confirmation: not deleted")
+            
+        
 class _UI():
     def __init__(self, mgr, win, params):
         self.win = win
@@ -482,6 +496,9 @@ class _Manager:
             self.ui.setProjList(self._projList)
             DEBUG("projects=%s"%self._projList)
     
+    def currentProjectName(self):return self._currProject
+    def deleteCurrentProject(self):
+        messagebox.showerror("Not implemented", "Not implemented: project deletion") # TODO
     def onProjectSelect(self, name):
         self.clearFiles()
         self._currProject = name
