@@ -7,6 +7,7 @@ if python_version == 3:
     from tkinter import messagebox
     from tkinter.simpledialog import askstring
     from tkinter import ttk
+    from idlelib.tooltip import Hovertip
 elif python_version == 2:
     raise Exception("This code requires adaptations to run under python2")
     import Tkinter as tk
@@ -82,6 +83,7 @@ class _ProjectUI():
             
             wgt = tk.Entry(fr, textvariable = var, width = 28, state="readonly")
             wgt.grid(row =y, column = 1, padx=2, pady=2)
+            myTip = Hovertip(wgt,'%s'%song.name)
             
             btn = tk.Button(fr,text="Edit title", command = lambda self=self, song=song : self.onTitleEdit(song))
             btn.grid(row = y, column = 2, padx=2, pady=2)
@@ -278,12 +280,13 @@ class _UI():
             btn.config(state=connectedState)
             
     def setProjList(self, l):
+        self.__cbbProjList.config(state="normal")
+        self.__cbbProjList.delete(0, "end")
         self.__cbbProjList["values"] = l[:]
         if l :
             self.__cbbProjList.current(0)
+            self.__cbbProjList.config(state="readonly")
         else:
-            self.__cbbProjList.config(state="normal")
-            self.__cbbProjList.delete(0, "end")
             self.__cbbProjList.config(state="disabled")
         self.onProjectSelect()
             
