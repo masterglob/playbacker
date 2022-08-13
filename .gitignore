@@ -1,2 +1,4 @@
 _target/root/pbkr/pbkr
 _dev/build_id
+*.pyc
+.*.json
