@@ -289,7 +289,9 @@ class _UI():
             
     def onProjectSelect(self, event = None):
         curr = self.__cbbProjList.current()
-        if curr >= 0:
+        if curr == 0:
+            pass # <None>
+        if curr >= 1:
             name = self.__cbbProjList.get()
         else: name = None
         self.mgr.onProjectSelect(name)
@@ -492,7 +494,7 @@ class _Manager:
             return
         if success:
             DEBUG("projects=%s"%result)
-            self._projList = result.split("\n")
+            self._projList = ("<NONE>\n%s"%result).split("\n")
             self.ui.setProjList(self._projList)
             DEBUG("projects=%s"%self._projList)
     
