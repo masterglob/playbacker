@@ -13,20 +13,19 @@ elif python_version == 2:
 def DEBUG(x):print(x)
 
 class P_NoteBook:
-    def __init__(self, parent, width, height, x, y, label = ""):
+    def __init__(self, parent, label = ""):
         self.parent = parent
-        self.x,self.y= x, y
-        self.w, self.h, self.label = width, height, label
+        self.label =label
     def __enter__(self):
-        self.fr= tk.LabelFrame(self.parent,width=self.w, height=self.h, text = self.label)
-        self.tabs = ttk.Notebook(self.fr, width=self.w - 5, height=self.h - 30)
+        self.fr= tk.LabelFrame(self.parent, text = self.label)
+        self.tabs = ttk.Notebook(self.fr)
         return self
     def __exit__(self ,type, value, traceback):
-        self.fr.place(x=self.x, y = self.y)
-        self.tabs.pack(expand = True)
+        self.fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
+        self.tabs.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
     def frame(self):return self.fr
     def addTab(self, title):
-        t = ttk.Frame(self.tabs, width=self.w, height=self.h)
+        t = ttk.Frame(self.tabs)
         self.tabs.add(t, text =title)
         return t
             

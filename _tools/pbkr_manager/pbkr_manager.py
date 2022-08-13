@@ -27,52 +27,79 @@ PROMPT_FORM_EXIT = False
 TARGET_PATH ="/mnt/mmcblk0p2"
 TARGET_PROJECTS = TARGET_PATH + "/pbkr.projects"
 TARGET_CONFIG = TARGET_PATH + "/pbkr.config"
-WIN_WIDTH=560
+WIN_WIDTH=620
 WIN_HEIGHT=600
 MAX_PROPERTIES = 18
 
 PROP_TITLE = "title"
 PROP_TRACK = "track"
-    
+     
 class _ProjectUI():
     def __init__(self, mgr, win):
         self.mgr, self.win = mgr, win
         self._wgt=[]
+        self._vars=[]
         self._btns=[]
+        
+        fr = tk.Frame(self.win)
+        btn = tk.Button (fr, text="Reorder", command = self.reorder)
+        btn.pack(side = tk.LEFT)
+        self._btns.append(btn)
+        
+        tk.Label(fr, text=" ").pack(side = tk.LEFT)
+        
+        btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
+        btn.pack(side = tk.LEFT)
+        self._btns.append(btn)
+        
+        tk.Label(fr, text=" ").pack(side = tk.LEFT)
+        
+        self.readOnly = tk.BooleanVar(value = True)
+        btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
+        btn.pack(side = tk.BOTTOM)
+        
+        fr.grid(row = 1)
+        
+        fr = tk.Frame(self.win)
+        self.frame = fr
+        # The frame containing songs needs a scrollbar
         self.setup()
+        
+        #self.frame.pack(side = tk.RIGHT, fill = tk.BOTH )
+        fr.grid(row = 2)
+        
         
     def setup(self, songs={}):
         '''
          @param songs :_PropertiedFileList
         '''
-        
         # 1: delete existing items
-        for song, var, fr in self._wgt :
+        for song, var in self._vars :
             del var
-            fr.destroy()
+        for wgt in self._wgt :
+            wgt.destroy()
         self._wgt = []
+        self._vars = []
         self._btns = []
         
-        fr = tk.Frame(self.win, width=WIN_WIDTH - 15)
-        btn = tk.Button (fr, text="Reorder", command = self.reorder)
-        btn.grid(row = 1)
-        self._btns.append(btn)
         
-        btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
-        btn.grid(row = 1, column=2)
-        self._btns.append(btn)
-        
-        self.readOnly = tk.BooleanVar(value = True)
-        btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
-        btn.grid(row = 2)
-        
-        fr.grid(row = 1)
-        
-        fr = tk.Frame(self.win, width=WIN_WIDTH - 15)
         self.songs=sorted([song for song in songs.values()], key=lambda s:s.getTrackIdx())
+        
+        fr0 = tk.Frame(self.frame)
+        fr = tk.Frame(fr0)
         
         # 2: reorder songs (! handle multiple identical tracks Id)
         # 3: create new items
+        y = 1
+        prevSong = None
+        for song in self.songs:
+            btn = tk.Button(fr,text="Insert", command = None)
+            btn.grid(row = y, pady=2)
+            self._btns.append(btn)
+            y += 1
+            
+        fr.pack(side = tk.LEFT)
+        fr = tk.Frame(fr0)
         y = 1
         prevSong = None
         for song in self.songs:
@@ -81,7 +108,7 @@ class _ProjectUI():
             wgt = tk.Label(fr, text = tId, width = 5)
             wgt.grid(row =y, column = 0)
             
-            wgt = tk.Entry(fr, textvariable = var, width = 28, state="readonly")
+            wgt = tk.Entry(fr, textvariable = var, width = 35, state="readonly")
             wgt.grid(row =y, column = 1, padx=2, pady=2)
             myTip = Hovertip(wgt,'%s'%song.name)
             
@@ -94,12 +121,14 @@ class _ProjectUI():
                 btn = tk.Button(fr,text="Move Up", command = cmd)
                 btn.grid(row = y, column = 3, padx=2, pady=2)
                 self._btns.append(btn)            
-            
-            self._wgt.append((song, var, fr))
+            self._vars.append((song,var))
             y += 1
+            
             prevSong = song
-        fr.grid(row =2)
         self.onReadOnlyChange()
+        fr.pack(side = tk.RIGHT)
+        fr0.pack()
+        self._wgt.append(fr0)
         
     def onReadOnlyChange(self):
         state = "disabled" if self.readOnly.get() else "normal"
@@ -111,7 +140,7 @@ class _ProjectUI():
             self.mgr.refresh(False)
         else:
             y = 1
-            for song, var, fr in self._wgt :
+            for song, var in self._vars :
                 var.set(value = song.getTitle())
             
     def onMove(self, song, prevSong):
@@ -160,79 +189,83 @@ class _UI():
         ##################
         # Target selection
         fr= tk.LabelFrame(self.win, text = "Connection",width=WIN_WIDTH/2, height=150)
-        tk.Label(fr, text="Select PBKR device").grid(row =1, column = 1)
+        tk.Label(fr, text="Select PBKR device").pack(side = tk.LEFT)
         
         self.__param_RemoteIp = params.createStr("remote_ip")
         w = tk.Entry(fr, textvariable = self.__param_RemoteIp, width = 25, state="normal")
-        w.grid(row = 2, column = 1)
+        w.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
         self.__entryIp = w
         
+        tk.Label(fr, text=" port ").pack(side = tk.LEFT)
+        
         self.__param_RemotePort = params.createInt("remote_port", 22)
-        w = tk.Entry(fr, textvariable = self.__param_RemotePort, width = 10, state="normal")
-        w.grid(row = 2, column = 2)
+        w = tk.Entry(fr, textvariable = self.__param_RemotePort, width = 8, state="normal")
+        w.pack(side = tk.LEFT, expand = True)
         self.__entryPort = w
         
         w = tk.Button(fr,text="Connect", command = self.__cbConn , width = 10)
-        w.grid(row = 2, column = 3)
+        w.pack(side = tk.LEFT)
         self.__btnConnect = w
         w = tk.Button(fr,text="Disconnect", command = self.__cbDisconn , width = 10)
-        w.grid(row = 2, column = 4)
+        w.pack(side = tk.LEFT)
         self.__btnDisconnect = w
             
-        fr.place(x=5, y = 5)
+        fr.pack(side = tk.TOP, fill = tk.X)
         
         #############################
         # TABS
         tabs0W ,tabs0H = WIN_WIDTH-10, WIN_HEIGHT -150
-        with P_NoteBook(self.win,width=tabs0W, height=tabs0H, label ="Connection", x=5, y = 80) as tabs0:
+        with P_NoteBook(self.win, label ="Connection") as tabs0:
              
             #############################
             # TAB 1 : projects
             tab1 = tabs0.addTab('Projects')
-            w = tk.Button(tab1,text="Refresh List", command = self.mgr.getProjList , width = 10)
-            w.grid(row = 1, column = 1)
+            fr= tk.Frame(tab1)
+            w = tk.Button(fr,text="Refresh List", command = self.mgr.getProjList , width = 10)
+            w.pack(side = tk.LEFT, expand = False)
             self.__btnGetList = w
              
-            w = tk.Button(tab1,text="Debug", command = self.mgr.debug , width = 10)
-            w.grid(row = 1, column = 2)
+            w = tk.Button(fr,text="Debug", command = self.mgr.debug , width = 10)
+            w.pack(side = tk.LEFT, expand = False)
             self.__btnDebug = w             
              
-            w = ttk.Combobox(tab1, values=[], state="readonly", width = 40)
-            w.grid(row = 1, column = 3, columnspan=2)
+            w = ttk.Combobox(fr, values=[], state="readonly", width = 40)
+            w.pack(side = tk.LEFT, expand = True, fill=tk.X)
             w.bind("<<ComboboxSelected>>", self.onProjectSelect)
             self.__cbbProjList = w
+            fr.pack(side = tk.TOP, expand = False, fill=tk.X)
             
-            self.projectFrame= tk.LabelFrame(tab1, text = "Active project", width=tabs0W - 10, height=tabs0H -60)
+            fr= tk.Frame(tab1)
+            self.projectFrame = tk.LabelFrame(fr,text = "Active project", width=tabs0W - 100, height=tabs0H -60)
             self.project = _ProjectUI(mgr, self.projectFrame)
-            self.projectFrame.grid(row = 2, column = 1, columnspan=10)
+            self.projectFrame.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
+            fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
             
             #############################
             # TAB 2 : config
             tab2 = tabs0.addTab('Config')
             for i in range(MAX_PROPERTIES):
+                fr= tk.Frame(tab2)
                 tkVarName = tk.StringVar(value = "")
                 tkVarVal = tk.StringVar(value = "")
-                w = tk.Entry(tab2, textvariable=tkVarName , width = 27, state="readonly")
-                w.grid(row = i, column = 1)
-                w = tk.Entry(tab2, textvariable=tkVarVal , width = 39, state="readonly")
-                w.grid(row = i, column = 2)
+                w = tk.Entry(fr, textvariable=tkVarName , width = 27, state="readonly")
+                w.pack(side = tk.LEFT, expand = True, fill=tk.X)
+                w = tk.Entry(fr, textvariable=tkVarVal , width = 39, state="readonly")
+                w.pack(side = tk.LEFT, expand = True, fill=tk.X)
                 self.mgr.pbkrProps[i] = (w, tkVarName, tkVarVal)
+                fr.pack(side = tk.TOP, expand = True, fill=tk.X)
                 
-              
-#             tab2 = ttk.Frame(tabs0)
-#             tabs0.add(tab2, text ='Config2')
-#             tabs0.pack(expand = 1, fill ="both")
-#             
-            
-        
         ##################
         # Status bar
-        fr= tk.LabelFrame(self.win, text = "",width = tabs0W- 60, height=40)
+        fr= tk.LabelFrame(self.win, text = "")
         self.statusBar = tk.StringVar(value = "")
-        l = tk.Label(fr, textvariable = self.statusBar, width = 60)
-        l.grid(row =1, column = 1)
+        l = tk.Label(fr, textvariable = self.statusBar)
+        l.pack(side = tk.LEFT, expand = True, fill = tk.X)
         
-        fr.place(x=10, y = WIN_HEIGHT-50)
+        
+        bExit = tk.Button(win, text="Exit", command = mgr.on_closing)
+        bExit.pack(side = tk.RIGHT)
+        fr.pack(side = tk.TOP, expand = False, fill = tk.X)
         
     def __cbConn(self):
         self.mgr.ssh.connect(self.__param_RemoteIp.get(), 
@@ -421,18 +454,16 @@ class _Manager:
         self.pbkrProps=[(None, None, None) for _ in range(MAX_PROPERTIES)]
         
         win = tk.Tk()
-        win.protocol("WM_DELETE_WINDOW", self.__on_closing)
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.title("Playbacker MANAGER tool")
         win.minsize(WIN_WIDTH, WIN_HEIGHT)
-        win.resizable(False, False)   
+        # win.resizable(False, False)   
         self.win = win       
         
         self._initpath=os.path.abspath (os.path.dirname(args[0]))
         self._args = args
         self._params = PBKR_Params (self._initpath, '.pbkmgr.json')
         self.ui = _UI(self, win, self._params)          
-        bExit = tk.Button(win, text="Exit", command = self.__on_closing)
-        bExit.place(x = WIN_WIDTH - 50, y = WIN_HEIGHT-40)
         
         self.__param_NbExec = self._params.createInt("nb_exec")
         self.__param_NbExec.set(self.__param_NbExec.get() + 1)
@@ -451,8 +482,8 @@ class _Manager:
             self.getProjFiles()
         self.ui.project.setup(self._projFiles.getFiles())
         
-    def __on_closing(self):
-        DEBUG ("__on_closing")
+    def on_closing(self):
+        DEBUG ("on_closing")
         if (PROMPT_FORM_EXIT == False ) or tk.messagebox.askokcancel("Quit", "Do you want to quit?"):
             self.quit()
     def __sshEvent(self, statusMsg, errorMsg):
