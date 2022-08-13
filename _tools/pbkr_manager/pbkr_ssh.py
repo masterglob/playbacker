@@ -105,7 +105,6 @@ class PBKR_SSH(threading.Thread):
             print(self.error)
           
     def sendEvent(self, status= "", error = None):
-        print(status)
         self.onEvent (status, error) 
         
 class SSHCommander:

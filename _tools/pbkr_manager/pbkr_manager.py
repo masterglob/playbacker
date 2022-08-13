@@ -5,8 +5,10 @@ print("Detected python %d"%python_version)
 if python_version == 3:
     import tkinter as tk
     from tkinter import messagebox
+    from tkinter.simpledialog import askstring
     from tkinter import ttk
 elif python_version == 2:
+    raise Exception("This code requires adaptations to run under python2")
     import Tkinter as tk
     import tkFileDialog
 import sys, os, re
@@ -27,6 +29,112 @@ TARGET_CONFIG = TARGET_PATH + "/pbkr.config"
 WIN_WIDTH=560
 WIN_HEIGHT=600
 MAX_PROPERTIES = 18
+
+PROP_TITLE = "title"
+PROP_TRACK = "track"
+    
+class _ProjectUI():
+    def __init__(self, mgr, win):
+        self.mgr, self.win = mgr, win
+        self._wgt=[]
+        self._btns=[]
+        self.setup()
+        
+    def setup(self, songs={}):
+        '''
+         @param songs :_PropertiedFileList
+        '''
+        
+        # 1: delete existing items
+        for song, var, fr in self._wgt :
+            del var
+            fr.destroy()
+        self._wgt = []
+        self._btns = []
+        
+        fr = tk.Frame(self.win, width=WIN_WIDTH - 15)
+        btn = tk.Button (fr, text="Reorder", command = self.reorder)
+        btn.grid(row = 1)
+        self._btns.append(btn)
+        
+        self.readOnly = tk.BooleanVar(value = True)
+        btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
+        btn.grid(row = 2)
+        
+        fr.grid(row = 1)
+        
+        fr = tk.Frame(self.win, width=WIN_WIDTH - 15)
+        self.songs=sorted([song for song in songs.values()], key=lambda s:s.getTrackIdx())
+        
+        # 2: reorder songs (! handle multiple identical tracks Id)
+        # 3: create new items
+        y = 1
+        prevSong = None
+        for song in self.songs:
+            var = tk.StringVar(value = song.getTitle())
+            tId = "#%02d"%song.getTrackIdx() if song.getTrackIdx() != None else '#??'
+            wgt = tk.Label(fr, text = tId, width = 5)
+            wgt.grid(row =y, column = 0)
+            
+            wgt = tk.Entry(fr, textvariable = var, width = 28, state="readonly")
+            wgt.grid(row =y, column = 1, padx=2, pady=2)
+            
+            btn = tk.Button(fr,text="Edit title", command = lambda self=self, song=song : self.onTitleEdit(song))
+            btn.grid(row = y, column = 2, padx=2, pady=2)
+            self._btns.append(btn)
+            
+            if prevSong:
+                cmd = lambda self=self, song=song, prevSong=prevSong: self.onMove(song, prevSong)
+                btn = tk.Button(fr,text="Move Up", command = cmd)
+                btn.grid(row = y, column = 3, padx=2, pady=2)
+                self._btns.append(btn)            
+            
+            self._wgt.append((song, var, fr))
+            y += 1
+            prevSong = song
+        fr.grid(row =2)
+        self.onReadOnlyChange()
+        
+    def onReadOnlyChange(self):
+        state = "disabled" if self.readOnly.get() else "normal"
+        for btn in self._btns:
+            btn.config(state=state)
+        
+    def refresh(self, propName):
+        if propName == PROP_TRACK:
+            self.mgr.refresh(False)
+        else:
+            y = 1
+            for song, var, fr in self._wgt :
+                var.set(value = song.getTitle())
+            
+    def onMove(self, song, prevSong):
+        if self.readOnly.get():return 
+        idx1 = song.getTrackIdx()
+        idx2 = prevSong.getTrackIdx()
+        song.setTrackIdx(self.mgr, idx2)
+        prevSong.setTrackIdx(self.mgr, idx1)
+        self.mgr.refresh(False)
+    
+    def reorder(self):
+        if self.readOnly.get():return 
+        y=1
+        for song in self.songs:
+            song.setTrackIdx(self.mgr, y)
+            y += 1
+        self.mgr.refresh(False)
+    
+    def onTitleEdit(self, song):
+        if self.readOnly.get():return 
+        title = askstring('Edit Title (%s)'%song.name, 'Enter new title', initialvalue=song.getTitle())
+        if title:
+            if '\\' in title:
+                messagebox.showerror("Bad title", "Cannot use '\\' in title")
+                return                
+            title = title.replace ("'", "\\'")
+            if song.getTitle() != title:
+                print("New title : <%s>"%title)
+                song.setTitle(self.mgr, title)
 
 class _UI():
     def __init__(self, mgr, win, params):
@@ -78,9 +186,10 @@ class _UI():
             w.bind("<<ComboboxSelected>>", self.onProjectSelect)
             self.__cbbProjList = w
             
-            fr2= tk.LabelFrame(tab1, text = "Active project", width=tabs0W - 10, height=tabs0H -60)
-            fr2.grid(row = 2, column = 1, columnspan=10)
-#             
+            self.projectFrame= tk.LabelFrame(tab1, text = "Active project", width=tabs0W - 10, height=tabs0H -60)
+            self.project = _ProjectUI(mgr, self.projectFrame)
+            self.projectFrame.grid(row = 2, column = 1, columnspan=10)
+            
             #############################
             # TAB 2 : config
             tab2 = tabs0.addTab('Config')
@@ -155,7 +264,7 @@ class _UI():
             btn.config(state=connectedState)
             
     def setProjList(self, l):
-        self.__cbbProjList["values"] = l
+        self.__cbbProjList["values"] = l[:]
         if l :
             self.__cbbProjList.current(0)
         else:
@@ -186,14 +295,31 @@ class SSHFileSizeReader(SSHCommander):
         self.file.setSizeKb (sizeKb)
        
 class SSHFilePropReader(SSHCommander):
-    def __init__(self, ssh, filename, file, propName):
+    def __init__(self, mgr, filename, file, propName):
+        self.mgr = mgr
         self.propName = propName
         self.filename = filename
         self.file = file
-        SSHCommander.__init__(self, ssh, "cat %s.%s"%(filename,propName), self.event)
+        cmd = "cat %s.%s"%(filename,propName)
+        DEBUG("command is `%s`"%cmd)
+        SSHCommander.__init__(self, mgr.ssh, cmd, self.event)
     def event(self, result):
         self.file.props[self.propName] = str(result)
+        self.mgr.ui.project.refresh(self.propName)
         DEBUG ("%s of %s is %s"%(self.propName,self.filename,result))
+
+class SSHFilePropWriter(SSHCommander):
+    def __init__(self, mgr, filename, file, propName, propValue):
+        self.mgr = mgr
+        self.propName = propName
+        self.filename = filename
+        self.file = file
+        cmd="echo '%s' >  %s.%s"%(propValue,filename,propName)
+        DEBUG("command is `%s`"%cmd)
+        SSHCommander.__init__(self, mgr.ssh, cmd, self.event)
+    def event(self, result):
+        # Read back value
+        SSHFilePropReader(self.mgr, self.filename, self.file, self.propName)
 
 class SSHSettingsPropReader(SSHCommander):
     def __init__(self, ssh, name, result):
@@ -207,24 +333,38 @@ class SSHSettingsPropReader(SSHCommander):
         DEBUG ("Global setting <%s> is <%s>"%(self.name,result))
        
 class _PropertiedFile:     
-    def __init__(self, name):
+    def __init__(self, path, name):
         self.props={}   
         self.sizeKb=-1
+        self.name=name
+        self.fullPathName="%s/%s"%(path,name)
     def setSizeKb(self, sizeKb):self.sizeKb = sizeKb
     def getTitle(self):
-        try: t = self.props["title"].strip()
+        try: t = self.props[PROP_TITLE].strip()
         except: t= ""
-        return t if t else "<Untitled>"
+        return t if t else "<%s>"%self.name
     def getTrackIdx(self):
-        if "track" in self.props: return int(self.props["track"])
-        return -1
+        try:return int(self.props[PROP_TRACK])
+        except: return 999
+    def setTitle(self, mgr, newTitle):
+        SSHFilePropWriter(mgr, self.fullPathName, self, PROP_TITLE, newTitle)
+    def setTrackIdx(self, mgr, newTrack):
+        SSHFilePropWriter(mgr, self.fullPathName, self, PROP_TRACK, newTrack)
+        
 class _PropertiedFileList:
-    def __init__(self, ssh):
-        self.ssh = ssh
+    def __init__(self, mgr):
+        self.mgr = mgr
         self.clear()
     def clear(self):
         self._path = ""
         self._list={}
+    
+    def byTrack(self, trackId):
+        for name in self._list:
+            song = self._list[name]
+            if song.getTrackIdx() == trackId: return song
+        return None
+    
     def getFiles(self): return self._list
     def setPath(self, path):self._path = path
     def addFile(self, filename):
@@ -236,29 +376,27 @@ class _PropertiedFileList:
             n, ext = (m.group(1)+m.group(2)), ""
         if m:
             if n not in self._list:
-                print(" New file <%s>"%(n))
-                f = _PropertiedFile(n)
+                f = _PropertiedFile(self._path, n)
                 self._list[n] = f
             else: f = self._list[n]
             
-            filename = self._path+"/"+n
+            filename = f.fullPathName
             
             if ext:
                 f.props[ext] = None
-                SSHFilePropReader(self.ssh, filename, f, "title")
-                SSHFilePropReader(self.ssh, filename, f, "track")
+                SSHFilePropReader(self.mgr, filename, f, PROP_TITLE)
+                SSHFilePropReader(self.mgr, filename, f, PROP_TRACK)
             else:
                 # read file size
                 # "du -k AMOT_4T_02-HA.wav|cut -f 1"
-                SSHFileSizeReader(self.ssh, filename, f)
-                
+                SSHFileSizeReader(self.mgr.ssh, filename, f)
     
 class _Manager:
     def __init__(self, args):
         self.ssh = PBKR_SSH(self.__sshEvent)
         
         self._projList=[]
-        self._projFiles =_PropertiedFileList(self.ssh)
+        self._projFiles =_PropertiedFileList(self)
         self._currProject = None
         self._isConnected = False
         self.pbkrProps=[(None, None, None) for _ in range(MAX_PROPERTIES)]
@@ -280,7 +418,7 @@ class _Manager:
         self.__param_NbExec = self._params.createInt("nb_exec")
         self.__param_NbExec.set(self.__param_NbExec.get() + 1)
         
-        self.refresh()
+        self.refresh(True)
         self.ssh.start()
         
     def quit(self):
@@ -288,8 +426,11 @@ class _Manager:
         self._params.saveToFile()
         self.win.destroy()
         
-    def refresh(self, recurse= False):
-        pass
+    def refresh(self, reload= True):
+        if reload:
+            self.ui.project.setup()
+            self.getProjFiles()
+        self.ui.project.setup(self._projFiles.getFiles())
         
     def __on_closing(self):
         DEBUG ("__on_closing")
@@ -336,6 +477,7 @@ class _Manager:
             self.ssh.command("ls -1 %s"%TARGET_PROJECTS, self.getProjList)
             return
         if success:
+            DEBUG("projects=%s"%result)
             self._projList = result.split("\n")
             self.ui.setProjList(self._projList)
             DEBUG("projects=%s"%self._projList)
@@ -344,7 +486,7 @@ class _Manager:
         self.clearFiles()
         self._currProject = name
         DEBUG("project=%s"%name)
-        self.getProjFiles()
+        self.refresh()
         
     def getProjFiles(self, success = False, result = None):
         if not self._isConnected: return
