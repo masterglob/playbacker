@@ -1,5 +1,5 @@
 # playbacker
-Synchronized Playback click & MIDI on RasPI3B based on TinyCore + Wemos D1 Mini for MIDI management.
+Synchronized Playback click & MIDI on RasPI3B based on TinyCore. Using I2S for playback output and native RPI headphone for clics
 
 see _doc folder
 
