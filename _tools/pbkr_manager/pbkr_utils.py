@@ -2,11 +2,12 @@
 python_version = int(str(range(3))[-2])
 # print("Detected python %d"%python_version)
 
-import struct
+import struct, re
 if python_version == 3:
     import tkinter as tk
     from tkinter import messagebox
     from tkinter import ttk
+    from tkinter.simpledialog import askstring
 elif python_version == 2:
     import Tkinter as tk
     import tkFileDialog
@@ -29,9 +30,28 @@ class P_NoteBook:
         t = ttk.Frame(self.tabs)
         self.tabs.add(t, text =title)
         return t
+   
+##################################################
+def askTitle(parent, name, title):
+    result = None
+    while not result:
+        result = askstring(parent = parent,
+                          title = 'Set Title (%s)'%name,
+                          prompt = 'Enter new title for file (%s)'%name,
+                          initialvalue = title).strip()
+        if result:
+            if not re.match(r"^[ 'A-Z0-9_+-]+$", result, flags=re.IGNORECASE): 
+                messagebox.showerror("Bad title", "Do not use special chars in title")
+                continue
+            result = result.replace ("'", "\\'")
+            return result.strip()
             
+
 ##################################################
 def printable(c):return "%c"%c if c >= 0x20 and c<0x80 else "."
+
+##################################################
+def target_path_join(*args): return ("/".join(args))
 
 ##################################################
 class InvalidWavFileFormat(Exception):

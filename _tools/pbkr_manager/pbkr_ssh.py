@@ -21,6 +21,7 @@ class PBKR_SSH(threading.Thread):
         self.status = None
         self._isConnected = False
         self._isConnecting = False
+        self._sftp = None
         self.running = True
         self.lock = threading.Lock()
         threading.Thread.__init__(self)
@@ -37,6 +38,11 @@ class PBKR_SSH(threading.Thread):
         self.lock.acquire()
 #         print ("Received command:%s"%str(cmdStr))
         self.cmds.append((self._doCommand,(cmdStr, resultCb)))
+        self.lock.release()
+    def installFile(self, srcFile, dstFile, resultCb):
+        self.lock.acquire()
+#         print ("Received command:%s"%str(cmdStr))
+        self.cmds.append((self._doInstall,(srcFile, dstFile, resultCb)))
         self.lock.release()
     def connect(self, ip, port, username, password):
         self.lock.acquire()
@@ -75,15 +81,18 @@ class PBKR_SSH(threading.Thread):
         try:
             stdin, stdout, stderr = self.ssh.exec_command(cmd)
             self.sendEvent()
-            resultCb(True, stdout.read().decode().strip())
+            if resultCb:
+                resultCb(True, stdout.read().decode().strip())
         except paramiko.ssh_exception.SSHException as e:
             self.sendEvent("Command <%s> failed"%cmd, str(e))
-            resultCb(False, stderr.read().decode().strip())
+            if resultCb:
+                resultCb(False, stderr.read().decode().strip())
         
     def _doDisconnect(self, **kwargs):
         self.ssh.close()
         self._isConnected = False
         self._isConnecting  = False
+        self._sftp = None
         self.sendEvent("Disconnected")
         
     def _doConnect(self, ip, port, username, password):
@@ -103,23 +112,50 @@ class PBKR_SSH(threading.Thread):
             self._isConnecting  = False
             self.sendEvent("Failed to connect", str(e))
             print(self.error)
+        self._sftp = self.ssh.open_sftp()
           
     def sendEvent(self, status= "", error = None):
         self.onEvent (status, error) 
+    
+    def _doInstall(self, srcFile, dstFile, resultCb):
+        if not self._sftp:
+            if resultCb:
+                resultCb(False, "SFTP not open")
+            return
         
-class SSHCommander:
-    def __init__(self, ssh, command, event):
-        self.command = command
-        self.event = event
-        ssh.command(command ,self)
+        try:
+            attr = self._sftp.put(srcFile, dstFile)
+            # print("Command: _sftp.put(%s, %s)"%(srcFile,dstFile))
+            self.sendEvent()
+            resultCb(True, "")
+        except IOError as e:
+            self.sendEvent("Installing file <%s> to path <%s> failed"%
+                           (srcPath, destPath), str(e))
+            if resultCb:
+                resultCb(False, stderr.read().decode().strip())
+                   
+class SSHExecuter:
+    def __init__(self, name, event = None, **kwargs):
+        self.__event, self.__name  = event, name
     def __call__(self, success, result):
         if success:
             try:
-                self.event(result)
+                if self.__event : self.__event(result)
             except:
-                DEBUG ("Failed to apply SSH result (%s): <%s>"%(self.command, result))
+                DEBUG ("Failed to apply SSH result (%s): <%s>"%(self.__name, result))
                 raise
         else:
             DEBUG ("Failed to exec SSH command. ERR=<%s>"%(result))
-            DEBUG ("Note: failed command was <%s>"%(self.command))
-            
+            DEBUG ("Note: failed command was <%s>"%(self.__name))
+              
+class SSHCommander(SSHExecuter):
+    def __init__(self, ssh, command, event):
+        SSHExecuter.__init__(self, name=command[:], event= event)
+        self.command = command
+        ssh.command(command ,self)
+        
+class SSHUploader(SSHExecuter):
+    def __init__(self, ssh, srcFile, dstFile, event):
+        SSHExecuter.__init__(self, name="copy %s to %s"%(srcFile,dstFile), event= event)
+        self.srcFile = srcFile
+        ssh.installFile(srcFile ,dstFile ,event)

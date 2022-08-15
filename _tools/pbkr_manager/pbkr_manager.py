@@ -16,8 +16,9 @@ elif python_version == 2:
 import sys, os, re
 
 from pbkr_params import PBKR_Params
-from pbkr_ssh import PBKR_SSH, SSHCommander
-from pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat
+from pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader
+from pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat, \
+    target_path_join, askTitle
 
 ###################
 # CONFIG
@@ -26,12 +27,12 @@ PROMPT_FORM_EXIT = False
 ###################
 # CONSTANTS
 TARGET_PATH ="/mnt/mmcblk0p2"
-TARGET_PROJECTS = TARGET_PATH + "/pbkr.projects"
-TARGET_CONFIG = TARGET_PATH + "/pbkr.config"
+TARGET_PROJECTS = target_path_join (TARGET_PATH, "pbkr.projects")
+TARGET_CONFIG = target_path_join (TARGET_PATH, "pbkr.config")
 WIN_WIDTH=620
 WIN_HEIGHT=600
 MAX_PROPERTIES = 18
-
+NO_TRACK_ID = 999
 PROP_TITLE = "title"
 PROP_TRACK = "track"
      
@@ -95,7 +96,7 @@ class _ProjectUI():
         y = 1
         prevSong = None
         for song in self.songs + [""]:
-            btn = tk.Button(fr,text="Insert", command = lambda self=self, y=y: self.insertSong(at = y))
+            btn = tk.Button(fr,text="Insert", command = lambda self=self, y=y: self.insertSong(at = y - 1))
             btn.grid(row = y, pady=2)
             self._btns.append(btn)
             y += 1
@@ -139,32 +140,78 @@ class _ProjectUI():
             btn.config(state=state)
     
     def insertSong(self, at):
+        class InvalidWavFile(Exception):pass
+        
         if self.readOnly.get():return 
-        projName = self.mgr.currentProjectName()
-        if not projName : return
-        DEBUG("TODO:insertSong(%s)"%at)  # TODO
-        print("path=%s"%self.mgr.param_LastOpenPath.get())
-        filename = tk.filedialog.askopenfilename(parent=self.win,
-                                                 initialdir= self.mgr.param_LastOpenPath.get(),
-                                                 title= "Select file to insert in project %s"%projName,
-                                                 filetypes= (('WAV files', '*.wav'),('All files', '*.*'), )
-                                                 )
-        if not filename: return
-        print("chosen file:%s"%filename)
-        srcDir, filename = os.path.split(os.path.abspath(filename))
-        self.mgr.param_LastOpenPath.set(srcDir)
-        
-        # Check that File format is correct
-        try:WavFileChecker( os.path.join(srcDir, filename))
-        except InvalidWavFileFormat as e:
-            messagebox.showerror("Invalid file", str(e))
-            return
-        
-        # Check for invalid chars
-        if not re.match(r"^[A-Z0-9_+-]+[.]wav$", filename, flags=re.IGNORECASE):
-            messagebox.showerror("Invalid file", "Invalid file name. Please use only basic characters and '.wav' extension.")
-            return
+        try:
+            projName = self.mgr.currentProjectName()
+            if not projName : return
+            fullfilename = tk.filedialog.askopenfilename(parent=self.win,
+                                                     initialdir= self.mgr.param_LastOpenPath.get(),
+                                                     title= "Select file to insert in project %s"%projName,
+                                                     filetypes= (('WAV files', '*.wav'),('All files', '*.*'), )
+                                                     )
+            if not fullfilename: return
+            srcDir, filename = os.path.split(os.path.abspath(fullfilename))
+            self.mgr.param_LastOpenPath.set(srcDir)
             
+            # Check that File format is correct
+            try:WavFileChecker( os.path.join(srcDir, filename))
+            except InvalidWavFileFormat as e:
+                raise InvalidWavFile(str(e))
+            
+            # Check for invalid chars
+            if not re.match(r"^[A-Z0-9_+-]+[.]wav$", filename, flags=re.IGNORECASE):
+                raise InvalidWavFile("Invalid file name. Please use only basic characters and '.wav' extension.")
+            
+            # ensure that there is not already a file with same name
+            for song in self.songs:
+                if song.name == filename:
+                    raise InvalidWavFile("There is already one song with that filename (#%d : %s)"%
+                                         (song.getTrackIdx(), song.getTitle()))
+        
+            # Ask for song name
+            title = askTitle(self.win, filename, filename)
+            if not title:
+                raise InvalidWavFile("Cancelled")
+            
+            DEBUG("Valid title <%s>"%title)
+            
+            # Create song object
+            newSong = _PropertiedFile(target_path_join(TARGET_PROJECTS, projName), filename)
+            self.songs.insert(at, newSong)
+            # To create track Id, we may have to increments next songs ids...
+            try: expTrackId = self.songs[at - 1].getTrackIdx() + 1
+            except:  expTrackId = 1
+            if expTrackId >= NO_TRACK_ID : expTrackId = 1
+            DEBUG("Start at pos=%d, with id=%d"%(at,expTrackId))
+            
+            newSong.setTrackIdx(self.mgr, expTrackId)
+            
+            for song in self.songs[at + 1:]:
+                currTrackId = song.getTrackIdx()
+                if expTrackId > currTrackId:
+                    DEBUG("Change track Id from %d to %d for %s"%(currTrackId,expTrackId, song.name))
+                    song.setTrackIdx(self.mgr, expTrackId)
+                
+                expTrackId += 1
+                
+            newSong.setTitle(self.mgr, title)
+            
+            # Install file
+            dstName = target_path_join(TARGET_PROJECTS, projName, filename) 
+            SSHUploader(self.mgr.ssh, fullfilename, dstName, event = self.__insertSongDone)
+            
+                    
+        except InvalidWavFile as e:
+            messagebox.showerror("Installation failed", str(e))
+
+    def __insertSongDone(self, success, result):
+        DEBUG("__insertSongDone")
+        if success: self.mgr.refresh(True)
+        else:
+            messagebox.showerror("Installation failed", "Copy failed : %s"%result)
+        
     def refresh(self, propName):
         if propName == PROP_TRACK:
             self.mgr.refresh(False)
@@ -192,12 +239,8 @@ class _ProjectUI():
     
     def onTitleEdit(self, song):
         if self.readOnly.get():return 
-        title = askstring('Edit Title (%s)'%song.name, 'Enter new title for file (%s)'%song.name, initialvalue=song.getTitle()).strip()
+        title = askTitle(self.win, song.name, song.getTitle())
         if title:
-            if '\\' in title:
-                messagebox.showerror("Bad title", "Cannot use '\\' in title")
-                return                
-            title = title.replace ("'", "\\'")
             if song.getTitle() != title:
                 print("New title : <%s>"%title)
                 song.setTitle(self.mgr, title)
@@ -374,7 +417,7 @@ class SSHFileSizeReader(SSHCommander):
         except:
             DEBUG ("Failed to read file size(%s): <%s>"%(self.filename, result))
             sizeKb = -1
-        DEBUG("File size:%s = %d Kb"%(self.filename,sizeKb))
+        #DEBUG("File size:%s = %d Kb"%(self.filename,sizeKb))
         self.file.setSizeKb (sizeKb)
        
 class SSHFilePropReader(SSHCommander):
@@ -384,12 +427,12 @@ class SSHFilePropReader(SSHCommander):
         self.filename = filename
         self.file = file
         cmd = "cat %s.%s"%(filename,propName)
-        DEBUG("command is `%s`"%cmd)
+        #DEBUG("command is `%s`"%cmd)
         SSHCommander.__init__(self, mgr.ssh, cmd, self.event)
     def event(self, result):
         self.file.props[self.propName] = str(result)
         self.mgr.ui.project.refresh(self.propName)
-        DEBUG ("%s of %s is %s"%(self.propName,self.filename,result))
+        #DEBUG ("%s of %s is %s"%(self.propName,self.filename,result))
 
 class SSHFilePropWriter(SSHCommander):
     def __init__(self, mgr, filename, file, propName, propValue):
@@ -428,7 +471,7 @@ class _PropertiedFile:
         return t if t else "<%s>"%self.name
     def getTrackIdx(self):
         try:return int(self.props[PROP_TRACK])
-        except: return 999
+        except: return NO_TRACK_ID
     def setTitle(self, mgr, newTitle):
         SSHFilePropWriter(mgr, self.fullPathName, self, PROP_TITLE, newTitle)
     def setTrackIdx(self, mgr, newTrack):
