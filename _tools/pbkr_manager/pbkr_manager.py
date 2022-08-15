@@ -13,8 +13,9 @@ elif python_version == 2:
     raise Exception("This code requires adaptations to run under python2")
     import Tkinter as tk
     import tkFileDialog
-import sys, os, re
-
+    
+import sys, os, re, time
+from threading import Thread
 from pbkr_params import PBKR_Params
 from pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader
 from pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat, \
@@ -27,6 +28,9 @@ PROMPT_FORM_EXIT = False
 ###################
 # CONSTANTS
 TARGET_PATH ="/mnt/mmcblk0p2"
+TARGET_WWW ="/home/www"
+TARGET_WWW_RES =  target_path_join (TARGET_WWW, "res")
+TARGET_WWW_CMD =  target_path_join (TARGET_WWW, "cmd")
 TARGET_PROJECTS = target_path_join (TARGET_PATH, "pbkr.projects")
 TARGET_CONFIG = target_path_join (TARGET_PATH, "pbkr.config")
 TARGET_TRASH = target_path_join (TARGET_PATH, "pbkr.trash","")
@@ -299,7 +303,99 @@ class _ProjectUI():
         else:
             messagebox.showerror("Bad confirmation", "bad confirmation: not deleted")
             
+class RemoteControl (Thread):
+    def __init__(self, mgr, win):
+        Thread.__init__(self)
+        self.mgr, self.win = mgr, win
         
+        frDisplay  = tk.Frame(win)
+        
+        self.menul1= tk.StringVar(value="Menu L1")
+        self.menul2= tk.StringVar(value="Menu L2")
+        tk.Label(frDisplay, textvariable=self.menul1, width = 16,
+                 anchor  = "w", 
+                 bg="#1010FF", fg= "#F0F0FF", bd=1,
+                  font=("Courier new", 14)).grid(row=1, column=1)
+        tk.Label(frDisplay, text=" ", width=1).grid(row=1, column=2)
+        tk.Label(frDisplay, textvariable=self.menul2, width = 16,
+                 anchor  = "w", 
+                 bg="#1010FF", fg= "#F0F0FF", bd=1,
+                  font=("Courier new", 14)).grid(row=2, column=1)
+        tk.Label(frDisplay, text=" ", width=1).grid(row=2, column=2)
+        
+        frDisplay.pack(side = tk.RIGHT)
+        
+        fr  = tk.Frame(win)
+        tk.Button(fr, text="OK", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pOk")
+                  ).grid(row = 1, column=1)
+        tk.Label(fr, text=" ", width=1).grid(row=1, column=2)
+        tk.Button(fr, text="Cancel", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pClose")
+                  ).grid(row = 1, column=3)
+        tk.Label(fr, text=" ", width=1).grid(row=1, column=4)
+        fr.pack(side = tk.LEFT)
+        
+        fr  = tk.Frame(win)
+        tk.Button(fr, text="Left", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pLeft")
+                  ).grid(row = 2, column=1, columnspan=2)
+        tk.Button(fr, text="Right", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pRight")
+                  ).grid(row = 2, column=3, columnspan=2)
+        tk.Button(fr, text="Up", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pUp")
+                  ).grid(row = 1, column=2, columnspan=2)
+        tk.Button(fr, text="Down", height=4, width=8,
+                  command = lambda self=self: self.sendControl("pDown")
+                  ).grid(row = 3, column=2, columnspan=2)
+        fr.pack(side = tk.LEFT)
+        
+        self.start()
+
+    def sendControl(self, cmd):
+        if self.mgr.ssh.isConnected() :
+            cmd = "echo -n '%s' > '%s'"%(cmd, TARGET_WWW_CMD)
+            SSHCommander(self.mgr.ssh, cmd, None)
+        
+        
+    def onUpdate(self, var, value):
+        # convert displayable chars
+        value = value.replace("%c"%0x7F, "<")
+        value = value.replace("%c"%0x7E, ">")
+        if var.get() != value:
+            var.set(value)
+            print (" ".join(["%02X"%ord(c) for c in value]))
+             
+        
+    def run(self):
+        wgtMap=[
+            ("lMenuL1", self.menul1),
+            ("lMenuL2", self.menul2),
+            ]
+        while True:
+            for name, var in wgtMap:
+                cmd = "cat %s/%s"%(TARGET_WWW_RES, name)
+                if self.mgr.ssh.isConnected() :
+                    SSHCommander(self.mgr.ssh, cmd, lambda result,self=self, var=var :self.onUpdate(var, result))
+                
+                time.sleep(0.5)
+            
+class SSHFilePropReader(SSHCommander):
+    def __init__(self, mgr, filename, file, propName):
+        self.mgr = mgr
+        self.propName = propName
+        self.filename = filename
+        self.file = file
+        cmd = "cat %s.%s"%(filename,propName)
+        #DEBUG("command is `%s`"%cmd)
+        SSHCommander.__init__(self, mgr.ssh, cmd, self.event)
+    def event(self, result):
+        self.file.props[self.propName] = str(result)
+        self.mgr.ui.project.refresh(self.propName)
+        #DEBUG ("%s of %s is %s"%(self.propName,self.filename,result))
+
+
 class _UI():
     def __init__(self, mgr, win, params):
         self.win = win
@@ -399,6 +495,13 @@ class _UI():
                 self.mgr.pbkrProps[i] = (w, tkVarName, tkVarVal)
                 fr.pack(side = tk.TOP, expand = True, fill=tk.X)
                 
+            #############################
+            # TAB 3 : Remote control
+            tab3 = tabs0.addTab('Remote Control')
+            fr= tk.Frame(tab3)
+            self.remoteControl = RemoteControl(mgr, fr)
+            fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
+            
         ##################
         # Status bar
         fr= tk.LabelFrame(self.win, text = "")

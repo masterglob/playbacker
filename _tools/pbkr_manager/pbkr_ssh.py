@@ -78,6 +78,9 @@ class PBKR_SSH(threading.Thread):
                 time.sleep(0.01)
                 
     def _doCommand(self, cmd, resultCb):
+        if not self._isConnected :
+            resultCb(False, "Not connected")
+            return
         try:
             stdin, stdout, stderr = self.ssh.exec_command(cmd)
 #             print (">%s"%cmd)
