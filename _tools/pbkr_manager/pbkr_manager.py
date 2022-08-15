@@ -47,12 +47,11 @@ class _ProjectUI():
         self.readOnly = tk.BooleanVar(value = True)
         fr = tk.Frame(self.win)
         self.frame = fr
-        # The frame containing songs needs a scrollbar
-        self.setupProject()
+        # TODO : The frame containing songs needs a scrollbar
         
-        #self.frame.pack(side = tk.RIGHT, fill = tk.BOTH )
         fr.pack(side = tk.TOP)
         
+        self.makeInactive("No project loaded")
         
     def clearProject(self):
         for song, var in self._vars :
@@ -62,6 +61,19 @@ class _ProjectUI():
         self._wgt = []
         self._vars = []
         self._btns = []
+        self.songs = []
+        
+    def makeInactive(self, message, fg = "#E0A0E0"):
+        self.readOnly.set(True)
+        self.clearProject()
+        var = tk.StringVar(value = message)
+        fr0 = tk.Frame(self.frame)
+        
+        tk.Label(fr0, textvariable=var, fg="#A01010",font=("Arial", 25)).pack()
+        
+        fr0.pack()
+        self._wgt = [fr0]
+        self._vars = [(None,var)]
         
         
     def setupProject(self, songs={}):
@@ -221,18 +233,7 @@ class _ProjectUI():
                 
             newSong.setTitle(self.mgr, title)
             
-            # inactivate screen...
-            self.readOnly.set(True)
-            self.clearProject()
-            var = tk.StringVar(value = "Uploading in progress...")
-            fr0 = tk.Frame(self.frame)
-            
-            tk.Label(fr0, textvariable=var, fg="#A01010",font=("Arial", 25)).pack()
-            
-            fr0.pack()
-            self._wgt = [fr0]
-            self._vars = [(None,var)]
-            
+            self.makeInactive("Uploading in progress...")
             
             # Install file
             dstName = target_path_join(TARGET_PROJECTS, projName, filename) 
@@ -633,11 +634,13 @@ class _Manager:
         
     def refresh(self, reload= True):
         if reload:
-            self.ui.project.setupProject()
+            self.ui.project.clearProject()
             self.getProjFiles()
         if not self.__norefresh:
-            self.ui.project.setupProject(self._projFiles.getFiles())
-        
+            if self._currProject:
+                self.ui.project.setupProject(self._projFiles.getFiles())
+            else:
+                self.ui.project.makeInactive("No project loaded")
     def on_closing(self):
         DEBUG ("on_closing")
         if (PROMPT_FORM_EXIT == False ) or tk.messagebox.askokcancel("Quit", "Do you want to quit?"):
