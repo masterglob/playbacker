@@ -296,21 +296,36 @@ class _UI():
             
         ##################
         # Target selection
-        fr= tk.LabelFrame(self.win, text = "Connection",width=WIN_WIDTH/2, height=150)
+        fr0= tk.LabelFrame(self.win, text = "Connection",width=WIN_WIDTH/2, height=150)
+        fr= tk.Frame(fr0)
         tk.Label(fr, text="Select PBKR device").pack(side = tk.LEFT)
         
         self.__param_RemoteIp = params.createStr("remote_ip")
-        w = tk.Entry(fr, textvariable = self.__param_RemoteIp, width = 25, state="normal")
-        w.pack(side = tk.LEFT, expand = True, fill = tk.BOTH)
+        w = tk.Entry(fr, textvariable = self.__param_RemoteIp, width = 20, state="normal")
+        w.pack(side = tk.LEFT, expand = True, fill = tk.X)
         self.__entryIp = w
         
         tk.Label(fr, text=" port ").pack(side = tk.LEFT)
         
         self.__param_RemotePort = params.createInt("remote_port", 22)
-        w = tk.Entry(fr, textvariable = self.__param_RemotePort, width = 8, state="normal")
+        w = tk.Entry(fr, textvariable = self.__param_RemotePort, width = 6, state="normal")
         w.pack(side = tk.LEFT, expand = True)
         self.__entryPort = w
+                
+        tk.Label(fr, text=" User:").pack(side = tk.LEFT)
+        self.__param_targetUserName = params.createStr("targetUserName", value="tc")
+        w = tk.Entry(fr, textvariable = self.__param_targetUserName, width = 6, state="normal")
+        w.pack(side = tk.LEFT, expand = True, fill = tk.X)
+        self.__entryUserName = w
         
+        tk.Label(fr, text=" Pass:").pack(side = tk.LEFT)
+        self.__param_targetPassword = params.createStr("targetPassword")
+        w = tk.Entry(fr, textvariable = self.__param_targetPassword, width = 14, state="normal", show="*")
+        w.pack(side = tk.LEFT, expand = True)
+        self.__entryPassword = w
+        fr.pack(side = tk.TOP, fill = tk.X)
+        
+        fr= tk.Frame(fr0)        
         w = tk.Button(fr,text="Connect", command = self.__cbConn , width = 10)
         w.pack(side = tk.LEFT)
         self.__btnConnect = w
@@ -319,6 +334,7 @@ class _UI():
         self.__btnDisconnect = w
             
         fr.pack(side = tk.TOP, fill = tk.X)
+        fr0.pack(side = tk.TOP, fill = tk.X)
         
         #############################
         # TABS
@@ -378,7 +394,8 @@ class _UI():
     def __cbConn(self):
         self.mgr.ssh.connect(self.__param_RemoteIp.get(), 
                                 self.__param_RemotePort.get(), 
-                                "tc","wtamot2019" )
+                                self.__param_targetUserName.get(),
+                                self.__param_targetPassword.get())
 #         self.__btnConnect.config(state="disabled")
     def __cbDisconn(self):
         self.setProjList([])
@@ -397,7 +414,8 @@ class _UI():
         if msg:
             self.statusBar.set(msg)
         connectedButtons=[self.__btnDisconnect, self.__btnGetList, self.__btnDebug]
-        disconnectedButtons=[self.__btnConnect, self.__entryIp, self.__entryPort]
+        disconnectedButtons=[self.__btnConnect, self.__entryIp, self.__entryPort, 
+                             self.__entryUserName, self.__entryPassword]
         connectingButtons=[]
         
         connectedState = "disabled"
