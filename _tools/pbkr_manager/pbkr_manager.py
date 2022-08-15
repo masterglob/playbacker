@@ -29,6 +29,7 @@ PROMPT_FORM_EXIT = False
 TARGET_PATH ="/mnt/mmcblk0p2"
 TARGET_PROJECTS = target_path_join (TARGET_PATH, "pbkr.projects")
 TARGET_CONFIG = target_path_join (TARGET_PATH, "pbkr.config")
+TARGET_TRASH = target_path_join (TARGET_PATH, "pbkr.trash")
 WIN_WIDTH=620
 WIN_HEIGHT=600
 MAX_PROPERTIES = 18
@@ -45,6 +46,10 @@ class _ProjectUI():
         self._btns=[]
         
         fr = tk.Frame(self.win)
+        
+        btn = tk.Button (fr, text="Refresh", command = self.reload)
+        btn.pack(side = tk.LEFT)
+        
         btn = tk.Button (fr, text="Reorder", command = self.reorder)
         btn.pack(side = tk.LEFT)
         self._statBtns.append(btn)
@@ -72,11 +77,7 @@ class _ProjectUI():
         fr.pack(side = tk.TOP)
         
         
-    def setupProject(self, songs={}):
-        '''
-         @param songs :_PropertiedFileList
-        '''
-        # 1: delete existing items
+    def clearProject(self):
         for song, var in self._vars :
             del var
         for wgt in self._wgt :
@@ -85,6 +86,13 @@ class _ProjectUI():
         self._vars = []
         self._btns = []
         
+        
+    def setupProject(self, songs={}):
+        '''
+         @param songs :_PropertiedFileList
+        '''
+        # 1: delete existing items
+        self.clearProject()
         
         self.songs=sorted([song for song in songs.values()], key=lambda s:s.getTrackIdx())
         
@@ -123,7 +131,12 @@ class _ProjectUI():
                 cmd = lambda self=self, song=song, prevSong=prevSong: self.onMove(song, prevSong)
                 btn = tk.Button(fr,text="Move Up", command = cmd)
                 btn.grid(row = y, column = 3, padx=2, pady=2)
-                self._btns.append(btn)            
+                self._btns.append(btn)   
+                
+            btn = tk.Button(fr,text="Delete", command = lambda self=self, song=song : self.onDeleteSong(song))
+            btn.grid(row = y, column = 4, padx=2, pady=2)
+            self._btns.append(btn)
+                     
             self._vars.append((song,var))
             y += 1
             
@@ -138,7 +151,11 @@ class _ProjectUI():
         state = "disabled" if self.readOnly.get() else "normal"
         for btn in self._btns + self._statBtns:
             btn.config(state=state)
-    
+       
+    def onDeleteSong(self, song):
+        if self.readOnly.get():return 
+        SSHFileDeleter(self.mgr, song.fullPathName, self.mgr.currentProjectName())
+            
     def insertSong(self, at):
         class InvalidWavFile(Exception):pass
         
@@ -171,7 +188,7 @@ class _ProjectUI():
                                          (song.getTrackIdx(), song.getTitle()))
         
             # Ask for song name
-            title = askTitle(self.win, filename, filename)
+            title = askTitle(self.win, filename, filename.split(".")[0])
             if not title:
                 raise InvalidWavFile("Cancelled")
             
@@ -198,27 +215,44 @@ class _ProjectUI():
                 
             newSong.setTitle(self.mgr, title)
             
+            # inactivate screen...
+            self.readOnly.set(True)
+            self.clearProject()
+            var = tk.StringVar(value = "Uploading in progress...")
+            fr0 = tk.Frame(self.frame)
+            
+            tk.Label(fr0, textvariable=var, fg="#A01010",font=("Arial", 25)).pack()
+            
+            fr0.pack()
+            self._wgt = [fr0]
+            self._vars = [(None,var)]
+            
+            
             # Install file
             dstName = target_path_join(TARGET_PROJECTS, projName, filename) 
             SSHUploader(self.mgr.ssh, fullfilename, dstName, event = self.__insertSongDone)
-            
-                    
+                                
         except InvalidWavFile as e:
             messagebox.showerror("Installation failed", str(e))
 
     def __insertSongDone(self, success, result):
         DEBUG("__insertSongDone")
-        if success: self.mgr.refresh(True)
-        else:
+        if not success: 
             messagebox.showerror("Installation failed", "Copy failed : %s"%result)
+        self.reload()
+        self.readOnly.set(False)
         
-    def refresh(self, propName):
+    def reload(self):
+        self.mgr.ui.onProjectSelect()
+        
+    def refresh(self, propName = ""):
         if propName == PROP_TRACK:
             self.mgr.refresh(False)
         else:
             y = 1
             for song, var in self._vars :
-                var.set(value = song.getTitle())
+                if song:
+                    var.set(value = song.getTitle())
             
     def onMove(self, song, prevSong):
         if self.readOnly.get():return 
@@ -405,7 +439,26 @@ class _UI():
             name = self.__cbbProjList.get()
         else: name = None
         self.mgr.onProjectSelect(name)
-        
+       
+class SSHFileDeleter(SSHCommander):
+    def __init__(self, mgr, filename, title, confirm = True):
+        self.filename = filename
+        self.mgr = mgr
+        paths=filename.split("/")
+        name = paths[-1]
+        tPath = "/".join(paths[:-1])
+        trashName = target_path_join(TARGET_TRASH,"")
+        cmd = "find '%s' -name '%s*' -exec mv {} '%s' \;"%(tPath, name, trashName)
+        if confirm:
+            if not tk.messagebox.askokcancel("Delete file %s"%name, 
+                                             "Confirm deletion of file %s from project %s"%
+                                             (name,title)):
+                return 
+        #DEBUG ("cmd=<%s>"%cmd)
+        SSHCommander.__init__(self, mgr.ssh, cmd, self.event)
+    def event(self, result):
+        self.mgr.ui.project.reload()
+   
 class SSHFileSizeReader(SSHCommander):
     def __init__(self, ssh, filename, file):
         self.filename = filename
@@ -625,12 +678,14 @@ class _Manager:
         path = TARGET_PROJECTS +"/" + self._currProject
         self.__norefresh = True
         if result == None:
+            self._projFiles.clear() 
             self.ssh.command("ls -1 %s"%(path), self.getProjFiles)
             return
         if success:
             self._projFiles.setPath(path)
             for f in result.split("\n"):
                 self._projFiles.addFile(f) 
+                print("found file %s"%f)
             # Eventually append an empty event to trigger refresh on completion
             self.checkRefreshStatus()
     
@@ -680,7 +735,6 @@ class _Manager:
             DEBUG("Config files failed=%s"%result)
         
 if __name__ == '__main__':
-    WavFileChecker('C:/Users/MAO/Documents/Arduino/Rasberry/PROJECTS/wav_examples/06-QC.wav')
     mgr = _Manager(sys.argv[:])
     mgr.run()
     DEBUG("Program exited")

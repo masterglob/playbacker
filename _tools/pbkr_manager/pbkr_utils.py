@@ -42,9 +42,10 @@ def askTitle(parent, name, title):
         if result:
             if not re.match(r"^[ 'A-Z0-9_+-]+$", result, flags=re.IGNORECASE): 
                 messagebox.showerror("Bad title", "Do not use special chars in title")
-                continue
-            result = result.replace ("'", "\\'")
-            return result.strip()
+            else:
+                result = result.replace ("'", "\\'")
+                return result.strip()
+        result = None
             
 
 ##################################################
