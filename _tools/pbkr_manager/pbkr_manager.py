@@ -4,6 +4,7 @@ print("Detected python %d"%python_version)
 
 if python_version == 3:
     import tkinter as tk
+    import tkinter.filedialog
     from tkinter import messagebox
     from tkinter.simpledialog import askstring
     from tkinter import ttk
@@ -16,7 +17,7 @@ import sys, os, re
 
 from pbkr_params import PBKR_Params
 from pbkr_ssh import PBKR_SSH, SSHCommander
-from pbkr_utils import DEBUG, P_NoteBook
+from pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat
 
 ###################
 # CONFIG
@@ -39,37 +40,38 @@ class _ProjectUI():
         self.mgr, self.win = mgr, win
         self._wgt=[]
         self._vars=[]
+        self._statBtns=[]
         self._btns=[]
         
         fr = tk.Frame(self.win)
         btn = tk.Button (fr, text="Reorder", command = self.reorder)
         btn.pack(side = tk.LEFT)
-        self._btns.append(btn)
+        self._statBtns.append(btn)
         
         tk.Label(fr, text=" ").pack(side = tk.LEFT)
         
         btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
         btn.pack(side = tk.LEFT)
-        self._btns.append(btn)
+        self._statBtns.append(btn)
         
         tk.Label(fr, text=" ").pack(side = tk.LEFT)
         
         self.readOnly = tk.BooleanVar(value = True)
         btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
-        btn.pack(side = tk.BOTTOM)
+        btn.pack(side = tk.LEFT)
         
-        fr.grid(row = 1)
+        fr.pack(side = tk.TOP)
         
         fr = tk.Frame(self.win)
         self.frame = fr
         # The frame containing songs needs a scrollbar
-        self.setup()
+        self.setupProject()
         
         #self.frame.pack(side = tk.RIGHT, fill = tk.BOTH )
-        fr.grid(row = 2)
+        fr.pack(side = tk.TOP)
         
         
-    def setup(self, songs={}):
+    def setupProject(self, songs={}):
         '''
          @param songs :_PropertiedFileList
         '''
@@ -92,8 +94,8 @@ class _ProjectUI():
         # 3: create new items
         y = 1
         prevSong = None
-        for song in self.songs:
-            btn = tk.Button(fr,text="Insert", command = None)
+        for song in self.songs + [""]:
+            btn = tk.Button(fr,text="Insert", command = lambda self=self, y=y: self.insertSong(at = y))
             btn.grid(row = y, pady=2)
             self._btns.append(btn)
             y += 1
@@ -125,6 +127,7 @@ class _ProjectUI():
             y += 1
             
             prevSong = song
+        
         self.onReadOnlyChange()
         fr.pack(side = tk.RIGHT)
         fr0.pack()
@@ -132,9 +135,36 @@ class _ProjectUI():
         
     def onReadOnlyChange(self):
         state = "disabled" if self.readOnly.get() else "normal"
-        for btn in self._btns:
+        for btn in self._btns + self._statBtns:
             btn.config(state=state)
+    
+    def insertSong(self, at):
+        if self.readOnly.get():return 
+        projName = self.mgr.currentProjectName()
+        if not projName : return
+        DEBUG("TODO:insertSong(%s)"%at)  # TODO
+        print("path=%s"%self.mgr.param_LastOpenPath.get())
+        filename = tk.filedialog.askopenfilename(parent=self.win,
+                                                 initialdir= self.mgr.param_LastOpenPath.get(),
+                                                 title= "Select file to insert in project %s"%projName,
+                                                 filetypes= (('WAV files', '*.wav'),('All files', '*.*'), )
+                                                 )
+        if not filename: return
+        print("chosen file:%s"%filename)
+        srcDir, filename = os.path.split(os.path.abspath(filename))
+        self.mgr.param_LastOpenPath.set(srcDir)
         
+        # Check that File format is correct
+        try:WavFileChecker( os.path.join(srcDir, filename))
+        except InvalidWavFileFormat as e:
+            messagebox.showerror("Invalid file", str(e))
+            return
+        
+        # Check for invalid chars
+        if not re.match(r"^[A-Z0-9_+-]+[.]wav$", filename, flags=re.IGNORECASE):
+            messagebox.showerror("Invalid file", "Invalid file name. Please use only basic characters and '.wav' extension.")
+            return
+            
     def refresh(self, propName):
         if propName == PROP_TRACK:
             self.mgr.refresh(False)
@@ -149,6 +179,7 @@ class _ProjectUI():
         idx2 = prevSong.getTrackIdx()
         song.setTrackIdx(self.mgr, idx2)
         prevSong.setTrackIdx(self.mgr, idx1)
+        self.mgr.checkRefreshStatus()
         self.mgr.refresh(False)
     
     def reorder(self):
@@ -161,7 +192,7 @@ class _ProjectUI():
     
     def onTitleEdit(self, song):
         if self.readOnly.get():return 
-        title = askstring('Edit Title (%s)'%song.name, 'Enter new title for file (%s)'%song.name, initialvalue=song.getTitle())
+        title = askstring('Edit Title (%s)'%song.name, 'Enter new title for file (%s)'%song.name, initialvalue=song.getTitle()).strip()
         if title:
             if '\\' in title:
                 messagebox.showerror("Bad title", "Cannot use '\\' in title")
@@ -447,6 +478,7 @@ class _Manager:
     def __init__(self, args):
         self.ssh = PBKR_SSH(self.__sshEvent)
         
+        self.__norefresh = False
         self._projList=[]
         self._projFiles =_PropertiedFileList(self)
         self._currProject = None
@@ -468,6 +500,8 @@ class _Manager:
         self.__param_NbExec = self._params.createInt("nb_exec")
         self.__param_NbExec.set(self.__param_NbExec.get() + 1)
         
+        self.param_LastOpenPath = self._params.createStr("lastOpenPath", value = os.getcwd())
+        
         self.refresh(True)
         self.ssh.start()
         
@@ -478,9 +512,10 @@ class _Manager:
         
     def refresh(self, reload= True):
         if reload:
-            self.ui.project.setup()
+            self.ui.project.setupProject()
             self.getProjFiles()
-        self.ui.project.setup(self._projFiles.getFiles())
+        if not self.__norefresh:
+            self.ui.project.setupProject(self._projFiles.getFiles())
         
     def on_closing(self):
         DEBUG ("on_closing")
@@ -545,6 +580,7 @@ class _Manager:
         if not self._isConnected: return
         if not self._currProject: return
         path = TARGET_PROJECTS +"/" + self._currProject
+        self.__norefresh = True
         if result == None:
             self.ssh.command("ls -1 %s"%(path), self.getProjFiles)
             return
@@ -552,6 +588,18 @@ class _Manager:
             self._projFiles.setPath(path)
             for f in result.split("\n"):
                 self._projFiles.addFile(f) 
+            # Eventually append an empty event to trigger refresh on completion
+            self.checkRefreshStatus()
+    
+    def checkRefreshStatus(self, success = False, result = None):
+        if not self._isConnected: return
+        if not self._currProject: return
+        if result == None:
+            self.ssh.command("echo", self.checkRefreshStatus)
+            return
+        else:
+            self.__norefresh = False
+            self.refresh(False)
         
     def getConfigFiles(self, success = False, result = None):
         if result == None:
@@ -589,6 +637,7 @@ class _Manager:
             DEBUG("Config files failed=%s"%result)
         
 if __name__ == '__main__':
+    WavFileChecker('C:/Users/MAO/Documents/Arduino/Rasberry/PROJECTS/wav_examples/06-QC.wav')
     mgr = _Manager(sys.argv[:])
     mgr.run()
     DEBUG("Program exited")
