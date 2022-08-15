@@ -80,9 +80,13 @@ class PBKR_SSH(threading.Thread):
     def _doCommand(self, cmd, resultCb):
         try:
             stdin, stdout, stderr = self.ssh.exec_command(cmd)
+#             print (">%s"%cmd)
+#             print (">%s"%resultCb)
             self.sendEvent()
             if resultCb:
                 resultCb(True, stdout.read().decode().strip())
+            else:
+                print ("No result CB for %s"%cmd)
         except paramiko.ssh_exception.SSHException as e:
             self.sendEvent("Command <%s> failed"%cmd, str(e))
             if resultCb:
@@ -159,3 +163,4 @@ class SSHUploader(SSHExecuter):
         SSHExecuter.__init__(self, name="copy %s to %s"%(srcFile,dstFile), event= event)
         self.srcFile = srcFile
         ssh.installFile(srcFile ,dstFile ,event)
+        

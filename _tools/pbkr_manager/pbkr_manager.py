@@ -29,7 +29,7 @@ PROMPT_FORM_EXIT = False
 TARGET_PATH ="/mnt/mmcblk0p2"
 TARGET_PROJECTS = target_path_join (TARGET_PATH, "pbkr.projects")
 TARGET_CONFIG = target_path_join (TARGET_PATH, "pbkr.config")
-TARGET_TRASH = target_path_join (TARGET_PATH, "pbkr.trash")
+TARGET_TRASH = target_path_join (TARGET_PATH, "pbkr.trash","")
 WIN_WIDTH=620
 WIN_HEIGHT=600
 MAX_PROPERTIES = 18
@@ -112,15 +112,19 @@ class _ProjectUI():
         
         fr = tk.Frame(fr0)
         
-        # 2: reorder songs (! handle multiple identical tracks Id)
-        # 3: create new items
-        y = 1
-        prevSong = None
-        for song in self.songs + [""]:
-            btn = tk.Button(fr,text="Insert", command = lambda self=self, y=y: self.insertSong(at = y - 1))
-            btn.grid(row = y, pady=2)
+        if self.songs:
+            y = 1
+            for song in self.songs + [""]:
+                btn = tk.Button(fr,text="Insert", command = lambda self=self, y=y: self.insertSong(at = y - 1))
+                btn.grid(row = y, pady=2)
+                self._btns.append(btn)
+                y += 1
+        else:
+            btn = tk.Button(fr,text="Upload a first playback file :)",
+                             command = lambda self=self: self.insertSong(at = 0))
+            btn.pack()
             self._btns.append(btn)
-            y += 1
+            
             
         fr.pack(side = tk.LEFT)
         fr = tk.Frame(fr0)
@@ -355,10 +359,19 @@ class _UI():
             w = tk.Button(fr,text="Refresh List", command = self.mgr.getProjList , width = 10)
             w.pack(side = tk.LEFT, expand = False)
             self.__btnGetList = w
-             
-            w = tk.Button(fr,text="Debug", command = self.mgr.debug , width = 10)
+#              
+#             w = tk.Button(fr,text="Debug", command = self.mgr.debug , width = 10)
+#             w.pack(side = tk.LEFT, expand = False)
+#             self.__btnDebug = w    
+
+            tk.Label(fr, text=" ").pack(side = tk.LEFT)
+            
+            w = tk.Button(fr,text="Create", command = self.mgr.createNewProject , width = 10)
             w.pack(side = tk.LEFT, expand = False)
-            self.__btnDebug = w             
+            self.__btnDebug = w  
+            
+            tk.Label(fr, text=" ").pack(side = tk.LEFT)
+                      
              
             w = ttk.Combobox(fr, values=[], state="readonly", width = 40)
             w.pack(side = tk.LEFT, expand = True, fill=tk.X)
@@ -407,15 +420,6 @@ class _UI():
     def __cbDisconn(self):
         self.setProjList([])
         self.mgr.ssh.disconnect()
-    
-    def __cbDemo1(self, success = False, result = None):
-        if result == None:
-            self.mgr.ssh.command("ls -1 %s"%TARGET_PROJECTS, self.__cbDemo1)
-            return
-        if success:
-            DEBUG("Demo OK projects=%s"%result.split("\n"))
-        else:
-            DEBUG("Demo OK false=%s"%result)
         
     def setStatus(self, msg):
         if msg:
@@ -472,8 +476,7 @@ class SSHFileDeleter(SSHCommander):
         paths=filename.split("/")
         name = paths[-1]
         tPath = "/".join(paths[:-1])
-        trashName = target_path_join(TARGET_TRASH,"")
-        cmd = "find '%s' -name '%s*' -exec mv {} '%s' \;"%(tPath, name, trashName)
+        cmd = "find '%s' -name '%s*' -exec mv -f {} '%s' \;"%(tPath, name, TARGET_TRASH)
         if confirm:
             if not tk.messagebox.askokcancel("Delete file %s"%name, 
                                              "Confirm deletion of file %s from project %s"%
@@ -572,6 +575,7 @@ class _PropertiedFileList:
     def getFiles(self): return self._list
     def setPath(self, path):self._path = path
     def addFile(self, filename):
+        if not filename: return
         m = re.match(r"(.*)([.]wav)[.](.*)", filename, flags=re.IGNORECASE)
         if m:
             n, ext = (m.group(1)+m.group(2)), m.group(3)
@@ -690,14 +694,55 @@ class _Manager:
             self._projList = ("<NONE>\n%s"%result).split("\n")
             self.ui.setProjList(self._projList)
             DEBUG("projects=%s"%self._projList)
-    
+            
+    def createNewProject(self):
+        if not self._isConnected: return
+        
+        name = askstring(parent = self.win,
+                          title = 'Define project name',
+                          prompt = 'Enter new project name',
+                          initialvalue = "").strip()
+        if not name : return
+        if not re.match(r"^['A-Z0-9_+-]+$", name, flags=re.IGNORECASE): 
+            messagebox.showerror("Bad project name", "Do not use special chars or spaces in name")
+            return
+        name = name.replace ("'", "\\'")
+        
+        # Check if project already exists
+        if name in self._projList:
+            messagebox.showerror("Bad project name", "A project with that name already exists")
+            return
+        
+        DEBUG ("Creating project <%s>"%name)
+        
+        fullname = target_path_join(TARGET_PROJECTS, name)
+        SSHCommander(self.ssh, "mkdir -p '%s'"%fullname, 
+                     lambda result, self=self : self.getProjList() )
+        
+    # WIP
+        
     def currentProjectName(self):return self._currProject
-    def deleteCurrentProject(self):
-        messagebox.showerror("Not implemented", "Not implemented: project deletion") # TODO
+    
+    def deleteCurrentProject(self, success = False, result = None):
+        if result == None:
+            if not self._isConnected: return
+            if not self._currProject: return
+            path = TARGET_PROJECTS +"/" + self._currProject
+            self.onProjectSelect(None)
+            self.__norefresh = True
+            self.clearFiles()
+            cmd="mv -f '%s' '%s'"%(path,TARGET_TRASH)
+            self.ssh.command(cmd, self.deleteCurrentProject)
+            return
+        # Eventually append an empty event to trigger refresh on completion
+        print ("project deleted(%s)"%result)
+        self.getProjList()
+        self.checkRefreshStatus()
+        
     def onProjectSelect(self, name):
-        self.clearFiles()
-        self._currProject = name
-        DEBUG("project=%s"%name)
+        if name != self._currProject:
+            self._currProject = name
+            DEBUG("project=%s"%name)
         self.refresh()
         
     def getProjFiles(self, success = False, result = None):
