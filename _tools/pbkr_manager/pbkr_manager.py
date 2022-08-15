@@ -42,32 +42,9 @@ class _ProjectUI():
         self.mgr, self.win = mgr, win
         self._wgt=[]
         self._vars=[]
-        self._statBtns=[]
         self._btns=[]
         
-        fr = tk.Frame(self.win)
-        
-        btn = tk.Button (fr, text="Refresh", command = self.reload)
-        btn.pack(side = tk.LEFT)
-        
-        btn = tk.Button (fr, text="Reorder", command = self.reorder)
-        btn.pack(side = tk.LEFT)
-        self._statBtns.append(btn)
-        
-        tk.Label(fr, text=" ").pack(side = tk.LEFT)
-        
-        btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
-        btn.pack(side = tk.LEFT)
-        self._statBtns.append(btn)
-        
-        tk.Label(fr, text=" ").pack(side = tk.LEFT)
-        
         self.readOnly = tk.BooleanVar(value = True)
-        btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
-        btn.pack(side = tk.LEFT)
-        
-        fr.pack(side = tk.TOP)
-        
         fr = tk.Frame(self.win)
         self.frame = fr
         # The frame containing songs needs a scrollbar
@@ -94,9 +71,33 @@ class _ProjectUI():
         # 1: delete existing items
         self.clearProject()
         
-        self.songs=sorted([song for song in songs.values()], key=lambda s:s.getTrackIdx())
         
         fr0 = tk.Frame(self.frame)
+        fr = tk.Frame(fr0)
+        
+        btn = tk.Button (fr, text="Refresh", command = self.reload)
+        btn.pack(side = tk.LEFT)
+        
+        btn = tk.Button (fr, text="Reorder", command = self.reorder)
+        btn.pack(side = tk.LEFT)
+        self._btns.append(btn)
+        
+        tk.Label(fr, text=" ").pack(side = tk.LEFT)
+        
+        btn = tk.Button (fr, text="Delete", command = lambda self=self : self.__delete())
+        btn.pack(side = tk.LEFT)
+        self._btns.append(btn)
+        
+        tk.Label(fr, text=" ").pack(side = tk.LEFT)
+        
+        btn = tk.Checkbutton (fr, text="ReadOnly", variable = self.readOnly, command=self.onReadOnlyChange)
+        btn.pack(side = tk.LEFT)
+        
+        fr.pack(side = tk.TOP)
+        
+        
+        self.songs=sorted([song for song in songs.values()], key=lambda s:s.getTrackIdx())
+        
         fr = tk.Frame(fr0)
         
         # 2: reorder songs (! handle multiple identical tracks Id)
@@ -149,7 +150,7 @@ class _ProjectUI():
         
     def onReadOnlyChange(self):
         state = "disabled" if self.readOnly.get() else "normal"
-        for btn in self._btns + self._statBtns:
+        for btn in self._btns:
             btn.config(state=state)
        
     def onDeleteSong(self, song):
@@ -196,6 +197,11 @@ class _ProjectUI():
             
             # Create song object
             newSong = _PropertiedFile(target_path_join(TARGET_PROJECTS, projName), filename)
+            
+            sizeKb = os.stat(fullfilename).st_size / 1024
+            if sizeKb > 1024*1024:
+                raise InvalidWavFile("File too large (limit is 1Gb)")
+            
             self.songs.insert(at, newSong)
             # To create track Id, we may have to increments next songs ids...
             try: expTrackId = self.songs[at - 1].getTrackIdx() + 1
@@ -605,6 +611,7 @@ class _Manager:
         win.minsize(WIN_WIDTH, WIN_HEIGHT)
         # win.resizable(False, False)   
         self.win = win       
+        win.iconbitmap(default='images/PBKR_MGR.ico')
         
         self._initpath=os.path.abspath (os.path.dirname(args[0]))
         self._args = args
