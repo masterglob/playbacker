@@ -17,9 +17,9 @@ elif python_version == 2:
     
 import sys, os, re, time
 from threading import Thread
-from pbkr_params import PBKR_Params
-from pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader
-from pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat, \
+from tools_src.pbkr_params import PBKR_Params
+from tools_src.pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader
+from tools_src.pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat, \
     target_path_join, askTitle
 
 ###################
@@ -375,7 +375,7 @@ class RemoteControl (Thread):
             ("lMenuL1", self.menul1),
             ("lMenuL2", self.menul2),
             ]
-        while True:
+        while not self.mgr.quitting:
             for name, var in wgtMap:
                 cmd = "cat %s/%s"%(TARGET_WWW_RES, name)
                 if self.mgr.ssh.isConnected() :
@@ -714,6 +714,7 @@ class _Manager:
         self._currProject = None
         self._isConnected = False
         self.pbkrProps=[(None, None, None) for _ in range(MAX_PROPERTIES)]
+        self.quitting = False
         
         win = tk.Tk()
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -737,6 +738,7 @@ class _Manager:
         self.ssh.start()
         
     def quit(self):
+        self.quitting = True
         self.ssh.quit()
         self._params.saveToFile()
         self.win.destroy()
