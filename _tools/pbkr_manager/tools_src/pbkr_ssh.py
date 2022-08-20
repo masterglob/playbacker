@@ -44,6 +44,11 @@ class PBKR_SSH(threading.Thread):
 #         print ("Received command:%s"%str(cmdStr))
         self.cmds.append((self._doInstall,(srcFile, dstFile, resultCb)))
         self.lock.release()
+    def downloadFile(self, remoteFile, localFile, resultCb):
+        self.lock.acquire()
+#         print ("Received command:%s"%str(cmdStr))
+        self.cmds.append((self._doDownload,(remoteFile, localFile, resultCb)))
+        self.lock.release()
     def connect(self, ip, port, username, password):
         self.lock.acquire()
         self.cmds.append((self._doConnect,(ip, port, username,password)))
@@ -141,7 +146,23 @@ class PBKR_SSH(threading.Thread):
                            (srcPath, destPath), str(e))
             if resultCb:
                 resultCb(False, stderr.read().decode().strip())
-                   
+    def _doDownload(self, remoteFile, localFile, resultCb):
+        if not self._sftp:
+            if resultCb:
+                resultCb(False, "SFTP not open")
+            return
+        
+        try:
+            attr = self._sftp.get(remoteFile, localFile)
+            # print("Command: _sftp.get(%s, %s)"%(remoteFile, localFile))
+            self.sendEvent()
+            resultCb(True, "")
+        except IOError as e:
+            self.sendEvent("Downloading file <%s> to path <%s> failed"%
+                           (remoteFile, localFile), str(e))
+            if resultCb:
+                resultCb(False, stderr.read().decode().strip())
+                       
 class SSHExecuter:
     def __init__(self, name, event = None, **kwargs):
         self.__event, self.__name  = event, name
@@ -158,13 +179,18 @@ class SSHExecuter:
               
 class SSHCommander(SSHExecuter):
     def __init__(self, ssh, command, event):
-        SSHExecuter.__init__(self, name=command[:], event= event)
+        SSHExecuter.__init__(self, name=command[:], event=event)
         self.command = command
         ssh.command(command ,self)
         
 class SSHUploader(SSHExecuter):
     def __init__(self, ssh, srcFile, dstFile, event):
-        SSHExecuter.__init__(self, name="copy %s to %s"%(srcFile,dstFile), event= event)
+        SSHExecuter.__init__(self, name="copy %s to %s"%(srcFile, dstFile), event=event)
         self.srcFile = srcFile
         ssh.installFile(srcFile ,dstFile ,event)
+        
+class SSHDownloader(SSHExecuter):
+    def __init__(self, ssh, remoteFile, localFile, event):
+        SSHExecuter.__init__(self, name="copy %s to %s"%(remoteFile, localFile), event=event)
+        ssh.downloadFile(remoteFile ,localFile ,event)
         

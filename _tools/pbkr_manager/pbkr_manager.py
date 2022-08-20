@@ -18,7 +18,7 @@ elif python_version == 2:
 import sys, os, re, time
 from threading import Thread
 from tools_src.pbkr_params import PBKR_Params
-from tools_src.pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader
+from tools_src.pbkr_ssh import PBKR_SSH, SSHCommander, SSHUploader, SSHDownloader
 from tools_src.pbkr_utils import DEBUG, P_NoteBook, WavFileChecker, InvalidWavFileFormat, \
     target_path_join, askTitle
 
@@ -93,6 +93,9 @@ class _ProjectUI():
         fr = tk.Frame(fr0)
         
         btn = tk.Button (fr, text="Refresh", command = self.reload)
+        btn.pack(side = tk.LEFT)
+        
+        btn = tk.Button (fr, text="Backup", command = self.backup)
         btn.pack(side = tk.LEFT)
         
         btn = tk.Button (fr, text="Reorder", command = self.reorder)
@@ -279,6 +282,16 @@ class _ProjectUI():
         prevSong.setTrackIdx(self.mgr, idx1)
         self.mgr.checkRefreshStatus()
         self.mgr.refresh(False)
+    
+    def backup(self):
+        name = self.mgr.currentProjectName()
+        path = tk.filedialog.askdirectory(parent=self.win,
+                                         # initialdir= self.mgr.param_LastOpenPath.get(),
+                                         title= "Select folder for <%s> backup"%name,
+                                         )
+        if not path: return
+        self.makeInactive("Backup download in progress...")
+        self.mgr.backupCurrentProject(path)
     
     def reorder(self):
         if self.readOnly.get():return 
@@ -715,6 +728,7 @@ class _Manager:
         self._isConnected = False
         self.pbkrProps=[(None, None, None) for _ in range(MAX_PROPERTIES)]
         self.quitting = False
+        self.__currentBackup=None
         
         win = tk.Tk()
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -913,7 +927,54 @@ class _Manager:
                 tkVal.set(value)
         else:
             DEBUG("Config files failed=%s"%result)
+            
+    def backupCurrentProject(self, path):
+        if not self._currProject:return
+        if self.__currentBackup:
+            DEBUG("Backup already in progress") 
+            return
+        self.__currentBackup = os.path.join(path, self._currProject)
         
+        if os.path.isdir(self.__currentBackup):
+            messagebox.showerror("Backup error", "Folder %s already exists"%self.__currentBackup)
+            self.__currentBackup = None
+            return
+        try:os.mkdir(self.__currentBackup)
+        except:
+            messagebox.showerror("Backup error", "Failed to create folder %s"%self.__currentBackup)
+            self.__currentBackup = None
+            return
+        
+        dstName = target_path_join(TARGET_PROJECTS, self._currProject) 
+        self.ssh.command("ls -1 %s"%(dstName), self.__backupCurrentProject2)
+        
+    def __backupCurrentProject2(self, success = False, result = None):
+        if not self._currProject:return
+        if not self.__currentBackup:return
+        
+        # list files
+        if success:
+            self.__currentBackupList = result.split("\n")
+            self.__currentBackupDone = 0
+            for f in self.__currentBackupList:
+                dstName = target_path_join(TARGET_PROJECTS, self._currProject, f) 
+                localPath= os.path.join(self.__currentBackup,f)
+                SSHDownloader(self.ssh, dstName, localPath, self.__backupUpdateStatus)
+            self.ssh.command("echo" ,self.__backupCurrentProject3) # just for event
+        else:
+             self.__currentBackup = None
+             print("FAILED")
+        
+    def __backupCurrentProject3(self, success = False, result = None):
+        self.__currentBackup = None
+        self.ui.project.reload()
+        print("Done")
+        
+    def __backupUpdateStatus(self, success = False, result = None):
+        if success: self.__currentBackupDone += 1
+        self.ui.project.makeInactive("Backup in progress... (%d/%d)"%(
+            self.__currentBackupDone, len(self.__currentBackupList)))
+            
 if __name__ == '__main__':
     mgr = _Manager(sys.argv[:])
     mgr.run()
