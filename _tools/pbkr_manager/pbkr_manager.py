@@ -8,7 +8,8 @@ if python_version == 3:
     from tkinter import messagebox
     from tkinter.simpledialog import askstring
     from tkinter import ttk
-    from idlelib.tooltip import Hovertip
+    try:from idlelib.tooltip import Hovertip
+    except:pass # for python 3.6
 elif python_version == 2:
     raise Exception("This code requires adaptations to run under python2")
     import Tkinter as tk
@@ -142,7 +143,8 @@ class _ProjectUI():
             
             wgt = tk.Entry(fr, textvariable = var, width = 35, state="readonly")
             wgt.grid(row =y, column = 1, padx=2, pady=2)
-            myTip = Hovertip(wgt,'%s'%song.name)
+            try: Hovertip(wgt,'%s'%song.name)
+            except:pass
             
             btn = tk.Button(fr,text="Edit title", command = lambda self=self, song=song : self.onTitleEdit(song))
             btn.grid(row = y, column = 2, padx=2, pady=2)
