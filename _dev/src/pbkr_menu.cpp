@@ -283,6 +283,7 @@ void ListMenuItem::onLeftRightPress(const bool isLeft)
         if (m_lrIdx + 1 < m_lrIdx_Max)
             m_lrIdx++;
     }
+    onShow();
 }
 
 
@@ -1209,6 +1210,7 @@ void MainMenu::setMenu(MenuItem* menu)
 {
     if (!menu) return;
     m_currentMenu = menu;
+    m_currentMenu->onShow();
     if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuName(menu->name);
     printf("New menu => %s\n",m_currentMenu->name.c_str());
 } // MainMenu::setMenu

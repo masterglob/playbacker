@@ -50,6 +50,7 @@ class MenuItem
 public:
     MenuItem(const std::string & title, MenuItem* parent = 0);
     virtual ~MenuItem(void){}
+    virtual void onShow(void){}
     virtual void onEnter(const bool longPressed=false);
     virtual void onExit(void);
     virtual void onLeftRightPress(const bool isLeft);
