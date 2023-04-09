@@ -310,7 +310,7 @@ Project::Project(const std::string& name, const ProjectSource source):
         //printf("index = %d,",index);
         const string trackWavName(fullFilename + ".intro");
         //printf("trackname = %s\n",trackname.c_str());
-        m_tracks.push_back(Track(trackname,trackWavName,index,filename));
+        m_tracks.push_back(Track(trackname,index,filename));
         //debug();
     }
     sort(m_tracks.begin(), m_tracks.end(), [ ]( const auto& lhs, const auto& rhs )
@@ -343,7 +343,7 @@ Project::debug(void)const
 Track
 Project::getByTrackId(int id)
 {
-    static const Track noTrack ("","",-1,"");
+    static const Track noTrack ("",-1,"");
     // Remind tracks are sorted!
     for (auto it(m_tracks.begin()); it != m_tracks.end(); it++)
     {

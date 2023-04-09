@@ -20,10 +20,9 @@ using namespace std;
 class Track
 {
 public:
-    Track(const string& title,const string& titleWav,const int index,const string filename)
-    :m_title(title),m_wavTitle(titleWav),m_index(index),m_filename(filename){}
+    Track(const string& title,const int index,const string filename)
+    :m_title(title),m_index(index),m_filename(filename){}
     string   m_title;
-    string   m_wavTitle;
     int      m_index;
     string   m_filename;
 };
