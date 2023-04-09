@@ -39,7 +39,7 @@ static inline void increment (uint32_t& val, const int incr, const uint32_t max)
 
 static const std::string edit_me ("->");
 /*******************************************************************************/
-static const std::string addVertArrow(const std::string& title)
+static const std::string addVertArrow(const std::string& title, bool canLeft=true, bool canRight=true)
 {
     char result[DISPLAY::DISPLAY_WIDTH+1];
     snprintf(result, DISPLAY::DISPLAY_WIDTH-2, title.c_str());
@@ -50,8 +50,8 @@ static const std::string addVertArrow(const std::string& title)
         result[i]=' ';
     }
     if (i > DISPLAY::DISPLAY_WIDTH-2) i = DISPLAY::DISPLAY_WIDTH-2;
-    result[i++] = 0x7F;
-    result[i++] = 0x7E;
+    result[i++] = (canLeft ? 0x7F : ' ');
+    result[i++] = (canRight ? 0x7E : ' ');
     result[i++] = 0;
     return result;
 }
@@ -267,7 +267,7 @@ ListMenuItem::ListMenuItem(const std::string & title, MenuItem* parent, const ui
 /*******************************************************************************/
 const std::string ListMenuItem::menul1(void)
 {
-    return addVertArrow(subMenuName());
+    return addVertArrow(subMenuName(), m_lrIdx > 0, m_lrIdx + 1 < m_lrIdx_Max);
 }
 
 /*******************************************************************************/
