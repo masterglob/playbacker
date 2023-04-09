@@ -752,6 +752,7 @@ bool FileManager::selectIndex(const size_t i)
         printf("Opened %s\n",_file->mFilename.c_str());
         actualSampleRate.set(_file->frequency());
         refreshMidiVolume();
+        globalMenu.refresh();
         const string trackIdx(std::to_string(track.m_index));
         display.onEvent(DISPLAY::DisplayManager::evFile, track.m_title);
         display.onEvent(DISPLAY::DisplayManager::evTrack, trackIdx);

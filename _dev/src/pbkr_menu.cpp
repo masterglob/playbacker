@@ -1346,6 +1346,14 @@ void MainMenu::setMenu(MenuItem* menu)
 
 /*******************************************************************************/
 void
+MainMenu::refresh(void)const
+{
+    if (!m_currentMenu) return;
+    m_currentMenu->onShow();
+}
+
+/*******************************************************************************/
+void
 MainMenu::pressKey(const Key& key)
 {
     switch (key)
