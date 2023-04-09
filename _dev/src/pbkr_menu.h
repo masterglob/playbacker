@@ -21,7 +21,7 @@ public:
        m_t0 (VirtualTime::now()),
        m_maxWait(maxWait){};
    ~Button(void){}
-   bool   pressed(float& duration)const;
+   bool   pressed(bool& longPress)const;
 private :
    mutable bool m_pressed;
    mutable bool m_must_release;
@@ -50,7 +50,7 @@ class MenuItem
 public:
     MenuItem(const std::string & title, MenuItem* parent = 0);
     virtual ~MenuItem(void){}
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     virtual void onExit(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onUpDownPress(const bool isUp){}

@@ -87,7 +87,7 @@ struct PlayMenuItem : MenuItem
     PlayMenuItem(void): MenuItem("PLAY Menu"){}
     virtual ~PlayMenuItem(void){}
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     virtual void onUpDownPress(const bool isUp);
     virtual void onLeftRightPress(const bool isLeft);
     virtual const std::string menul1(void){return "";}
@@ -159,7 +159,7 @@ struct SelectProjectShowMenuItem : ListMenuItem
     SelectProjectShowMenuItem(const std::string & title, MenuItem* parent);
     virtual ~SelectProjectShowMenuItem(void){}
     virtual const std::string menul2(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     void setDefaultProject(void);
     static const string m_saveSection;
 private:
@@ -178,7 +178,7 @@ struct CopyFromUSBMenuItem : MenuItem
     virtual const std::string menul2(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
 private:
     typedef enum  {S_INIT ,S_CONFIRM, S_COPY_MODE, S_COPY, S_FAILED, S_CANCELED,S_SUCCESS} State;
 
@@ -202,7 +202,7 @@ struct DeleteInternalProjectMenuItem : MenuItem
     virtual const std::string menul2(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
 private:
     typedef enum  {S_CHOOSE ,S_CONFIRM, S_DELETE, S_FAILED, S_CANCELED, S_SUCCESS} State;
 
@@ -220,7 +220,7 @@ struct ClicSettingsMenuItem : ListMenuItem
 {
     ClicSettingsMenuItem(const std::string & title, MenuItem* parent);
     virtual ~ClicSettingsMenuItem(void){}
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     virtual void onUpDownPress(const bool isUp);
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
@@ -299,7 +299,7 @@ void ListMenuItem::onLeftRightPress(const bool isLeft)
 
 
  *******************************************************************************/
-void PlayMenuItem::onEnter(void)
+void PlayMenuItem::onEnter(const bool longPressed)
 {
     fileManager.startReading();
 }
@@ -459,7 +459,7 @@ DeleteInternalProjectMenuItem::onExit(void)
 
 /*******************************************************************************/
 void
-DeleteInternalProjectMenuItem::onEnter(void)
+DeleteInternalProjectMenuItem::onEnter(const bool longPressed)
 {
     // S_CHOOSE ,S_CONFIRM, S_FAILED,S_SUCCESS S_DELETE
     if (m_projIdx >= m_projects.size())
@@ -644,7 +644,7 @@ CopyFromUSBMenuItem::onExit(void)
 
 /*******************************************************************************/
 void
-CopyFromUSBMenuItem::onEnter(void)
+CopyFromUSBMenuItem::onEnter(const bool longPressed)
 {
     if (m_projIdx >= m_projects.size())
     {
@@ -752,7 +752,7 @@ SelectProjectShowMenuItem::menul2(void)
 
 /*******************************************************************************/
 void
-SelectProjectShowMenuItem::onEnter(void)
+SelectProjectShowMenuItem::onEnter(const bool longPressed)
 {
     if (m_projectTitle.length() > 0)
     {
@@ -951,7 +951,7 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
 }
 
 /*******************************************************************************/
-void ClicSettingsMenuItem::onEnter(void)
+void ClicSettingsMenuItem::onEnter(const bool longPressed)
 {
     onExit();
 }
@@ -1114,7 +1114,7 @@ void MenuItem::onLeftRightPress(const bool isLeft)
 }
 
 /*******************************************************************************/
-void MenuItem::onEnter(void)
+void MenuItem::onEnter(const bool longPressed)
 {
     if (m_iter != m_subMenus.end())
     {
@@ -1247,31 +1247,31 @@ void MainMenu::body(void)
 {
     while (not isExitting())
     {
-        float duration(0.0);
+        bool longPress(false);
         usleep(100*1000);
-        if (m_cfg.leftGpio.pressed(duration))
+        if (m_cfg.leftGpio.pressed(longPress))
         {
             m_currentMenu->onLeftRightPress(true);
         }
-        if (m_cfg.rightGpio.pressed(duration))
+        if (m_cfg.rightGpio.pressed(longPress))
         {
             m_currentMenu->onLeftRightPress(false);
         }
 
-        if (m_cfg.upGpio.pressed(duration))
+        if (m_cfg.upGpio.pressed(longPress))
         {
             m_currentMenu->onUpDownPress(true);
         }
-        if (m_cfg.downGpio.pressed(duration))
+        if (m_cfg.downGpio.pressed(longPress))
         {
             m_currentMenu->onUpDownPress(false);
         }
 
-        if (m_cfg.enterGpio.pressed(duration))
+        if (m_cfg.enterGpio.pressed(longPress))
         {
-            m_currentMenu->onEnter();
+            m_currentMenu->onEnter(longPress);
         }
-        if (m_cfg.exitGpio.pressed(duration))
+        if (m_cfg.exitGpio.pressed(longPress))
         {
             m_currentMenu->onExit();
         }
@@ -1285,8 +1285,9 @@ void setDefaultProject(void)
 } // setDefaultProject
 
 
-bool Button::pressed(float& duration)const
+bool Button::pressed(bool& longPress)const
 {
+    longPress = false;
     if (digitalRead(m_gpio))
     {
         if (m_must_release)
@@ -1298,8 +1299,9 @@ bool Button::pressed(float& duration)const
             const float f = VirtualTime::toS(VirtualTime::now() - m_t0);
             if (m_maxWait < f)
             {
+                // Auto release after a long press
                 m_pressed = false;
-                duration = f;
+                longPress = true;
                 m_must_release = true;
                 printf("Short press on %s\n", m_name.c_str());
                 return true;
@@ -1318,7 +1320,6 @@ bool Button::pressed(float& duration)const
         if (m_pressed)
         {
             m_pressed = false;
-            duration = VirtualTime::toS(VirtualTime::now() - m_t0);
             m_must_release = true;
             printf("Release on %s\n", m_name.c_str());
             return true;
