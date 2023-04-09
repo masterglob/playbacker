@@ -191,7 +191,7 @@ Console::show_current_infos(void)const
         const Project* p(*it);
         if (!p) continue;
         cout << "Project '" << p->m_title << "' (" << p->m_source.pName << ")" << dec << endl;
-        const TrackVect tracks(p->tracks());
+        const TrackVect& tracks(p->tracks());
         FOR (ptr, tracks)
         {
             const Track& t (*ptr);

@@ -20,16 +20,25 @@ using namespace std;
 class Track
 {
 public:
-    Track(const string& title,const int index,const string filename);
+    Track(const string& title,const int index,const string filename,
+            const float volumeSamples = -1.0, const float volumeClic = -1.0);
+    virtual ~Track(void)=default;
     string   m_title;
     int      m_index;
     string   m_filename;
+private:
+    mutable float    m_volumeSamplesDef;
+    mutable float    m_volumeClicDef;
+public:
     mutable float    m_volumeSamples;
     mutable float    m_volumeClic;
-    mutable bool     m_modified;
-    void setVolumeSamples(float value)const;
-    void setVolumeClic(float value)const;
+    virtual void setVolumeSamples(float value)const;
+    virtual void setVolumeClic(float value)const;
     void modificationsSaved(void)const;
+    bool isVolumeClicModified(void)const{return m_volumeClic != m_volumeClicDef;}
+    bool isVolumeSamplesModified(void)const{return m_volumeSamples != m_volumeSamplesDef;}
+private:
+    mutable bool     m_modified;
 };
 typedef vector<Track,allocator<Track>> TrackVect;
 
@@ -69,12 +78,14 @@ public:
     void setToClose(void){m_toClose = true;}
     bool inUse(void)const{return m_inUse;}
     bool toClose(void)const{return m_toClose;}
-    const TrackVect tracks(void)const {return m_tracks;}
+    const TrackVect& tracks(void)const {return m_tracks;}
+    void applyModifications(int id);
 private:
     TrackVect m_tracks;
     int getNewTrackIndex(int fromId)const;
     bool m_inUse;
     bool m_toClose;
+    const string m_fullPath;
 };
 
 typedef vector<Project*,allocator<Project*>> ProjectVect;

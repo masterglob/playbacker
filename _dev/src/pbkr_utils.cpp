@@ -486,7 +486,7 @@ FileManager::loadProject (Project* proj)
     display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (m_nbFiles));
     display.onEvent(DISPLAY::DisplayManager::evProjectTitle, m_title);
 
-    const TrackVect tracks(_pProject->tracks());
+    const TrackVect& tracks(_pProject->tracks());
     FOR (it, tracks)
     {
         const Track& track =(*it);
@@ -675,11 +675,19 @@ void FileManager::fileSetVolumeClic(size_t idx, float value)const
 }
 
 /*******************************************************************************/
+bool FileManager::fileAreParamsModified(size_t idx)const
+{
+    if (_pProject == NULL || idx == 0) return false;
+    const Track& track(_pProject->getByTrackId(idx));
+    return track.isVolumeClicModified() ||
+            track.isVolumeSamplesModified();
+}
+
+/*******************************************************************************/
 void FileManager::fileSaveParamsModification(size_t idx)const
 {
     if (_pProject == NULL || idx == 0) return;
-#warning "TODO: save it"
-    _pProject->getByTrackId(idx).modificationsSaved();
+    _pProject->applyModifications(idx);
 }
 
 /*******************************************************************************/

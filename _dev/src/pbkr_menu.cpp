@@ -748,7 +748,10 @@ SongParamsMenuItem::menul1(void)
     m_lrIdx %= m_lrIdx_Max; // Just for robustness
 
     static const std::string P_NAMES[] = {"Volume OUT", "Volume CLIC"};
-    return addVertArrow(P_NAMES[m_lrIdx], m_lrIdx > 0, m_lrIdx + 1 < m_lrIdx_Max);
+    string result = P_NAMES[m_lrIdx];
+    if (fileManager.fileAreParamsModified(m_indexPlaying))
+        result += "*";
+    return addVertArrow(result, m_lrIdx > 0, m_lrIdx + 1 < m_lrIdx_Max);
 }
 
 /*******************************************************************************/

@@ -72,6 +72,33 @@ int readIntInFile(const string& name, int defVal)
 } // readIntInFile
 
 /*******************************************************************************/
+float readFloatInFile(const string& name, float defVal)
+{
+    float value(defVal);
+    std::ifstream myfile (name);
+    try
+    {
+        myfile >> value;
+    }
+    catch(...){}
+    myfile.close();
+
+    return value;
+}
+
+/*******************************************************************************/
+void writeFloatInFile(const string& name, float value)
+{
+    std::ofstream myfile (name);
+    try
+    {
+        myfile << value;
+    }
+    catch(...){}
+    myfile.close();
+} // writeIntInFile
+
+/*******************************************************************************/
 string readStrInFile(const string& name, const string& defVal)
 {
     string value(defVal);
@@ -148,12 +175,15 @@ listFilesWithExtension(const string & path, const string & ext)
  *******************************************************************************/
 namespace PBKR
 {
-Track::Track(const string& title,const int index,const string filename)
+Track::Track(const string& title,const int index,const string filename,
+        const float volumeSamples, const float volumeClic)
 :m_title(title),
  m_index(index),
  m_filename(filename),
- m_volumeSamples(1.0f),
- m_volumeClic(1.0f),
+ m_volumeSamplesDef(volumeSamples),
+ m_volumeClicDef(volumeClic),
+ m_volumeSamples(volumeSamples),
+ m_volumeClic(volumeClic),
  m_modified(false)
 {}
 
@@ -170,6 +200,8 @@ void Track::setVolumeClic(float value)const
 
 void Track::modificationsSaved(void)const
 {
+    m_volumeSamplesDef = m_volumeSamples;
+    m_volumeClicDef = m_volumeClic;
     m_modified = false;
 }
 
@@ -322,26 +354,26 @@ Project::Project(const std::string& name, const ProjectSource source):
         m_title(name),
         m_source(source),
         m_inUse(false),
-        m_toClose(false)
+        m_toClose(false),
+        m_fullPath(m_source.pPath + "/" + m_title)
 {
     static const string wavExt(".WAV");
-    const string fullPath(source.pPath + "/" + name);
-    const StringVect wavs(::listFilesWithExtension(fullPath, wavExt));
+    const StringVect wavs(::listFilesWithExtension(m_fullPath, wavExt));
 
     for (auto it(wavs.begin());it != wavs.end(); it++)
     {
         // Find WAV files
         int nextIndex = getNewTrackIndex (1);
         const string& filename(*it);
-        const string fullFilename(fullPath + "/" + filename);
+        const string fullFilename(m_fullPath + "/" + filename);
         //printf("fullFilename = %s,",fullFilename.c_str());
         const int index(readIntInFile(fullFilename + ".track", nextIndex));
         //printf("index = %d,",index);
         const string trackname(readStrInFile(fullFilename + ".title",filename));
         //printf("index = %d,",index);
-        const string trackWavName(fullFilename + ".intro");
-        //printf("trackname = %s\n",trackname.c_str());
-        m_tracks.push_back(Track(trackname,index,filename));
+        const int volumeSamples(readFloatInFile(fullFilename + ".vols", 1.0f));
+        const int volumeClic(readFloatInFile(fullFilename + ".volc", 1.0f));
+        m_tracks.push_back(Track(trackname,index,filename,volumeSamples,volumeClic));
         //debug();
     }
     sort(m_tracks.begin(), m_tracks.end(), [ ]( const auto& lhs, const auto& rhs )
@@ -370,11 +402,21 @@ Project::debug(void)const
     }
 } // Project::debug
 
+namespace {
+class UnmodifiableTrack :public Track
+{
+public:
+    UnmodifiableTrack(void):Track("",-1,""){}
+    virtual ~UnmodifiableTrack(void)=default;
+    virtual void setVolumeSamples(float value)const{}
+    virtual void setVolumeClic(float value)const{}
+};
+}
 /*******************************************************************************/
 const Track&
 Project::getByTrackId(int id)
 {
-    static const Track noTrack ("",-1,"");
+    static const ::UnmodifiableTrack noTrack;
     // Remind tracks are sorted!
     for (auto it(m_tracks.begin()); it != m_tracks.end(); it++)
     {
@@ -423,6 +465,26 @@ Project::getNewTrackIndex(int fromId)const
         fromId++;
     }
 }
+
+/*******************************************************************************/
+void
+Project::applyModifications(int id)
+{
+    const Track& track(getByTrackId(id));
+    // Update all fields
+    const string fullFilename(m_fullPath + "/" + track.m_filename);
+
+    if (track.isVolumeClicModified())
+    {
+        writeFloatInFile(fullFilename + ".volc", track.m_volumeClic);
+    }
+    if (track.isVolumeSamplesModified())
+    {
+        writeFloatInFile(fullFilename + ".vols", track.m_volumeSamples);
+    }
+    track.modificationsSaved();
+}
+
 
 /*******************************************************************************
 ########  ######## ##       ######## ######## ######## ########

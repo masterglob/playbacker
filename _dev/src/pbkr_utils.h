@@ -226,6 +226,7 @@ public:
     float fileGetVolumeClic(size_t idx)const;
     void fileSetVolumeSamples(size_t idx, float value)const;
     void fileSetVolumeClic(size_t idx, float value)const;
+    bool fileAreParamsModified(size_t idx)const;
     void fileSaveParamsModification(size_t idx)const;
     bool loadProject (Project* proj);
     void unloadProject (void);
