@@ -18,11 +18,20 @@ using namespace std;
  *******************************************************************************/
 namespace API
 {
+extern const float& globalVolume;
+extern const float& clicVolume;
+extern const float& samplesVolume;
+
+void setGlobalVolume  (const float& v);
 /**
  * @param v volume between 0 and 1
  */
 void setClicVolume  (const float& v);
 
+/**
+ * @param v volume between 0 and 1
+ */
+void setSamplesVolume  (const float& v);
 /**
  * A command entered on OSC or WEB (TODO)
  */

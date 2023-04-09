@@ -188,20 +188,6 @@ private:
     int   m_skip;
 };
 
-/*******************************************************************************
- * WemosFileSender
- *******************************************************************************/
-class WemosFileSender: protected PBKR::Thread
-{
-public:
-    WemosFileSender(const std::string& filename);
-    virtual ~WemosFileSender(void);
-    bool isDone(void){return Thread::isDone();}
-private:
-    virtual void body(void);
-    const string mFilename;
-};
-
 class Project;
 typedef vector<Project*,allocator<Project*>> ProjectVect;
 
@@ -236,7 +222,12 @@ public:
     size_t nbFiles(void)const {return m_nbFiles;}
     std::string filename(size_t idx)const;
     std::string fileTitle(size_t idx)const;
-    std::string fileWavTitle(size_t idx)const;
+    float fileGetVolumeSamples(size_t idx)const;
+    float fileGetVolumeClic(size_t idx)const;
+    void fileSetVolumeSamples(size_t idx, float value)const;
+    void fileSetVolumeClic(size_t idx, float value)const;
+    bool fileAreParamsModified(size_t idx)const;
+    void fileSaveParamsModification(size_t idx)const;
     bool loadProject (Project* proj);
     void unloadProject (void);
 protected:
@@ -249,7 +240,6 @@ private:
     WavFileLRC* _file;
     bool _reading;
     bool _starting; // When starting, the title may be sent to WeMos
-    WemosFileSender* mWemosFileSender;
     bool _paused;
     float _lastL;
     float _lastR;

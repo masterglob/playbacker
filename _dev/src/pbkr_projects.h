@@ -20,12 +20,25 @@ using namespace std;
 class Track
 {
 public:
-    Track(const string& title,const string& titleWav,const int index,const string filename)
-    :m_title(title),m_wavTitle(titleWav),m_index(index),m_filename(filename){}
+    Track(const string& title,const int index,const string filename,
+            const float volumeSamples = -1.0, const float volumeClic = -1.0);
+    virtual ~Track(void)=default;
     string   m_title;
-    string   m_wavTitle;
     int      m_index;
     string   m_filename;
+private:
+    mutable float    m_volumeSamplesDef;
+    mutable float    m_volumeClicDef;
+public:
+    mutable float    m_volumeSamples;
+    mutable float    m_volumeClic;
+    virtual void setVolumeSamples(float value)const;
+    virtual void setVolumeClic(float value)const;
+    void modificationsSaved(void)const;
+    bool isVolumeClicModified(void)const{return m_volumeClic != m_volumeClicDef;}
+    bool isVolumeSamplesModified(void)const{return m_volumeSamples != m_volumeSamplesDef;}
+private:
+    mutable bool     m_modified;
 };
 typedef vector<Track,allocator<Track>> TrackVect;
 
@@ -58,19 +71,21 @@ public:
     const string m_title;
     const ProjectSource m_source;
     void debug(void)const;
-    Track getByTrackId(int id);
+    const Track& getByTrackId(int id);
     int getNbTracks(void)const;
     int getFirstTrackIndex(void)const; // -1 = no track, 0=first track
     void setInuse(bool inUse){m_inUse = inUse;}
     void setToClose(void){m_toClose = true;}
     bool inUse(void)const{return m_inUse;}
     bool toClose(void)const{return m_toClose;}
-    const TrackVect tracks(void)const {return m_tracks;}
+    const TrackVect& tracks(void)const {return m_tracks;}
+    void applyModifications(int id);
 private:
     TrackVect m_tracks;
     int getNewTrackIndex(int fromId)const;
     bool m_inUse;
     bool m_toClose;
+    const string m_fullPath;
 };
 
 typedef vector<Project*,allocator<Project*>> ProjectVect;

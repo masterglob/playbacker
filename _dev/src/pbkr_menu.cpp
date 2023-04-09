@@ -87,7 +87,7 @@ struct PlayMenuItem : MenuItem
     PlayMenuItem(void): MenuItem("PLAY Menu"){}
     virtual ~PlayMenuItem(void){}
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     virtual void onUpDownPress(const bool isUp);
     virtual void onLeftRightPress(const bool isLeft);
     virtual const std::string menul1(void){return "";}
@@ -154,12 +154,33 @@ protected:
 SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
 
 /*******************************************************************************/
+struct SongParamsMenuItem : ListMenuItem
+{
+    SongParamsMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~SongParamsMenuItem(void) = default;
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+    virtual void onShow(void);
+    virtual void onEnter(const bool longPressed=false);
+    virtual void onUpDownPress(const bool isUp);
+private:
+    typedef enum {
+        ID_VOLUME_SAMPLES = 0,
+        ID_VOLUME_CLIC,
+        ID_COUNT
+    } ItemId;
+    float m_currentValue;
+    size_t m_indexPlaying;
+};
+SongParamsMenuItem songParamsMenuItem ("Song", &mainMenuItem);
+
+/*******************************************************************************/
 struct SelectProjectShowMenuItem : ListMenuItem
 {
     SelectProjectShowMenuItem(const std::string & title, MenuItem* parent);
     virtual ~SelectProjectShowMenuItem(void){}
     virtual const std::string menul2(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     void setDefaultProject(void);
     static const string m_saveSection;
 private:
@@ -178,7 +199,7 @@ struct CopyFromUSBMenuItem : MenuItem
     virtual const std::string menul2(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
 private:
     typedef enum  {S_INIT ,S_CONFIRM, S_COPY_MODE, S_COPY, S_FAILED, S_CANCELED,S_SUCCESS} State;
 
@@ -202,7 +223,7 @@ struct DeleteInternalProjectMenuItem : MenuItem
     virtual const std::string menul2(void);
     virtual void onLeftRightPress(const bool isLeft);
     virtual void onExit(void);
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
 private:
     typedef enum  {S_CHOOSE ,S_CONFIRM, S_DELETE, S_FAILED, S_CANCELED, S_SUCCESS} State;
 
@@ -220,7 +241,7 @@ struct ClicSettingsMenuItem : ListMenuItem
 {
     ClicSettingsMenuItem(const std::string & title, MenuItem* parent);
     virtual ~ClicSettingsMenuItem(void){}
-    virtual void onEnter(void);
+    virtual void onEnter(const bool longPressed=false);
     virtual void onUpDownPress(const bool isUp);
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
@@ -246,7 +267,7 @@ private:
     NumParam m_pSecNote;
     NumParam* m_param[ID_COUNT];
 };
-ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
+ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &settingsMenuItem);
 
 /*******************************************************************************
  *******************************************************************************
@@ -283,6 +304,7 @@ void ListMenuItem::onLeftRightPress(const bool isLeft)
         if (m_lrIdx + 1 < m_lrIdx_Max)
             m_lrIdx++;
     }
+    onShow();
 }
 
 
@@ -299,7 +321,7 @@ void ListMenuItem::onLeftRightPress(const bool isLeft)
 
 
  *******************************************************************************/
-void PlayMenuItem::onEnter(void)
+void PlayMenuItem::onEnter(const bool longPressed)
 {
     fileManager.startReading();
 }
@@ -459,7 +481,7 @@ DeleteInternalProjectMenuItem::onExit(void)
 
 /*******************************************************************************/
 void
-DeleteInternalProjectMenuItem::onEnter(void)
+DeleteInternalProjectMenuItem::onEnter(const bool longPressed)
 {
     // S_CHOOSE ,S_CONFIRM, S_FAILED,S_SUCCESS S_DELETE
     if (m_projIdx >= m_projects.size())
@@ -644,7 +666,7 @@ CopyFromUSBMenuItem::onExit(void)
 
 /*******************************************************************************/
 void
-CopyFromUSBMenuItem::onEnter(void)
+CopyFromUSBMenuItem::onEnter(const bool longPressed)
 {
     if (m_projIdx >= m_projects.size())
     {
@@ -702,6 +724,114 @@ CopyFromUSBMenuItem::onEnter(void)
 
 /*******************************************************************************
  *
+ ######   #######  ##    ##  ######      ########     ###    ########     ###    ##     ##  ######
+##    ## ##     ## ###   ## ##    ##     ##     ##   ## ##   ##     ##   ## ##   ###   ### ##    ##
+##       ##     ## ####  ## ##           ##     ##  ##   ##  ##     ##  ##   ##  #### #### ##
+ ######  ##     ## ## ## ## ##   ####    ########  ##     ## ########  ##     ## ## ### ##  ######
+      ## ##     ## ##  #### ##    ##     ##        ######### ##   ##   ######### ##     ##       ##
+##    ## ##     ## ##   ### ##    ##     ##        ##     ## ##    ##  ##     ## ##     ## ##    ##
+ ######   #######  ##    ##  ######      ##        ##     ## ##     ## ##     ## ##     ##  ######
+
+*******************************************************************************/
+SongParamsMenuItem::SongParamsMenuItem (const std::string & title, MenuItem* parent)
+:
+        ListMenuItem(title, parent, 2),
+        m_currentValue(-1.0f),
+        m_indexPlaying(0)
+{
+}
+
+/*******************************************************************************/
+const std::string
+SongParamsMenuItem::menul1(void)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+
+    static const std::string P_NAMES[] = {"Volume OUT", "Volume CLIC"};
+    string result = P_NAMES[m_lrIdx];
+    if (fileManager.fileAreParamsModified(m_indexPlaying))
+        result += "*";
+    return addVertArrow(result, m_lrIdx > 0, m_lrIdx + 1 < m_lrIdx_Max);
+}
+
+/*******************************************************************************/
+const std::string
+SongParamsMenuItem::menul2(void)
+{
+    if (m_currentValue < 0) return "<N.A.>";
+    int iVal = static_cast<int>(100.0 * m_currentValue);
+    return std::to_string(iVal)+ "\%";
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onUpDownPress(const bool isUp)
+{
+    if (m_indexPlaying == 0) return;
+    if (m_currentValue < 0) return;
+
+    const float ratio(m_currentValue < 0.5f ? 1.125 : 1.05);
+    if (isUp)
+    {
+        m_currentValue *= ratio;
+    }
+    else
+    {
+        m_currentValue /= ratio;
+    }
+    if (m_currentValue < 0.05f) m_currentValue = 0.05f;
+    if (m_currentValue > 1.0f) m_currentValue = 1.0f;
+
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+    switch (m_lrIdx) {
+    case ID_VOLUME_SAMPLES:
+        fileManager.fileSetVolumeSamples(m_indexPlaying, m_currentValue);
+        break;
+    case ID_VOLUME_CLIC:
+        fileManager.fileSetVolumeClic(m_indexPlaying, m_currentValue);
+        break;
+    default:
+        break;
+    }
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onShow(void)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+    m_currentValue = 1.0f;
+    m_indexPlaying = fileManager.indexPlaying();
+
+    if (m_indexPlaying == 0) return;
+
+    switch (m_lrIdx) {
+    case ID_VOLUME_SAMPLES:
+        m_currentValue = fileManager.fileGetVolumeSamples(m_indexPlaying);
+        break;
+    case ID_VOLUME_CLIC:
+        m_currentValue = fileManager.fileGetVolumeClic(m_indexPlaying);
+        break;
+    default:
+        break;
+    }
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onEnter(const bool longPressed)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+
+    fileManager.fileSaveParamsModification(m_indexPlaying);
+
+    m_currentValue = -1.0f;
+    onExit();
+}
+
+
+/*******************************************************************************
+ *
 ########  ########   #######        ## ########  ######  ########
 ##     ## ##     ## ##     ##       ## ##       ##    ##    ##
 ##     ## ##     ## ##     ##       ## ##       ##          ##
@@ -752,7 +882,7 @@ SelectProjectShowMenuItem::menul2(void)
 
 /*******************************************************************************/
 void
-SelectProjectShowMenuItem::onEnter(void)
+SelectProjectShowMenuItem::onEnter(const bool longPressed)
 {
     if (m_projectTitle.length() > 0)
     {
@@ -951,7 +1081,7 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
 }
 
 /*******************************************************************************/
-void ClicSettingsMenuItem::onEnter(void)
+void ClicSettingsMenuItem::onEnter(const bool longPressed)
 {
     onExit();
 }
@@ -1114,7 +1244,7 @@ void MenuItem::onLeftRightPress(const bool isLeft)
 }
 
 /*******************************************************************************/
-void MenuItem::onEnter(void)
+void MenuItem::onEnter(const bool longPressed)
 {
     if (m_iter != m_subMenus.end())
     {
@@ -1209,9 +1339,18 @@ void MainMenu::setMenu(MenuItem* menu)
 {
     if (!menu) return;
     m_currentMenu = menu;
+    m_currentMenu->onShow();
     if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuName(menu->name);
     printf("New menu => %s\n",m_currentMenu->name.c_str());
 } // MainMenu::setMenu
+
+/*******************************************************************************/
+void
+MainMenu::refresh(void)const
+{
+    if (!m_currentMenu) return;
+    m_currentMenu->onShow();
+}
 
 /*******************************************************************************/
 void
@@ -1247,31 +1386,31 @@ void MainMenu::body(void)
 {
     while (not isExitting())
     {
-        float duration(0.0);
+        bool longPress(false);
         usleep(100*1000);
-        if (m_cfg.leftGpio.pressed(duration))
+        if (m_cfg.leftGpio.pressed(longPress))
         {
             m_currentMenu->onLeftRightPress(true);
         }
-        if (m_cfg.rightGpio.pressed(duration))
+        if (m_cfg.rightGpio.pressed(longPress))
         {
             m_currentMenu->onLeftRightPress(false);
         }
 
-        if (m_cfg.upGpio.pressed(duration))
+        if (m_cfg.upGpio.pressed(longPress))
         {
             m_currentMenu->onUpDownPress(true);
         }
-        if (m_cfg.downGpio.pressed(duration))
+        if (m_cfg.downGpio.pressed(longPress))
         {
             m_currentMenu->onUpDownPress(false);
         }
 
-        if (m_cfg.enterGpio.pressed(duration))
+        if (m_cfg.enterGpio.pressed(longPress))
         {
-            m_currentMenu->onEnter();
+            m_currentMenu->onEnter(longPress);
         }
-        if (m_cfg.exitGpio.pressed(duration))
+        if (m_cfg.exitGpio.pressed(longPress))
         {
             m_currentMenu->onExit();
         }
@@ -1285,8 +1424,9 @@ void setDefaultProject(void)
 } // setDefaultProject
 
 
-bool Button::pressed(float& duration)const
+bool Button::pressed(bool& longPress)const
 {
+    longPress = false;
     if (digitalRead(m_gpio))
     {
         if (m_must_release)
@@ -1298,8 +1438,9 @@ bool Button::pressed(float& duration)const
             const float f = VirtualTime::toS(VirtualTime::now() - m_t0);
             if (m_maxWait < f)
             {
+                // Auto release after a long press
                 m_pressed = false;
-                duration = f;
+                longPress = true;
                 m_must_release = true;
                 printf("Short press on %s\n", m_name.c_str());
                 return true;
@@ -1318,7 +1459,6 @@ bool Button::pressed(float& duration)const
         if (m_pressed)
         {
             m_pressed = false;
-            duration = VirtualTime::toS(VirtualTime::now() - m_t0);
             m_must_release = true;
             printf("Release on %s\n", m_name.c_str());
             return true;
