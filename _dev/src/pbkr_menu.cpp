@@ -246,7 +246,7 @@ private:
     NumParam m_pSecNote;
     NumParam* m_param[ID_COUNT];
 };
-ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &mainMenuItem);
+ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &settingsMenuItem);
 
 /*******************************************************************************
  *******************************************************************************
