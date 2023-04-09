@@ -774,13 +774,13 @@ SongParamsMenuItem::onUpDownPress(const bool isUp)
     if (isUp)
     {
         m_currentValue *= ratio;
-        if (m_currentValue > 1.0f) m_currentValue = 1.0f;
     }
     else
     {
         m_currentValue /= ratio;
-        if (m_currentValue < 0.05f) m_currentValue = 0.05f;
     }
+    if (m_currentValue < 0.05f) m_currentValue = 0.05f;
+    if (m_currentValue > 1.0f) m_currentValue = 1.0f;
 
     m_lrIdx %= m_lrIdx_Max; // Just for robustness
     switch (m_lrIdx) {

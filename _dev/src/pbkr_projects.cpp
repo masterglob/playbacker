@@ -82,7 +82,6 @@ float readFloatInFile(const string& name, float defVal)
     }
     catch(...){}
     myfile.close();
-
     return value;
 }
 
@@ -371,8 +370,8 @@ Project::Project(const std::string& name, const ProjectSource source):
         //printf("index = %d,",index);
         const string trackname(readStrInFile(fullFilename + ".title",filename));
         //printf("index = %d,",index);
-        const int volumeSamples(readFloatInFile(fullFilename + ".vols", 1.0f));
-        const int volumeClic(readFloatInFile(fullFilename + ".volc", 1.0f));
+        const float volumeSamples(readFloatInFile(fullFilename + ".vols", 1.0f));
+        const float volumeClic(readFloatInFile(fullFilename + ".volc", 1.0f));
         m_tracks.push_back(Track(trackname,index,filename,volumeSamples,volumeClic));
         //debug();
     }

@@ -182,6 +182,11 @@ int main (int argc, char**argv)
 
 	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos
 
+    // TODO : Add a settings parameter for OUT volume (general)
+    const float& mainVolume(PBKR::API::samplesVolume);
+    const float& samplesVolume(PBKR::API::samplesVolume);
+    const float& clicVolume(PBKR::API::clicVolume);
+
 	signal(SIGINT, intHandler);
 	try {
 	    DISPLAY::DisplayManager::instance().onEvent(DISPLAY::DisplayManager::evBegin);
@@ -198,8 +203,6 @@ int main (int argc, char**argv)
         float l,r, l2, r2;
         int midi;
 		float phase = 0;
-        float volume(0.9);
-        float clicVolume(0.9);
 		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
 
         SOUND::SoundPlayer playerHifi (hifidac);
@@ -233,10 +236,10 @@ int main (int argc, char**argv)
                 playerClic->unpause();
 		    }
 		    // TODO : manage volume & clicVolume
-		    l *=  volume;
-		    r *=  volume;
-		    l2 *= clicVolume;
-		    r2 *= clicVolume;
+		    l *=  mainVolume * samplesVolume;
+		    r *=  mainVolume * samplesVolume;
+		    l2 *= mainVolume * clicVolume;
+		    r2 *= mainVolume * clicVolume;
 		    if (CURRENT_FREQUENCY != playerHifi.sample_rate())
 		    {
 	            // Check if freq changed
@@ -246,10 +249,9 @@ int main (int argc, char**argv)
 		    if (console.doSine)
 		    {
 
-		        l2 = sin (phase) * volume * console.volume();
+		        l2 = sin (phase) * mainVolume * console.volume();
 		        r2 = l2;
 		    }
-		    else
 
 			VirtualTime::elapseSample();
             phase += phasestep;

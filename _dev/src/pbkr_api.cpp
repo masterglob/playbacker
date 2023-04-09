@@ -9,6 +9,22 @@
 
 #include <stdlib.h>
 
+namespace
+{
+float globalVolume = 1.0f;
+float clicVolume = 1.0f;
+float samplesVolume = 1.0f;
+static const float MIN_VOLUME(0.05f);
+static const float MAX_VOLUME(0.995f);
+inline float normalizeVolume(const float& v)
+{
+    if (v < MIN_VOLUME) return MIN_VOLUME;
+    if (v > MAX_VOLUME) return MAX_VOLUME;
+    return v;
+}
+
+}
+
 namespace PBKR
 {
 namespace API
@@ -17,14 +33,31 @@ using namespace std;
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
+const float& samplesVolume(::samplesVolume);
+const float& clicVolume(::clicVolume);
+const float& globalVolume(::globalVolume);
 
 /*******************************************************************************
  *
  *******************************************************************************/
 
 /*******************************************************************************/
+void setGlobalVolume  (const float& v)
+{
+    ::globalVolume = ::normalizeVolume(v);
+}
+
+/*******************************************************************************/
+void setSamplesVolume  (const float& v)
+{
+    ::samplesVolume = ::normalizeVolume(v);
+}
+
+/*******************************************************************************/
 void setClicVolume  (const float& v)
 {
+    ::clicVolume = ::normalizeVolume(v);
+    /*
     Console * console (Console::instance());
     if (console) console->changeVolume(v,0.01);
 
@@ -33,6 +66,7 @@ void setClicVolume  (const float& v)
 
     OSC::OSC_Controller* osc (OSC::p_osc_instance);
     if (osc) osc->setClicVolume(v);
+    */
 }
 
 /*******************************************************************************/

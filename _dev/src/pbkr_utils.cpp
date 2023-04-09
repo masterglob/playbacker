@@ -1,3 +1,4 @@
+#include "pbkr_api.h"
 #include "pbkr_utils.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_wav.h"
@@ -603,6 +604,8 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, int& mi
     midiB = -1;
     if (_starting)
     {
+        API::setSamplesVolume(fileGetVolumeSamples(m_indexPlaying));
+        API::setClicVolume(fileGetVolumeClic(m_indexPlaying));
         // just start reading... (No more used be could be used to delay while a
         // task is preparing before reading)
         _starting = false;
@@ -665,6 +668,7 @@ void FileManager::fileSetVolumeSamples(size_t idx, float value)const
 {
     if (_pProject == NULL || idx == 0) return;
     _pProject->getByTrackId(idx).setVolumeSamples(value);
+    API::setSamplesVolume(value);
 }
 
 /*******************************************************************************/
@@ -672,6 +676,7 @@ void FileManager::fileSetVolumeClic(size_t idx, float value)const
 {
     if (_pProject == NULL || idx == 0) return;
     _pProject->getByTrackId(idx).setVolumeClic(value);
+    API::setClicVolume(value);
 }
 
 /*******************************************************************************/
