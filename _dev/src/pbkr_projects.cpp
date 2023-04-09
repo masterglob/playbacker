@@ -143,6 +143,37 @@ listFilesWithExtension(const string & path, const string & ext)
 
 } // namespace
 
+/*******************************************************************************
+ * TRACKS
+ *******************************************************************************/
+namespace PBKR
+{
+Track::Track(const string& title,const int index,const string filename)
+:m_title(title),
+ m_index(index),
+ m_filename(filename),
+ m_volumeSamples(1.0f),
+ m_volumeClic(1.0f),
+ m_modified(false)
+{}
+
+void Track::setVolumeSamples(float value)const
+{
+    m_modified = true;
+    m_volumeSamples = value;
+}
+void Track::setVolumeClic(float value)const
+{
+    m_modified = true;
+    m_volumeClic = value;
+}
+
+void Track::modificationsSaved(void)const
+{
+    m_modified = false;
+}
+
+}
 
 /*******************************************************************************
  * EXTERNAL FUNCTIONS
@@ -340,7 +371,7 @@ Project::debug(void)const
 } // Project::debug
 
 /*******************************************************************************/
-Track
+const Track&
 Project::getByTrackId(int id)
 {
     static const Track noTrack ("",-1,"");

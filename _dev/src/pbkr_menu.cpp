@@ -154,6 +154,27 @@ protected:
 SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
 
 /*******************************************************************************/
+struct SongParamsMenuItem : ListMenuItem
+{
+    SongParamsMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~SongParamsMenuItem(void) = default;
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+    virtual void onShow(void);
+    virtual void onEnter(const bool longPressed=false);
+    virtual void onUpDownPress(const bool isUp);
+private:
+    typedef enum {
+        ID_VOLUME_SAMPLES = 0,
+        ID_VOLUME_CLIC,
+        ID_COUNT
+    } ItemId;
+    float m_currentValue;
+    size_t m_indexPlaying;
+};
+SongParamsMenuItem songParamsMenuItem ("Song", &mainMenuItem);
+
+/*******************************************************************************/
 struct SelectProjectShowMenuItem : ListMenuItem
 {
     SelectProjectShowMenuItem(const std::string & title, MenuItem* parent);
@@ -698,6 +719,111 @@ CopyFromUSBMenuItem::onEnter(const bool longPressed)
     break;
     default: break;
     }
+}
+
+
+/*******************************************************************************
+ *
+ ######   #######  ##    ##  ######      ########     ###    ########     ###    ##     ##  ######
+##    ## ##     ## ###   ## ##    ##     ##     ##   ## ##   ##     ##   ## ##   ###   ### ##    ##
+##       ##     ## ####  ## ##           ##     ##  ##   ##  ##     ##  ##   ##  #### #### ##
+ ######  ##     ## ## ## ## ##   ####    ########  ##     ## ########  ##     ## ## ### ##  ######
+      ## ##     ## ##  #### ##    ##     ##        ######### ##   ##   ######### ##     ##       ##
+##    ## ##     ## ##   ### ##    ##     ##        ##     ## ##    ##  ##     ## ##     ## ##    ##
+ ######   #######  ##    ##  ######      ##        ##     ## ##     ## ##     ## ##     ##  ######
+
+*******************************************************************************/
+SongParamsMenuItem::SongParamsMenuItem (const std::string & title, MenuItem* parent)
+:
+        ListMenuItem(title, parent, 2),
+        m_currentValue(-1.0f),
+        m_indexPlaying(0)
+{
+}
+
+/*******************************************************************************/
+const std::string
+SongParamsMenuItem::menul1(void)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+
+    static const std::string P_NAMES[] = {"Volume OUT", "Volume CLIC"};
+    return addVertArrow(P_NAMES[m_lrIdx], m_lrIdx > 0, m_lrIdx + 1 < m_lrIdx_Max);
+}
+
+/*******************************************************************************/
+const std::string
+SongParamsMenuItem::menul2(void)
+{
+    if (m_currentValue < 0) return "<N.A.>";
+    int iVal = static_cast<int>(100.0 * m_currentValue);
+    return std::to_string(iVal)+ "\%";
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onUpDownPress(const bool isUp)
+{
+    if (m_indexPlaying == 0) return;
+    if (m_currentValue < 0) return;
+
+    const float ratio(m_currentValue < 0.5f ? 1.125 : 1.05);
+    if (isUp)
+    {
+        m_currentValue *= ratio;
+        if (m_currentValue > 1.0f) m_currentValue = 1.0f;
+    }
+    else
+    {
+        m_currentValue /= ratio;
+        if (m_currentValue < 0.05f) m_currentValue = 0.05f;
+    }
+
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+    switch (m_lrIdx) {
+    case ID_VOLUME_SAMPLES:
+        fileManager.fileSetVolumeSamples(m_indexPlaying, m_currentValue);
+        break;
+    case ID_VOLUME_CLIC:
+        fileManager.fileSetVolumeClic(m_indexPlaying, m_currentValue);
+        break;
+    default:
+        break;
+    }
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onShow(void)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+    m_currentValue = 1.0f;
+    m_indexPlaying = fileManager.indexPlaying();
+
+    if (m_indexPlaying == 0) return;
+
+    switch (m_lrIdx) {
+    case ID_VOLUME_SAMPLES:
+        m_currentValue = fileManager.fileGetVolumeSamples(m_indexPlaying);
+        break;
+    case ID_VOLUME_CLIC:
+        m_currentValue = fileManager.fileGetVolumeClic(m_indexPlaying);
+        break;
+    default:
+        break;
+    }
+}
+
+/*******************************************************************************/
+void
+SongParamsMenuItem::onEnter(const bool longPressed)
+{
+    m_lrIdx %= m_lrIdx_Max; // Just for robustness
+
+    fileManager.fileSaveParamsModification(m_indexPlaying);
+
+    m_currentValue = -1.0f;
+    onExit();
 }
 
 

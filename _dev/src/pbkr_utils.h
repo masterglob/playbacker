@@ -222,6 +222,11 @@ public:
     size_t nbFiles(void)const {return m_nbFiles;}
     std::string filename(size_t idx)const;
     std::string fileTitle(size_t idx)const;
+    float fileGetVolumeSamples(size_t idx)const;
+    float fileGetVolumeClic(size_t idx)const;
+    void fileSetVolumeSamples(size_t idx, float value)const;
+    void fileSetVolumeClic(size_t idx, float value)const;
+    void fileSaveParamsModification(size_t idx)const;
     bool loadProject (Project* proj);
     void unloadProject (void);
 protected:

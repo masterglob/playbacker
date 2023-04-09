@@ -85,6 +85,10 @@ private:
     MenuCfg m_cfg;
     MenuItem* m_currentMenu;
 };
+
+/*******************************************************************************
+ * ALL MENUS
+ *******************************************************************************/
 extern MainMenu &globalMenu;
 extern void SelectProjectMenu(Project* proj);
 extern void openCopyFromUSBMenu();

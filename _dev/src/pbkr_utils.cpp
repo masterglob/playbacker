@@ -647,6 +647,42 @@ std::string FileManager::fileTitle(size_t idx)const
 }
 
 /*******************************************************************************/
+float FileManager::fileGetVolumeSamples(size_t idx)const
+{
+    if (_pProject == NULL) return -1.0;
+    return _pProject->getByTrackId(idx).m_volumeSamples;
+}
+
+/*******************************************************************************/
+float FileManager::fileGetVolumeClic(size_t idx)const
+{
+    if (_pProject == NULL) return -1.0;
+    return _pProject->getByTrackId(idx).m_volumeClic;
+}
+
+/*******************************************************************************/
+void FileManager::fileSetVolumeSamples(size_t idx, float value)const
+{
+    if (_pProject == NULL || idx == 0) return;
+    _pProject->getByTrackId(idx).setVolumeSamples(value);
+}
+
+/*******************************************************************************/
+void FileManager::fileSetVolumeClic(size_t idx, float value)const
+{
+    if (_pProject == NULL || idx == 0) return;
+    _pProject->getByTrackId(idx).setVolumeClic(value);
+}
+
+/*******************************************************************************/
+void FileManager::fileSaveParamsModification(size_t idx)const
+{
+    if (_pProject == NULL || idx == 0) return;
+#warning "TODO: save it"
+    _pProject->getByTrackId(idx).modificationsSaved();
+}
+
+/*******************************************************************************/
 void FileManager::nextTrack(void)
 {
     printf("nextTrack %d %d \n",m_nbFiles, m_indexPlaying);

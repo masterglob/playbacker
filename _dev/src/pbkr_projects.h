@@ -20,11 +20,16 @@ using namespace std;
 class Track
 {
 public:
-    Track(const string& title,const int index,const string filename)
-    :m_title(title),m_index(index),m_filename(filename){}
+    Track(const string& title,const int index,const string filename);
     string   m_title;
     int      m_index;
     string   m_filename;
+    mutable float    m_volumeSamples;
+    mutable float    m_volumeClic;
+    mutable bool     m_modified;
+    void setVolumeSamples(float value)const;
+    void setVolumeClic(float value)const;
+    void modificationsSaved(void)const;
 };
 typedef vector<Track,allocator<Track>> TrackVect;
 
@@ -57,7 +62,7 @@ public:
     const string m_title;
     const ProjectSource m_source;
     void debug(void)const;
-    Track getByTrackId(int id);
+    const Track& getByTrackId(int id);
     int getNbTracks(void)const;
     int getFirstTrackIndex(void)const; // -1 = no track, 0=first track
     void setInuse(bool inUse){m_inUse = inUse;}
