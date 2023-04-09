@@ -426,7 +426,7 @@ FileManager::~FileManager (void)
 /*******************************************************************************/
 void FileManager::body(void)
 {
-    for ( ; not isExitting() ; usleep(100 * 1000))
+    for ( ; not isExitting() ; usleep(1000 * 1000))
     {
         ProjectVect projects (getAllProjects());
         if (_pProject)
