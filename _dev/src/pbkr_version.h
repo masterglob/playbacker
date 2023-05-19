@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.1"
+#define PBKR_VERSION "2.0.2"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -16,10 +16,14 @@ extern const int PBKR_BUILD_ID;
    - Modification for RPI 3B+:
    - Remove WEMOS and reuse WEMOS button for Enter Menu
    - Red LED is now driven by clic (flashes when signal on CLIC line)
+ New in V2.0.2:
+   - Add "/pbkrctrl/nTrack" on OSC
+   - Add individual volume level for each song (Clic & Pb)
 
  Known bugs:
    - Default MIDI volume is not applied until it is manually changed
  TODO:
+   - handle multiple OSC clients (change to Multicast or ahndle a list of connected clients)
    - Manage volume & clicVolume (See main_pkbr.cpp)
    - Auto-identify HW ? (currently set by caller script in argv[])
 

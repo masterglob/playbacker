@@ -336,6 +336,8 @@ void OSC_Controller::setActiveTrack (int trackIdx)
         char buff[32];
         sprintf(buff,"/%s/mtTrackSel/%u/%u",OSC_PAGE,OSC_TRACK_NB_Y - Y,X+1);
         send (OSC_Msg_To_Send (buff, (int32_t) 1));
+        sprintf(buff,"/%s/nTrack",OSC_PAGE);
+        send (OSC_Msg_To_Send (buff, (int32_t) trackIdx));
     }
 }
 
@@ -410,15 +412,15 @@ void OSC_Controller::body(void)
             }
             m_clientAddr = cliaddr.sin_addr;
             m_isClientKnown = true;
-            if (0) // For debug
+#if DO_DEBUG_IN
             {
                 ((char*)buffer)[MAXLSIZE] = 0;
                 uint32_t addr = cliaddr.sin_addr.s_addr;
-                printf("OSC_Controller received '%s' from %d.%d.%d.%d\n",
+                printf("DO_DEBUG_IN OSC_Controller received '%s' from %d.%d.%d.%d\n",
                         (char*)buffer,
                         addr & 0xFF, (addr>>8) & 0xFF, (addr>>16) & 0xFF, (addr>>24) & 0xFF);
             }
-
+#endif
             processMsg(buffer, n);
         }
     }
@@ -441,6 +443,10 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     float paramF (0.0);
     uint32_t paramI (0);
     std::string paramS("");
+
+#if DO_DEBUG_IN
+    printf("DO_DEBUG_IN name => <%s>, nameLen=%d type= <%s>, cbuff=<%s>\n",name.c_str(), nameLen, type.c_str(), cbuff);
+#endif
 
     if (cbuff[0] != '/') return;
 
