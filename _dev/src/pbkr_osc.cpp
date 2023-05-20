@@ -460,6 +460,7 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
     else if (type == ",i")
     {
         paramI = *((uint32_t*) &be);
+        paramF = (float)(paramI);
         (void)paramI;
 #if DO_DEBUG_IN
         printf("OSC received INT event <%s> => <%u>\n",name.c_str(),paramI);
@@ -556,6 +557,14 @@ void OSC_Controller::processPlaylist(const std::string key,
         // refresh all
         API::forceRefresh();
     }
+    else if (key == "nTrackSel")
+    {
+        try {
+            API::onChangeTrack(std::atoi (p1.c_str()));
+        } catch (...) {
+            printf("Invalid parameters in nTrackSel.IGNORED\n");
+        }
+    }
     else if (key == "mtTrackSel")
     {
         try {
@@ -565,6 +574,10 @@ void OSC_Controller::processPlaylist(const std::string key,
         } catch (...) {
             printf("Invalid parameters in mtTrackSel.IGNORED\n");
         }
+    }
+    else
+    {
+        printf("Unknown command <%s>. IGNORED\n", key.c_str());
     }
 
 } // OSC_Controller::processPlaylist
