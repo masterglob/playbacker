@@ -3,6 +3,7 @@
 #include "IPlug_include_in_plug_src.h"
 #include "IControl.h"
 #include "resource.h"
+#include <sstream>
 
 
 const int kNumPrograms = 8;
@@ -15,89 +16,32 @@ enum EParams
 	kNumParams
 };
 
-RawSerializer::RawSerializer(bool& sendOffNotes):
-	mSendOffNotes(sendOffNotes),
-	mLen(0),
-	mPos(-1),
-	mStop(true)
-{
-	memset(toSend, 0, 3);
+void ITextControlRefr::CheckDirty() {
+	if (mLast != text)
+	{
+		mLast = text;
+		SetDirty();
+	}
 }
 
-RawSerializer::~RawSerializer(void)
+bool ITextControlRefr::Draw(IGraphics* pGraphics)
 {
+	const char* cStr = mLast.c_str();
+	if (CSTR_NOT_EMPTY(cStr))
+	{
+		return pGraphics->DrawIText(&mText, cStr, &mRECT);
+	}
+	return true;
 }
 
-double RawSerializer::getNextValue(const int& offset)
-{
-	if ((mLen == 0) && !Empty())
-	{
-		if (mStop)
-		{
-			mStop = false;
-			return 0.0;
-		}
-		// Currently not sending
-		IMidiMsg*mCurMsg = Peek();
-
-		if (mCurMsg->mOffset > offset) return 0.0;
-		Remove();
-		mStop = true;
-
-		toSend[0] = mCurMsg->mStatus;
-		toSend[1] = mCurMsg->mData1;
-		toSend[2] = mCurMsg->mData2;
-		mPos = -1;
-		mLen = 3;
-		const int cmd = mCurMsg->mStatus & 0xF0;
-		switch (cmd)
-		{
-		case 0x80: // Note Off event
-			if (!mSendOffNotes)
-			{
-				mLen = 0;
-			}
-		case 0x90: // Note On event. 
-			if (mCurMsg->mData2 == 0 && !mSendOffNotes)
-			{
-				mLen = 0;
-			}
-			break;
-		case 0xA0: // Polyphonic Key Pressure (Aftertouch). 
-		case 0xB0: // Control Change. 
-		case 0xE0: //Pitch Bend Change
-			break;
-		case 0xC0: // Program Change. 
-		case 0xD0: // Channel Pressure (After-touch)
-			mLen = 2;
-			break;
-		case 0xF0: // System : not managed
-			mLen = 0;
-			break;
-		}
-	}
-	if (mLen == 0)
-		return 0.0;
-
-	if (mPos < 0)
-	{
-		mPos = 0;
-		return -maxLevel;
-	}
-
-	if (mPos >= mLen)
-	{
-		mPos = -1;
-		mLen = 0;
-		return -maxLevel;
-	}
-	return ( ((double)toSend[mPos++]) * maxLevel ) / 0x100;
+void ITextControlRefr::OnGUIIdle() {
+	// dbg_ctrl->SetTextFromPlug(text.c_str());
 }
 
 IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	: IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo),
 	mSampleRate(44100.),
-	mSerial(mSendOffNotes)
+	dbg_ctrl(nullptr)
 {
 	TRACE;
 
@@ -115,16 +59,29 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	}
 
 	// Create leds (WIP)
+	ILedViewControl* led_ctrl;
 	const LedVect_t& cfg = getConf();
-	for (const CLedConf& led : cfg) {
+	for (const CLedConf& ledCfg : cfg) {
 		const IColor color(255, 250, 250, 250);
-		std::cout << "LED: " << led.name << std::endl;
+		std::cout << "LED: " << ledCfg.name << std::endl;
 
-		pGraphics->AttachControl(new ILedViewControl(this, led));
+		led_ctrl = new ILedViewControl(this, ledCfg);
+		ledMap.insert(ledCfg, led_ctrl);
+		pGraphics->AttachControl(led_ctrl);
 		//point4array points;
 		//led.fillPoly(points);
 		//pGraphics->FillIConvexPolygon(&color, points.x , points.y, 4);
 	}
+
+	
+	// Debug info
+	{
+		IRECT tmpRect((GUI_WIDTH)/10, (GUI_HEIGHT * 9) / 10, 200, 30);
+		IText textProps(24, &COLOR_YELLOW, "Arial", IText::kStyleBold, IText::kAlignNear, 0, IText::kQualityDefault);
+		dbg_ctrl = new ITextControlRefr(this, tmpRect, &textProps, "Info");
+		pGraphics->AttachControl(dbg_ctrl);
+	}
+
 
 
 	/****************************/
@@ -166,11 +123,11 @@ void IPlugLedViewer::ProcessDoubleReplacing(double** inputs, double** outputs, i
 
 	for (int offset = 0; offset < nFrames; ++offset, /*++in1, ++in2,*/ ++outM/*, ++out2*/)
 	{
-		*outM = mSerial.getNextValue(offset);
+		*outM = 0.0;
 		// peakR = IPMAX(peakR, fabs(*out2));
 	}
-
-	mSerial.Flush(nFrames);
+	ledMap.CheckDirty();
+	dbg_ctrl->CheckDirty();
 }
 
 void IPlugLedViewer::Reset()
@@ -179,7 +136,6 @@ void IPlugLedViewer::Reset()
 	IMutexLock lock(this);
 
 	mSampleRate = GetSampleRate();
-	mSerial.Resize(GetBlockSize());
 }
 
 void IPlugLedViewer::OnParamChange(int paramIdx)
@@ -189,7 +145,8 @@ void IPlugLedViewer::OnParamChange(int paramIdx)
 	switch (paramIdx)
 	{
 	case kNoOffNotes:
-		mSendOffNotes = GetParam(paramIdx)->Bool();
+		//mSendOffNotes = GetParam(paramIdx)->Bool();
+		break;
 	default:
 		break;
 	}
@@ -198,8 +155,40 @@ void IPlugLedViewer::OnParamChange(int paramIdx)
 
 void IPlugLedViewer::ProcessMidiMsg(IMidiMsg* pMsg)
 {
+	if (dbg_ctrl)
+	{
+		std::stringstream ss;
+		ss << "Rcv Midi ch=0x" << std::hex << pMsg->Channel();
+		int i = pMsg->Program();
+		if (i >= 0) {
+			ss << ", PC #" << i;
+			ledMap.SetPC(i);
+		}
+		else
+		{
+			i = pMsg->NoteNumber();
+			if (i >= 0) {
+				ss << ", Note #" << i << "(Vel:" << pMsg->Velocity() << ")";
+			}
+			else
+			{
+				IMidiMsg::EControlChangeMsg cc = pMsg->ControlChangeIdx();
+				if (cc >= 0) {
+					const double ccV = pMsg->ControlChange(cc);
+					ss << ", CC #" << i << "(Val:" << ccV << ")";
+					ledMap.SetCC(cc, ccV);
+				}
+				else
+				{
+					ss << ", ???";
+				}
+			}
+		}
+		ss << std::endl;
 
-	mSerial.Add(pMsg);
+		dbg_ctrl->text = ss.str();
+
+	}
 }
 
 // Should return non-zero if one or more keys are playing.

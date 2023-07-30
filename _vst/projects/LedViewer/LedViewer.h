@@ -2,20 +2,8 @@
 
 #include "IPlug_include_in_plug_hdr.h"
 #include "IMidiQueue.h"
+#include "LedConf.h"
 
-class RawSerializer : public IMidiQueue
-{
-public:
-	RawSerializer(bool& sendOffNotes);
-	virtual ~RawSerializer(void);
-	double getNextValue(const int& offset);
-private:
-	bool& mSendOffNotes;
-	int mLen;
-	int mPos;
-	BYTE toSend[3];
-	bool mStop;
-};
 
 class IPlugLedViewer : public IPlug
 {
@@ -35,13 +23,13 @@ public:
 private:
 	IBitmapOverlayControl* mAboutBox;
 
-	bool mSendOffNotes;
-
 	double mSampleRate;
 
-	ITimeInfo mTimeInfo;
+	ITextControlRefr* dbg_ctrl;
 
-	RawSerializer mSerial;
+	CLedMap ledMap;
+
+	ITimeInfo mTimeInfo;
 };
 
 enum ELayout

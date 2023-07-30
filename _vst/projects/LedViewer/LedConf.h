@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <map>
+#include <set>
+#include <mutex>
 #include <vector>
 #include "IControl.h"
 
@@ -24,9 +27,30 @@ public:
 	const CLedWiring wiring;
 	void fillPoly(point4array& arr)const;
 	IRECT rect(void)const;
+
+	int getRLine(void)const { return wiring.iR >= 0 ? wiring.iR + line : -1; }
+	int getGLine(void)const { return wiring.iG >= 0 ? wiring.iG + line : -1; }
+	int getBLine(void)const { return wiring.iB >= 0 ? wiring.iB + line : -1; }
+	int getWLine(void)const { return wiring.iW >= 0 ? wiring.iW + line : -1; }
 };
 using LedVect_t = std::vector<CLedConf>;
 
+
+class ITextControlRefr : public ITextControl
+{
+public:
+	ITextControlRefr(IPlugBase* pPlug, IRECT pR, IText* pText, const char* str = "")
+		: ITextControl(pPlug, pR, pText, str)
+	{
+	}
+	virtual ~ITextControlRefr() {}
+	virtual void OnGUIIdle();
+	void CheckDirty();
+	virtual bool Draw(IGraphics* pGraphics);
+	std::string text;
+private:
+	std::string mLast;
+};
 
 // Draws a Led depending on the current value.
 class ILedViewControl : public IControl
@@ -40,10 +64,35 @@ public:
 
 	virtual bool Draw(IGraphics* pGraphics);
 
+	void setLineColor(uint8_t line, uint8_t value);
+
 protected:
 	const CLedConf mLedCfg;
+	union {
+		uint32_t u32;
+		uint8_t u8[4]; // order:  R, G ,B, W
+	} mArgb;
 };
 
+class CLedMap {
+public:
+	CLedMap(void);
+	void insert(const CLedConf& cfg, ILedViewControl* viewCtrl);
+	void SetCC(uint8_t cc, uint8_t val);
+	void SetPC(uint8_t pc);
+	bool CheckDirty(void);
+private:
+	std::mutex mMutex;
+	std::set<int> mDirty;
+
+	int ccVal[0x80];
+	struct Elt_Data_t {
+		ILedViewControl* ctrl;
+		uint8_t line;
+	};
+	Elt_Data_t mCtrl[0x80];
+
+};
 
 const LedVect_t& getConf();
 

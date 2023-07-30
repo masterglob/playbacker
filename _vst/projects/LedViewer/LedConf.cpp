@@ -131,8 +131,96 @@ ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg)
 
 bool ILedViewControl::Draw(IGraphics* pGraphics)
 {
+	static uint32_t v=0;
 	point4array points;
 	mLedCfg.fillPoly(points);
-	const IColor color(10, 250, 130, 250);
+#if 0
+	v++;
+	const IColor color(10, v%256, (v>>8)%256, (v >> 16) % 256);
+#else
+ // TODO : transparency?
+	const uint8_t w = mArgb.u8[3];
+	uint8_t r = mArgb.u8[0] + w;
+	uint8_t g = mArgb.u8[1] + w;
+	uint8_t b = mArgb.u8[2] + w;
+	const IColor color(255, r, g, b);
+#endif
 	return pGraphics->FillIConvexPolygon(&color, points.x, points.y, 4);
+}
+
+void ILedViewControl::setLineColor(uint8_t line, uint8_t value)
+{
+	if (line < 4) {
+		mArgb.u8[line] = value;
+	}
+}
+
+CLedMap::
+CLedMap(void) {
+	memset(ccVal, 0, sizeof(ccVal));
+	memset(mCtrl, 0, sizeof(mCtrl));
+}
+
+void
+CLedMap::
+insert(const CLedConf& cfg, ILedViewControl* viewCtrl) {
+	Elt_Data_t data;
+	data.ctrl = viewCtrl;
+	data.line = 0;
+	mCtrl[cfg.getRLine()] = data;
+	data.line++;
+	mCtrl[cfg.getGLine()] = data;
+	data.line++;
+	mCtrl[cfg.getBLine()] = data;
+	data.line++;
+	mCtrl[cfg.getWLine()] = data;
+}
+
+void
+CLedMap::
+SetPC(uint8_t pc)
+{
+	for (int cc = 0; cc < 127; cc++)
+	{
+		SetCC(cc, std::rand() & 0x7F);
+	}
+}
+
+void
+CLedMap::
+SetCC(uint8_t cc, uint8_t val) {
+	mMutex.lock();
+	val = val > 127 ? 127 : val;
+	if (cc < 0x80 && ccVal[cc] != val)
+	{ 
+		ccVal[cc] = val;
+		const Elt_Data_t& data = mCtrl[cc];
+		if (data.ctrl) {
+			data.ctrl->setLineColor(data.line, val);
+		}
+		mDirty.insert(cc);
+	}
+	mMutex.unlock();
+}
+
+bool
+CLedMap::
+CheckDirty(void)
+{
+	bool result = false;
+	mMutex.lock();
+	std::set<int> copy(mDirty);
+	mDirty.clear();
+	mMutex.unlock();
+
+	for (int cc : copy)
+	{
+		if (cc < 0 || cc > 0x80) continue; // argl?
+		const Elt_Data_t& data = mCtrl[cc];
+		if (data.ctrl) {
+			result = true;
+			data.ctrl->SetDirty();
+		}
+	}
+	return result;
 }
