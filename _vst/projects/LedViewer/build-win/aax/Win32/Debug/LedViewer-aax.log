@@ -1,0 +1,5 @@
+﻿  The system cannot find the path specified.
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(145,5): error MSB3073: The command "DEL /Q /F /S .\build-win\aax\bin\LedViewer.aaxplugin\Contents\Win32\
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(145,5): error MSB3073: CALL ..\..\AAX_SDK\Utilities\CreatePackage.bat build-win\aax\bin\LedViewer.aaxplugin\Contents\Win32\ ..\..\AAX_SDK\Utilities\PlugIn.ico
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(145,5): error MSB3073: 
+C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\MSBuild\Microsoft\VC\v160\Microsoft.CppCommon.targets(145,5): error MSB3073: :VCEnd" exited with code 1.
