@@ -25,7 +25,7 @@ public:
 	const double x1, x2, y1, y2;
 	const int width,line;
 	const CLedWiring wiring;
-	void fillPoly(point4array& arr)const;
+	void fillPoly(point4array& arr, double k=1.0)const;
 	IRECT rect(void)const;
 
 	int getRLine(void)const { return wiring.iR >= 0 ? wiring.iR + line : -1; }
@@ -72,13 +72,14 @@ protected:
 		uint32_t u32;
 		uint8_t u8[4]; // order:  R, G ,B, W
 	} mArgb;
+	IChannelBlend mWBlend;
 };
 
 class CLedMap {
 public:
 	CLedMap(void);
 	void insert(const CLedConf& cfg, ILedViewControl* viewCtrl);
-	void SetCC(uint8_t cc, uint8_t val);
+	void SetCC(uint8_t cc, double val);
 	void SetPC(uint8_t pc);
 	bool CheckDirty(void);
 private:
@@ -91,7 +92,6 @@ private:
 		uint8_t line;
 	};
 	Elt_Data_t mCtrl[0x80];
-
 };
 
 const LedVect_t& getConf();

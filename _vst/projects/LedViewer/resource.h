@@ -37,11 +37,11 @@
 #if (defined(AAX_API) || defined(RTAS_API)) 
 #define PLUG_CHANNEL_IO "1-1 2-2"
 #else
-#define PLUG_CHANNEL_IO "0-1"
+#define PLUG_CHANNEL_IO "0-1 1-1"
 #endif
 
 #define PLUG_LATENCY 0
-#define PLUG_IS_INST 1
+#define PLUG_IS_INST 0
 
 // if this is 0 RTAS can't get tempo info
 #define PLUG_DOES_MIDI 1

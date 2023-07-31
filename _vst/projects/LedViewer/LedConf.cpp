@@ -4,6 +4,34 @@
 
 #include <math.h>
 
+#define DRAW_FRAMES 1
+#define DRAW_METHOD 3
+namespace
+{
+	inline uint8_t To_MIDI_Level(double d) {
+		d *= 0x80;
+		int result = static_cast<int>(d);
+		if (result < 0) return 0;
+		if (result > 127) return 0x7F;
+		return result;
+	}
+
+	inline uint8_t To_LED_Level(uint32_t l, float level = 1.0) {
+		uint32_t result = l;
+		if (0)
+		{
+			result += 0x80;
+		}
+		else
+		{
+			result <<= 1;
+		}
+		static_cast<uint32_t>(result * level);
+		if (result > 0xFF) return 0xFF;
+		return result;
+	}
+
+}
 
 CLedWiring::
 CLedWiring(int rOffset, int gOffset, int bOffset, int wOffset):
@@ -26,13 +54,14 @@ CLedConf::CLedConf(const std::string& _name, int _x1, int _y1, int _x2, int _y2,
 {
 }
 
-void 
+void
 CLedConf::
-fillPoly(point4array& arr)const
+fillPoly(point4array& arr, double k)const
 {
 	const double t = atan2(y2 - y1, x2 - x1);
-	const double c = width * cos(t);
-	const double s = width * sin(t);
+	const double kd = k * width;
+	const double c = kd * cos(t);
+	const double s = kd * sin(-t);
 	arr.x[0] = static_cast<int>(x1 + s);
 	arr.x[1] = static_cast<int>(x1 - s);
 	arr.x[2] = static_cast<int>(x2 - s);
@@ -67,8 +96,8 @@ const LedVect_t& getConf(){
 		static const int LINE_SQ(41);
 		static const int LINE_SQs(81);
 
-		static const int wLarge(5);
-		static const int wSmall(3);
+		static const int wLarge(10);
+		static const int wSmall(8);
 		static const int pixSpace(2);
 		const CLedWiring wiring(0, 2, 4, 6);
 
@@ -77,7 +106,7 @@ const LedVect_t& getConf(){
 		// SQ
 		x1 = X_PERCENT(49);
 		x2 = X_PERCENT(51);
-		y1 = Y_PERCENT(55);
+		y1 = Y_PERCENT(45);
 		y2 = Y_PERCENT(95);
 		result.emplace_back("SQ", x1, y1, x1, y2, wLarge, wiring, LINE_SQ);
 		result.emplace_back("SQs", x2, y1, x2, y2, wLarge, wiring, LINE_SQs);
@@ -85,16 +114,16 @@ const LedVect_t& getConf(){
 		// M / Ms
 		x1 = X_PERCENT(10);
 		x2 = X_PERCENT(90);
-		y1 = Y_PERCENT(30);
-		y2 = Y_PERCENT(60);
+		y1 = Y_PERCENT(25);
+		y2 = Y_PERCENT(65);
 		result.emplace_back("M", x1, y1, x1, y2, wSmall, wiring, LINE_M);
 		result.emplace_back("Ms", x2, y1, x2, y2, wSmall, wiring, LINE_Ms);
 
 		// G / Gs
 		x1 = X_PERCENT(10);
 		x2 = X_PERCENT(40);
-		y1 = Y_PERCENT(28);
-		y2 = Y_PERCENT(10);
+		y1 = Y_PERCENT(23);
+		y2 = Y_PERCENT(7);
 		result.emplace_back("G", x1, y1, x2, y2, wSmall, wiring, LINE_G);
 		x1 = X_PERCENT(90);
 		x2 = X_PERCENT(60);
@@ -103,15 +132,15 @@ const LedVect_t& getConf(){
 		// SH1
 		x1 = X_PERCENT(25);
 		x2 = X_PERCENT(75);
-		y1 = Y_PERCENT(55);
-		y2 = Y_PERCENT(80);
+		y1 = Y_PERCENT(50);
+		y2 = Y_PERCENT(85);
 		result.emplace_back("SH1", x1, y1, x1, y2, wSmall, wiring, LINE_SH1);
 		result.emplace_back("SH1s", x2, y1, x2, y2, wSmall, wiring, LINE_SH1s);
 		// SH2
-		x1 = X_PERCENT(26);
-		x2 = X_PERCENT(74);
-		y1 = Y_PERCENT(65);
-		y2 = Y_PERCENT(90);
+		x1 = X_PERCENT(27);
+		x2 = X_PERCENT(73);
+		y1 = Y_PERCENT(60);
+		y2 = Y_PERCENT(95);
 		result.emplace_back("SH2", x1, y1, x1, y2, wSmall, wiring, LINE_SH2);
 		result.emplace_back("SH2s", x2, y1, x2, y2, wSmall, wiring, LINE_SH2s);
 
@@ -122,30 +151,111 @@ const LedVect_t& getConf(){
 ILedViewControl::
 ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg, int paramIdx)
 	: IControl(pPlug, ledCfg.rect(), paramIdx, IChannelBlend::kBlendNone),
-	mLedCfg(ledCfg){}
+	mLedCfg(ledCfg),
+	mWBlend(IChannelBlend::kBlendAdd) {}
 
 ILedViewControl::
 ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg)
 	: IControl(pPlug, ledCfg.rect(), -1, IChannelBlend::kBlendNone),
-	mLedCfg(ledCfg) {}
+	mLedCfg(ledCfg),
+	mWBlend(IChannelBlend::kBlendAdd) {}
 
 bool ILedViewControl::Draw(IGraphics* pGraphics)
 {
 	static uint32_t v=0;
 	point4array points;
-	mLedCfg.fillPoly(points);
-#if 0
-	v++;
-	const IColor color(10, v%256, (v>>8)%256, (v >> 16) % 256);
-#else
- // TODO : transparency?
-	const uint8_t w = mArgb.u8[3];
-	uint8_t r = mArgb.u8[0] + w;
-	uint8_t g = mArgb.u8[1] + w;
-	uint8_t b = mArgb.u8[2] + w;
+	mLedCfg.fillPoly(points, 1);
+#if DRAW_METHOD == 1
+ /* R,G,b and W are in [0..127]
+ * We want to have at least some "gray" when completely off
+ * => Add 1/4 of gray anyway
+ * => *4/5 result to re-range value
+ */
+	static const int gray0(0x20); // 0x20 = 0x80 / 4)
+
+	const int w = mArgb.u8[3] + gray0;
+	uint8_t r = ((mArgb.u8[0] + w) * 5) / 4;
+	uint8_t g = ((mArgb.u8[1] + w) * 5) / 4;
+	uint8_t b = ((mArgb.u8[2] + w) * 5) / 4;
 	const IColor color(255, r, g, b);
+	pGraphics->FillIConvexPolygon(&color, points.x, points.y, 4);
+#elif DRAW_METHOD == 2
+	/*
+	* Draw colors on the edge and white in the middle
+	*/
+	point4array pointsX;
+	mLedCfg.fillPoly(points, 0.4);
+	mLedCfg.fillPoly(pointsX, 1.2);
+	static const float level = 1;
+	uint8_t w = To_LED_Level(mArgb.u8[3], level);
+	uint8_t r = To_LED_Level(mArgb.u8[0], level);
+	uint8_t g = To_LED_Level(mArgb.u8[1], level);
+	uint8_t b = To_LED_Level(mArgb.u8[2], level);
+	const IColor colorRGB(40, r, g, b);
+	const IColor colorW(255, w, w, w);
+
+	pGraphics->FillIConvexPolygon(&colorW, pointsX.x, pointsX.y, 4);
+
+	pGraphics->FillIConvexPolygon(&colorRGB, points.x, points.y, 4, &mWBlend);
+#elif DRAW_METHOD == 3
+	static const float level = 1;
+	uint8_t bg = To_LED_Level(0);
+	uint8_t w = To_LED_Level(mArgb.u8[3], level);
+	uint8_t r = To_LED_Level(mArgb.u8[0], level);
+	uint8_t g = To_LED_Level(mArgb.u8[1], level);
+	uint8_t b = To_LED_Level(mArgb.u8[2], level);
+	const IColor colorBg(255, bg, bg, bg);
+	const IColor colorW(255, w, w, w);
+	const IColor colorRGB(255, r, g, b);
+	pGraphics->FillIConvexPolygon(&colorBg, points.x, points.y, 4);
+	
+	// const double dXY = sqrt(dx * dx + dy * dy);
+	int nIter;
+	// points 0 and 1  are extrapolation of the same point - so they are close to each other
+	// points 2 and 3 are extrapolation of the other point
+	double x0 = points.x[0];
+	double y0 = points.y[0];
+	double x1 = points.x[1];
+	double y1 = points.y[1];
+	double x3 = points.x[3];
+	double y3 = points.y[3];
+	double dx = x1 - x0;
+	double dy = y1 - y0;
+	if (abs(dx) > abs(dy))
+	{
+		nIter= abs(dx);
+		dx = dx>0 ? 1 : -1;
+		for (int i = 0; i < mLedCfg.width; i++) {
+			pGraphics->DrawLine(&colorW, x0, y0, x3, y3, &mWBlend, true);
+			x0 += dx , x3 += dx;
+			pGraphics->DrawLine(&colorRGB, x0, y0, x3, y3, &mWBlend, true);
+			x0 += dx, x3 += dx;
+		}
+	}
+	else
+	{
+		nIter = abs(dy);
+		dy = dy > 0 ? 1 : -1;
+		for (int i = 0; i < mLedCfg.width; i++) {
+			pGraphics->DrawLine(&colorW, x0, y0, x3, y3, &mWBlend, true);
+			y0 += dy, y3 += dy;
+			pGraphics->DrawLine(&colorRGB, x0, y0, x3, y3, &mWBlend, true);
+			y0 += dy, y3 += dy;
+		}
+	}
+#define DRAW_FRAMES 0
 #endif
-	return pGraphics->FillIConvexPolygon(&color, points.x, points.y, 4);
+
+#if DRAW_FRAMES
+	// draw box frames
+	mLedCfg.fillPoly(points, 1.2);
+	static const IColor borderColor(10,0x50, 0x50, 0x50);
+	for (int i =0 ; i < 4 ; i++)
+	{
+		pGraphics->DrawLine(&borderColor, points.x[i], points.y[i], points.x[(i + 1) % 4], points.y[(i + 1) % 4]);
+	}
+#endif
+	 return true;
 }
 
 void ILedViewControl::setLineColor(uint8_t line, uint8_t value)
@@ -182,25 +292,25 @@ SetPC(uint8_t pc)
 {
 	for (int cc = 0; cc < 127; cc++)
 	{
-		SetCC(cc, std::rand() & 0x7F);
+		SetCC(cc, pc *(1.0/0x80));
 	}
 }
 
 void
 CLedMap::
-SetCC(uint8_t cc, uint8_t val) {
-	mMutex.lock();
-	val = val > 127 ? 127 : val;
-	if (cc < 0x80 && ccVal[cc] != val)
+SetCC(uint8_t cc, double val) {
+	int iVal = ::To_MIDI_Level(val);
+	if (cc < 0x80 && ccVal[cc] != iVal)
 	{ 
-		ccVal[cc] = val;
+		ccVal[cc] = iVal;
 		const Elt_Data_t& data = mCtrl[cc];
 		if (data.ctrl) {
-			data.ctrl->setLineColor(data.line, val);
+			data.ctrl->setLineColor(data.line, iVal);
 		}
-		mDirty.insert(cc);
+		mMutex.lock();
+ 		mDirty.insert(cc);
+		mMutex.unlock();
 	}
-	mMutex.unlock();
 }
 
 bool

@@ -5,6 +5,7 @@
     <ClCompile Include="..\..\WDL\IPlug\IPlugVST.cpp">
       <Filter>vst2</Filter>
     </ClCompile>
+    <ClCompile Include="LedConf.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LedViewer.h" />

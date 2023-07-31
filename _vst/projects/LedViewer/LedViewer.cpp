@@ -46,7 +46,7 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	TRACE;
 
 
-	GetParam(kNoOffNotes)->InitBool("Send Off Notes", false, "button");
+	// GetParam(kNoOffNotes)->InitBool("Send Off Notes", false, "button");
 
 	IGraphics* pGraphics = MakeGraphics(this, kWidth, kHeight);
 	try {
@@ -55,15 +55,15 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	catch (...) {
 		const IColor bgColor(255, 150, 150, 180);
 		pGraphics->AttachPanelBackground(&bgColor);
-		std::cout  << "Failed to load " BG_STAGE1_FN << std::endl;
+		// std::cout  << "Failed to load " BG_STAGE1_FN << std::endl;
 	}
 
-	// Create leds (WIP)
+	// Create leds
 	ILedViewControl* led_ctrl;
 	const LedVect_t& cfg = getConf();
 	for (const CLedConf& ledCfg : cfg) {
 		const IColor color(255, 250, 250, 250);
-		std::cout << "LED: " << ledCfg.name << std::endl;
+		// std::cout << "LED: " << ledCfg.name << std::endl;
 
 		led_ctrl = new ILedViewControl(this, ledCfg);
 		ledMap.insert(ledCfg, led_ctrl);
@@ -93,18 +93,19 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	pGraphics->AttachControl(new ITextControl(this, tmpRect, &textProps, "Off notes"));
 	//*/
 	
-
+/*
 	IBitmap knob = pGraphics->LoadIBitmap(KNOB_ID, KNOB_FN, kKnobFrames);
 	IText text = IText(14);
 	IBitmap regular = pGraphics->LoadIBitmap(WHITE_KEY_ID, WHITE_KEY_FN, 6);
 	IBitmap sharp = pGraphics->LoadIBitmap(BLACK_KEY_ID, BLACK_KEY_FN);
-
-
+	*/
+	/*
 	IBitmap about = pGraphics->LoadIBitmap(ABOUTBOX_ID, ABOUTBOX_FN);
 	mAboutBox = new IBitmapOverlayControl(this, 100, 100, &about, IRECT(540, 250, 680, 290));
 	pGraphics->AttachControl(mAboutBox);
-	AttachGraphics(pGraphics);
+	*/
 
+	AttachGraphics(pGraphics);
 	//MakePreset("preset 1", ... );
 	MakeDefaultPreset((char*) "-", kNumPrograms);
 }
@@ -117,14 +118,14 @@ void IPlugLedViewer::ProcessDoubleReplacing(double** inputs, double** outputs, i
   //  double* in1 = inputs[0];
   //  double* in2 = inputs[1];
 	double* outM = outputs[0];
-	// double* out2 = outputs[1];
+	//double* out2 = outputs[1];
 
 	GetTime(&mTimeInfo);
 
-	for (int offset = 0; offset < nFrames; ++offset, /*++in1, ++in2,*/ ++outM/*, ++out2*/)
+	for (int offset = 0; offset < nFrames; ++offset, /*++in1, ++in2,*/ ++outM /*, ++out2*/)
 	{
 		*outM = 0.0;
-		// peakR = IPMAX(peakR, fabs(*out2));
+		//*out2 = 0.0;
 	}
 	ledMap.CheckDirty();
 	dbg_ctrl->CheckDirty();
@@ -159,23 +160,23 @@ void IPlugLedViewer::ProcessMidiMsg(IMidiMsg* pMsg)
 	{
 		std::stringstream ss;
 		ss << "Rcv Midi ch=0x" << std::hex << pMsg->Channel();
-		int i = pMsg->Program();
-		if (i >= 0) {
-			ss << ", PC #" << i;
-			ledMap.SetPC(i);
+		int pc = pMsg->Program();
+		if (pc >= 0) {
+			ss << ", PC #" << pc;
+			ledMap.SetPC(pc);
 		}
 		else
 		{
-			i = pMsg->NoteNumber();
-			if (i >= 0) {
-				ss << ", Note #" << i << "(Vel:" << pMsg->Velocity() << ")";
+			int nn = pMsg->NoteNumber();
+			if (nn >= 0) {
+				ss << ", Note #" << nn << "(Vel:" << pMsg->Velocity() << ")";
 			}
 			else
 			{
 				IMidiMsg::EControlChangeMsg cc = pMsg->ControlChangeIdx();
 				if (cc >= 0) {
 					const double ccV = pMsg->ControlChange(cc);
-					ss << ", CC #" << i << "(Val:" << ccV << ")";
+					ss << ", CC #" << cc << "(Val:" << ccV << ")";
 					ledMap.SetCC(cc, ccV);
 				}
 				else
@@ -187,8 +188,9 @@ void IPlugLedViewer::ProcessMidiMsg(IMidiMsg* pMsg)
 		ss << std::endl;
 
 		dbg_ctrl->text = ss.str();
-
 	}
+	ledMap.CheckDirty();
+	dbg_ctrl->CheckDirty();
 }
 
 // Should return non-zero if one or more keys are playing.
