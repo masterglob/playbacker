@@ -164,7 +164,7 @@ To_LED_Level(uint32_t l, float level) {
 	{
 		result <<= 1;
 	}
-	static_cast<uint32_t>(result * level);
+	result = static_cast<uint32_t>(result * level);
 	if (result > 0xFF) return 0xFF;
 	return result;
 }
