@@ -18,9 +18,12 @@ namespace
 
 	inline uint8_t To_LED_Level(uint32_t l, float level = 1.0) {
 		uint32_t result = l;
-		if (0)
+		if (1)
 		{
-			result += 0x80;
+			static const uint32_t blackThr=30;
+			result *= (256 - blackThr);
+			result /= (128);
+			result += blackThr;
 		}
 		else
 		{
@@ -200,7 +203,7 @@ bool ILedViewControl::Draw(IGraphics* pGraphics)
 #elif DRAW_METHOD == 3
 	static const float level = 1;
 	uint8_t bg = To_LED_Level(0);
-	uint8_t w = To_LED_Level(mArgb.u8[3], level);
+  	uint8_t w = To_LED_Level(mArgb.u8[3], level);
 	uint8_t r = To_LED_Level(mArgb.u8[0], level);
 	uint8_t g = To_LED_Level(mArgb.u8[1], level);
 	uint8_t b = To_LED_Level(mArgb.u8[2], level);
