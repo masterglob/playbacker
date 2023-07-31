@@ -52,21 +52,25 @@ private:
 	std::string mLast;
 };
 
+class IPlugLedViewer;
+
 // Draws a Led depending on the current value.
 class ILedViewControl : public IControl
 {
 public:
-	ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg, int paramIdx);
+	ILedViewControl(IPlugBase* pPlug, IPlugLedViewer* pPlugView, const CLedConf& ledCfg, int paramIdx);
 
-	ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg);
+	ILedViewControl(IPlugBase* pPlug, IPlugLedViewer* pPlugView, const CLedConf& ledCfg);
 
 	virtual ~ILedViewControl() {}
 
 	virtual bool Draw(IGraphics* pGraphics);
 
 	void setLineColor(uint8_t line, uint8_t value);
-
+private:
+	uint8_t To_LED_Level(uint32_t l, float level = 1.0);
 protected:
+	IPlugLedViewer* mViewer;
 	const CLedConf mLedCfg;
 	union {
 		uint32_t u32;
@@ -82,6 +86,7 @@ public:
 	void SetCC(uint8_t cc, double val);
 	void SetPC(uint8_t pc);
 	bool CheckDirty(void);
+	void DirtyAll(void);
 private:
 	std::mutex mMutex;
 	std::set<int> mDirty;

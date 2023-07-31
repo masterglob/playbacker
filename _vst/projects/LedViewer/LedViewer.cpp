@@ -12,7 +12,7 @@ const int kNumPrograms = 8;
 static const double maxLevel(0.5);
 enum EParams
 {
-	kNoOffNotes = 0,
+	kLedColModel = 0,
 	kNumParams
 };
 
@@ -41,7 +41,8 @@ void ITextControlRefr::OnGUIIdle() {
 IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 	: IPLUG_CTOR(kNumParams, kNumPrograms, instanceInfo),
 	mSampleRate(44100.),
-	dbg_ctrl(nullptr)
+	dbg_ctrl(nullptr),
+	mColModel(false)
 {
 	TRACE;
 
@@ -65,7 +66,7 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 		const IColor color(255, 250, 250, 250);
 		// std::cout << "LED: " << ledCfg.name << std::endl;
 
-		led_ctrl = new ILedViewControl(this, ledCfg);
+		led_ctrl = new ILedViewControl(this, this, ledCfg);
 		ledMap.insert(ledCfg, led_ctrl);
 		pGraphics->AttachControl(led_ctrl);
 		//point4array points;
@@ -86,12 +87,12 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 
 	/****************************/
 	// param kNoOffNotes	
-/*	IRECT tmpRect(kISwitchControl_OffNotes_X + 60, kISwitchControl_OffNotes_Y, 200, 30);
+	IRECT tmpRect(kISwitch_LedColModel_X + 30, kISwitch_LedColModel_Y, 200, 30);
 	IBitmap bitmap = pGraphics->LoadIBitmap(IRADIOBUTTONSCONTROL_ID, IRADIOBUTTONSCONTROL_FN, kIRadioButtonsControl_N);
-	pGraphics->AttachControl(new ISwitchControl(this, kISwitchControl_OffNotes_X, kISwitchControl_OffNotes_Y, kNoOffNotes, &bitmap));
-	IText textProps(24, &COLOR_BLACK, "Arial", IText::kStyleBold, IText::kAlignNear, 0, IText::kQualityDefault);
-	pGraphics->AttachControl(new ITextControl(this, tmpRect, &textProps, "Off notes"));
-	//*/
+	pGraphics->AttachControl(new ISwitchControl(this, kISwitch_LedColModel_X, kISwitch_LedColModel_Y, kLedColModel, &bitmap));
+	IText textProps(16, &COLOR_YELLOW, "Arial", IText::kStyleBold, IText::kAlignNear, 0, IText::kQualityDefault);
+	pGraphics->AttachControl(new ITextControl(this, tmpRect, &textProps, "Led color model"));
+	//
 	
 /*
 	IBitmap knob = pGraphics->LoadIBitmap(KNOB_ID, KNOB_FN, kKnobFrames);
@@ -145,12 +146,20 @@ void IPlugLedViewer::OnParamChange(int paramIdx)
 
 	switch (paramIdx)
 	{
-	case kNoOffNotes:
-		//mSendOffNotes = GetParam(paramIdx)->Bool();
+	case kLedColModel:
+	{
+		bool val = GetParam(paramIdx)->Bool();
+		if (mColModel != val) {
+			mColModel = val;
+			ledMap.DirtyAll();
+		}
+	}
+		mColModel = GetParam(paramIdx)->Bool();
 		break;
 	default:
 		break;
 	}
+	ledMap.CheckDirty();
 }
 
 

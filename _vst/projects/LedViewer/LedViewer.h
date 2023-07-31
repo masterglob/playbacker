@@ -19,7 +19,7 @@ public:
   int GetNumKeys();
   bool GetKeyStatus(int key);
   void ProcessMidiMsg(IMidiMsg* pMsg);
-
+  bool getColModel() const {return mColModel;}
 private:
 	IBitmapOverlayControl* mAboutBox;
 
@@ -30,6 +30,7 @@ private:
 	CLedMap ledMap;
 
 	ITimeInfo mTimeInfo;
+	bool mColModel;
 };
 
 enum ELayout
@@ -49,6 +50,6 @@ enum ELayout
 	kIRBC_H = 24,  // height of one of the bitmap images
 	kIRBC_VN = 2,  // number of vertical buttons
 
-	kISwitchControl_OffNotes_X = 100,
-	kISwitchControl_OffNotes_Y = 110,
+	kISwitch_LedColModel_X = 16,
+	kISwitch_LedColModel_Y = 16,
 };

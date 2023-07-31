@@ -1,6 +1,7 @@
 #include "LedConf.h"
 #include "resource.h"
 #include "IControl.h"
+#include "LedViewer.h"
 
 #include <math.h>
 
@@ -16,23 +17,6 @@ namespace
 		return result;
 	}
 
-	inline uint8_t To_LED_Level(uint32_t l, float level = 1.0) {
-		uint32_t result = l;
-		if (1)
-		{
-			static const uint32_t blackThr=30;
-			result *= (256 - blackThr);
-			result /= (128);
-			result += blackThr;
-		}
-		else
-		{
-			result <<= 1;
-		}
-		static_cast<uint32_t>(result * level);
-		if (result > 0xFF) return 0xFF;
-		return result;
-	}
 
 }
 
@@ -152,17 +136,38 @@ const LedVect_t& getConf(){
 }
 
 ILedViewControl::
-ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg, int paramIdx)
+ILedViewControl(IPlugBase* pPlug, IPlugLedViewer* pPlugView, const CLedConf& ledCfg, int paramIdx)
 	: IControl(pPlug, ledCfg.rect(), paramIdx, IChannelBlend::kBlendNone),
+	mViewer(pPlugView),
 	mLedCfg(ledCfg),
-	mWBlend(IChannelBlend::kBlendAdd) {}
+	mWBlend(IChannelBlend::kBlendAdd){}
 
 ILedViewControl::
-ILedViewControl(IPlugBase* pPlug, const CLedConf& ledCfg)
+ILedViewControl(IPlugBase* pPlug, IPlugLedViewer* pPlugView, const CLedConf& ledCfg)
 	: IControl(pPlug, ledCfg.rect(), -1, IChannelBlend::kBlendNone),
+	mViewer(pPlugView),
 	mLedCfg(ledCfg),
 	mWBlend(IChannelBlend::kBlendAdd) {}
 
+inline uint8_t 
+ILedViewControl::
+To_LED_Level(uint32_t l, float level) {
+	uint32_t result = l;
+ 	if (mViewer->getColModel())
+	{
+		static const uint32_t blackThr = 30;
+		result *= (256 - blackThr);
+		result /= (128);
+		result += blackThr;
+	}
+	else
+	{
+		result <<= 1;
+	}
+	static_cast<uint32_t>(result * level);
+	if (result > 0xFF) return 0xFF;
+	return result;
+}
 bool ILedViewControl::Draw(IGraphics* pGraphics)
 {
 	static uint32_t v=0;
@@ -313,6 +318,17 @@ SetCC(uint8_t cc, double val) {
 		mMutex.lock();
  		mDirty.insert(cc);
 		mMutex.unlock();
+	}
+}
+
+void
+CLedMap::
+DirtyAll(void)
+{
+	for (uint32_t i = 0; i < 0x80; i++)
+	{
+		ILedViewControl* ctrl = mCtrl[i].ctrl;
+		mDirty.insert(i);
 	}
 }
 
