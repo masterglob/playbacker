@@ -1,9 +1,9 @@
-#define PLUG_MFR "CMM_Studios"
+#define PLUG_MFR "CMMStudio"
 #define PLUG_NAME "LedViewer"
 
 #define PLUG_CLASS_NAME IPlugLedViewer
 
-#define BUNDLE_MFR "CMM_Studios"
+#define BUNDLE_MFR "CMMStudio"
 #define BUNDLE_NAME "LedViewer"
 
 #define PLUG_ENTRY IPlugLedViewer_Entry
@@ -30,7 +30,7 @@
   #define _PIDS_
   const int PLUG_TYPE_IDS[2] = {'MSN1', 'MSN2'};
 #endif
-#define PLUG_MFR_PT "CMM_Studios\nCMM_Studios\nCMM\n"
+#define PLUG_MFR_PT "CMMStudio\nCMMStudio\nCMM\n"
 #define PLUG_NAME_PT "IPlugLedViewer\nIPMS"
 #define PLUG_TYPE_PT "Tools"
 

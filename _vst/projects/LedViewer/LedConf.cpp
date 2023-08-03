@@ -85,7 +85,6 @@ const LedVect_t& getConf(){
 
 		static const int wLarge(10);
 		static const int wSmall(8);
-		static const int pixSpace(2);
 		const CLedWiring wiring(0, 2, 4, 6);
 
 		int x1, x2, y1, y2;
@@ -170,7 +169,6 @@ To_LED_Level(uint32_t l, float level) {
 }
 bool ILedViewControl::Draw(IGraphics* pGraphics)
 {
-	static uint32_t v=0;
 	point4array points;
 	mLedCfg.fillPoly(points, 1);
 #if DRAW_METHOD == 1
@@ -235,9 +233,9 @@ bool ILedViewControl::Draw(IGraphics* pGraphics)
 		dx = dx>0 ? 1 : -1;
 		for (int i = 0; i < mLedCfg.width; i++) {
 			pGraphics->DrawLine(&colorW, x0, y0, x3, y3, &mWBlend, true);
-			x0 += dx , x3 += dx;
+			x0 += dx; x3 += dx;
 			pGraphics->DrawLine(&colorRGB, x0, y0, x3, y3, &mWBlend, true);
-			x0 += dx, x3 += dx;
+			x0 += dx; x3 += dx;
 		}
 	}
 	else
@@ -246,12 +244,11 @@ bool ILedViewControl::Draw(IGraphics* pGraphics)
 		dy = dy > 0 ? 1 : -1;
 		for (int i = 0; i < mLedCfg.width; i++) {
 			pGraphics->DrawLine(&colorW, x0, y0, x3, y3, &mWBlend, true);
-			y0 += dy, y3 += dy;
+			y0 += dy; y3 += dy;
 			pGraphics->DrawLine(&colorRGB, x0, y0, x3, y3, &mWBlend, true);
-			y0 += dy, y3 += dy;
+			y0 += dy; y3 += dy;
 		}
 	}
-#define DRAW_FRAMES 0
 #endif
 
 #if DRAW_FRAMES
@@ -327,7 +324,6 @@ DirtyAll(void)
 {
 	for (uint32_t i = 0; i < 0x80; i++)
 	{
-		ILedViewControl* ctrl = mCtrl[i].ctrl;
 		mDirty.insert(i);
 	}
 }

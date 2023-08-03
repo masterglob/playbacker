@@ -9,7 +9,6 @@
 const int kNumPrograms = 8;
 
 
-static const double maxLevel(0.5);
 enum EParams
 {
 	kLedColModel = 0,
@@ -54,7 +53,7 @@ IPlugLedViewer::IPlugLedViewer(IPlugInstanceInfo instanceInfo)
 		pGraphics->AttachBackground(BG_STAGE1_ID, BG_STAGE1_FN);
 	}
 	catch (...) {
-		const IColor bgColor(255, 150, 150, 180);
+		const IColor bgColor(255, 0, 0, 0);
 		pGraphics->AttachPanelBackground(&bgColor);
 		// std::cout  << "Failed to load " BG_STAGE1_FN << std::endl;
 	}

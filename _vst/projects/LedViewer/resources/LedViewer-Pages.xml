@@ -2,7 +2,7 @@
 <PageTables vers='6.4.0.91'>
 	<PageTableLayouts>
 		<Plugin manID='Acme' prodID='Ipef' plugID='Ipef'>
-			<Desc>LedViewer by CMM_Studios.</Desc>
+			<Desc>LedViewer by CMMStudio.</Desc>
 			<Layout>PageTable 1</Layout>
 		</Plugin><!--manID='Acme' prodID='Ipef' plugID='Ipef'-->
 		<PTLayout name='PageTable 1'>

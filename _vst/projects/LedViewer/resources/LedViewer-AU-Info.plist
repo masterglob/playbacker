@@ -12,7 +12,7 @@
 			<key>manufacturer</key>
 			<string>Acme</string>
 			<key>name</key>
-			<string>CMM_Studios: LedViewer</string>
+			<string>CMMStudio: LedViewer</string>
 			<key>resourceUsage</key>
 			<dict>
 			</dict>
@@ -35,7 +35,7 @@
 	<key>CFBundleGetInfoString</key>
 	<string>LedViewer v1.0.0 Copyright 2017 Acme Inc</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.CMM_Studios.audiounit.LedViewer</string>
+	<string>com.CMMStudio.audiounit.LedViewer</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
