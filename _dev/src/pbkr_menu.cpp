@@ -93,10 +93,10 @@ struct PlayMenuItem : MenuItem
     virtual const std::string menul1(void){return "";}
     virtual const std::string menul2(void){return "";}
 };
-PlayMenuItem playMenuItem;
+static PlayMenuItem playMenuItem;
 
-MenuItem mainMenuItem("Main Menu", &playMenuItem);
-MenuItem netMenuItem ("Network", &mainMenuItem);
+static MenuItem mainMenuItem("Main Menu", &playMenuItem);
+static MenuItem netMenuItem ("Network", &mainMenuItem);
 
 /*******************************************************************************/
 struct ListMenuItem : MenuItem
@@ -123,7 +123,7 @@ private:
     uint32_t m_upDownIdx;
     uint32_t m_upDownIdxMax;
 };
-NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
+static NetShowMenuItem netShowMenuItem ("Show config", &netMenuItem);
 
 
 /*******************************************************************************/
@@ -138,7 +138,7 @@ private:
     uint32_t m_upDownIdx;
     uint32_t m_upDownIdxMax;
 };
-NetConnMenuItem netConnMenuItem ("Show conns", &netMenuItem);
+static NetConnMenuItem netConnMenuItem ("Show conns", &netMenuItem);
 
 
 /*******************************************************************************/
@@ -151,7 +151,7 @@ struct SettingsMenuItem : MenuItem
     virtual const std::string menul2(void);
 protected:
 };
-SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
+static SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
 
 /*******************************************************************************/
 struct SongParamsMenuItem : ListMenuItem
@@ -172,7 +172,7 @@ private:
     float m_currentValue;
     size_t m_indexPlaying;
 };
-SongParamsMenuItem songParamsMenuItem ("Song", &mainMenuItem);
+static SongParamsMenuItem songParamsMenuItem ("Song", &mainMenuItem);
 
 /*******************************************************************************/
 struct SelectProjectShowMenuItem : ListMenuItem
@@ -188,7 +188,7 @@ private:
     ProjectVect m_allproj;
 };
 const string SelectProjectShowMenuItem::m_saveSection("SelectProjectShowMenuItem");
-SelectProjectShowMenuItem selectProjectShowMenuItem ("Select show", &mainMenuItem);
+static SelectProjectShowMenuItem selectProjectShowMenuItem ("Select show", &mainMenuItem);
 
 /*******************************************************************************/
 struct CopyFromUSBMenuItem : MenuItem
@@ -211,7 +211,7 @@ private:
     ProjectCopier* m_copier;
 };
 
-CopyFromUSBMenuItem copyFromUSBMenuItem (&mainMenuItem);
+static CopyFromUSBMenuItem copyFromUSBMenuItem (&mainMenuItem);
 
 
 /*******************************************************************************/
@@ -233,7 +233,7 @@ private:
     bool m_confirm;
     ProjectDeleter* m_deleter;
 };
-DeleteInternalProjectMenuItem deleteInternalProjectMenuItem (&mainMenuItem);
+static DeleteInternalProjectMenuItem deleteInternalProjectMenuItem (&mainMenuItem);
 
 
 /*******************************************************************************/
@@ -267,7 +267,7 @@ private:
     NumParam m_pSecNote;
     NumParam* m_param[ID_COUNT];
 };
-ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &settingsMenuItem);
+static ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &settingsMenuItem);
 
 /*******************************************************************************
  *******************************************************************************
@@ -1343,6 +1343,18 @@ void MainMenu::setMenu(MenuItem* menu)
     if (OSC::p_osc_instance) OSC::p_osc_instance->setMenuName(menu->name);
     printf("New menu => %s\n",m_currentMenu->name.c_str());
 } // MainMenu::setMenu
+
+/*******************************************************************************/
+bool MainMenu::isMainMenuShown(void)const
+{
+    return m_currentMenu == &::mainMenuItem;
+}
+
+/*******************************************************************************/
+bool MainMenu::isPlayMenuShown(void)const
+{
+    return m_currentMenu == &::playMenuItem;
+}
 
 /*******************************************************************************/
 void

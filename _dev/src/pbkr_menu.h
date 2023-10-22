@@ -75,6 +75,8 @@ class MainMenu : private Thread
 public:
     static MainMenu& instance (void);
     void setMenu(MenuItem* menu);
+    bool isMainMenuShown(void)const;
+    bool isPlayMenuShown(void)const;
     virtual const std::string menul1(void)const{return m_currentMenu->menul1();}
     virtual const std::string menul2(void)const{return m_currentMenu->menul2();}
     typedef enum {KEY_LEFT,KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_OK, KEY_CANCEL} Key;
