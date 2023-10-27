@@ -612,22 +612,34 @@ void OSC_Controller::processMenu(const std::string key)
 } // OSC_Controller::processMenu
 
 /*******************************************************************************/
+void OSC_Controller::pushKbdFeedBack (const std::string& line)
+{
+    for (size_t i = NB_KBD_FEEDBACK_LINES - 1 ; i > 0 ; i--)
+    {
+        if (mKbdFeedBack[i] != mKbdFeedBack[i - 1])
+        {
+            mKbdFeedBack[i] = mKbdFeedBack[i - 1];
+            string sName = "/" OSC_KBD "/Output";
+            sName += std::to_string(i+1);
+            send (OSC_Msg_To_Send (sName, mKbdFeedBack[i]));
+        }
+    }
+    mKbdFeedBack[0] = line;
+    send (OSC_Msg_To_Send ("/" OSC_KBD "/Output1", line));
+} // OSC_Controller::pushKbdFeedBack
+
+/*******************************************************************************/
 void OSC_Controller::processKbd(const std::string key)
 {
     static std::string input;
-    static std::string output1;
-    static std::string output2;
     if (key.length() == 1)
     {
         input += key;
     }
     else if (key == "Enter")
     {
-        output2 = output1;
-        output1 = API::onKeyboardCmd(input);
+        pushKbdFeedBack(API::onKeyboardCmd(input));
         input = "";
-        send (OSC_Msg_To_Send ("/" OSC_KBD "/Output1", output1));
-        send (OSC_Msg_To_Send ("/" OSC_KBD "/Output2", output2));
     }
     else if (key == "DEL")
     {

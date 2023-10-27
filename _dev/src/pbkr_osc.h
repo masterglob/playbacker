@@ -19,6 +19,7 @@ namespace OSC
 static const size_t OSC_TRACK_NB_X (7u);
 static const size_t OSC_TRACK_NB_Y (2u);
 static const size_t NB_OSC_TRACK (OSC_TRACK_NB_X * OSC_TRACK_NB_Y);
+static const size_t NB_KBD_FEEDBACK_LINES (5u);
 
 
 struct OSC_Ctrl_Cfg
@@ -87,6 +88,7 @@ public:
     void setClicVolume  (const float& v);
     void setMenuTxt  (const std::string& l1,const std::string& l2);
     void setMenuName  (const std::string& title);
+    void pushKbdFeedBack (const std::string& line);
     void updateProjectList(void);
     void CheckUSB(void);
     void setTimeCode(const string & timecode);
@@ -107,6 +109,7 @@ private:
     in_addr m_clientAddr;
     bool  m_isClientKnown;
     OSC_Msg_To_Send_Vect m_toSend;
+    string mKbdFeedBack[NB_KBD_FEEDBACK_LINES];
 }; // class OSC_Controller
 extern OSC_Controller* p_osc_instance;
 
