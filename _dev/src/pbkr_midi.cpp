@@ -75,7 +75,8 @@ int is_output(snd_ctl_t *ctl, int card, int device, int sub) {
 }
 
 void insert_subdevice_list(snd_ctl_t *ctl, int card, int device,
-        MIDI::MIDI_Ctrl_Cfg_Vect& vect) {
+        MIDI::MIDI_Ctrl_Instance_Vect& vect) {
+   using namespace MIDI;
    snd_rawmidi_info_t *info;
    const char *name;
    const char *sub_name;
@@ -120,22 +121,14 @@ void insert_subdevice_list(snd_ctl_t *ctl, int card, int device,
    char devname[32];
    if (sub_name[0] == '\0') {
        sprintf(devname,"hw:%d,%d",card,device);
-       MIDI::MIDI_Ctrl_Cfg cfg;
-       cfg.device = devname;
-       cfg.name = name;
-       cfg.isInput = in;
-       cfg.isOutput = out;
-       vect.push_back(cfg);
+       MIDI_Ctrl_Instance inst(MIDI_Ctrl_Cfg(devname, name, in, out));
+       vect.push_back(inst);
    } else {
       sub = 0;
       for (;;) {
-          MIDI::MIDI_Ctrl_Cfg cfg;
-          sprintf(devname,"hw:%d,%d,%d",card,device, sub);
-          cfg.device = devname;
-          cfg.name = sub_name;
-          cfg.isInput = in;
-          cfg.isOutput = out;
-          vect.push_back(cfg);
+         sprintf(devname,"hw:%d,%d,%d",card,device, sub);
+         MIDI_Ctrl_Instance inst(MIDI_Ctrl_Cfg(devname, sub_name, in, out));
+         vect.push_back(inst);
          if (++sub >= subs)
             break;
 
@@ -276,9 +269,9 @@ void MIDI_Controller::body(void)
     }
     catch (...)
     {
-        m_mgr.onDisconnect(m_cfg);
-        delete this;
     }
+    m_mgr.onDisconnect(this);
+    delete this;
 } // MIDI_Controller::body
 
 
@@ -312,23 +305,23 @@ void MIDI_Controller_Mgr::body(void)
 };
 
 /*******************************************************************************/
-void MIDI_Controller_Mgr::onInputConnect (const MIDI::MIDI_Ctrl_Cfg& cfg)
+void MIDI_Controller_Mgr::onInputConnect (MIDI_Ctrl_Instance& inst)
 {
-    printf("Found: %s (%s)\n", cfg.name.c_str(), cfg.device.c_str());
-    MIDI::MIDI_Controller* midi_ctrl(new MIDI_Controller (cfg, *this));
-    (void)midi_ctrl;
+    printf("Found: %s (%s)\n", inst.cfg.name.c_str(), inst.cfg.device.c_str());
+    inst.pCtrl = new MIDI_Controller (inst.cfg, *this);
+    m_InputControllers.push_back(inst);
 }
 
 
 /*******************************************************************************/
-void MIDI_Controller_Mgr::onDisconnect (const MIDI_Ctrl_Cfg& cfg)
+void MIDI_Controller_Mgr::onDisconnect (MIDI_Controller* pCtrl)
 {
-    DISPLAY::DisplayManager::instance().info(cfg.name + " disconnected.");
-    for (MIDI_Ctrl_Cfg_Vect::iterator it (m_InputControllers.begin()); it != m_InputControllers.end(); it++)
+    for (MIDI_Ctrl_Instance_Vect::iterator it (m_InputControllers.begin()); it != m_InputControllers.end(); it++)
     {
-        const MIDI_Ctrl_Cfg& cfg2 (*it);
-        if (cfg.device == cfg2.device)
+        MIDI_Ctrl_Instance& inst (*it);
+        if (pCtrl == inst.pCtrl)
         {
+            DISPLAY::DisplayManager::instance().info(inst.cfg.name + " disconnected.");
             m_InputControllers.erase(it);
             break;
         }
@@ -339,7 +332,7 @@ void MIDI_Controller_Mgr::onDisconnect (const MIDI_Ctrl_Cfg& cfg)
 void MIDI_Controller_Mgr::loop(void)
 {
     // check presence of MIDI devices.
-    MIDI_Ctrl_Cfg_Vect newMIDIs;
+    MIDI_Ctrl_Instance_Vect newMIDIs;
     newMIDIs.clear();
     int status;
     int card = -1;
@@ -367,7 +360,7 @@ void MIDI_Controller_Mgr::loop(void)
                 break;
             }
             if (device >= 0) {
-                insert_subdevice_list(ctl, card, device,newMIDIs);
+                insert_subdevice_list(ctl, card, device, newMIDIs);
             }
         } while (device >= 0);
         snd_ctl_close(ctl);
@@ -380,33 +373,33 @@ void MIDI_Controller_Mgr::loop(void)
 
     for (auto it (newMIDIs.begin()); it != newMIDIs.end(); it++)
     {
-        const MIDI_Ctrl_Cfg& cfg (*it);
+        MIDI_Ctrl_Instance& inst (*it);
+        const MIDI_Ctrl_Cfg& cfg (inst.cfg);
         if (cfg.isInput)
         {
             m_mutex.lock();
             bool found(false);
             // Was it already present?
-                    for (auto jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
-                    {
-                        const MIDI_Ctrl_Cfg& prev (*jt);
-                        if (cfg.device == prev.device) found = true;
-                    }
-                    if (not found)
-                    {
-                        m_InputControllers.push_back(cfg);
-                        onInputConnect (cfg);
-                    }
-                    m_mutex.unlock();
+            for (auto jt (m_InputControllers.begin()); jt != m_InputControllers.end(); jt++)
+            {
+                const MIDI_Ctrl_Cfg& prev ((*jt).cfg);
+                if (cfg.device == prev.device) found = true;
+            }
+            if (not found)
+            {
+                onInputConnect (inst);
+            }
+            m_mutex.unlock();
         }
     }
 
 } // MIDI_Controller_Mgr::body
 
 /*******************************************************************************/
-const MIDI_Ctrl_Cfg_Vect  MIDI_Controller_Mgr::getControllers(void)
+const MIDI_Ctrl_Instance_Vect  MIDI_Controller_Mgr::getControllers(void)
 {
     m_mutex.lock();
-    const MIDI_Ctrl_Cfg_Vect v(m_InputControllers);
+    const MIDI_Ctrl_Instance_Vect v(m_InputControllers);
     m_mutex.unlock();
     return v;
 } // MIDI_Controller_Mgr::getControllers

@@ -42,9 +42,9 @@ struct MIDI_Ctrl_Cfg
     std::string name;
     bool isInput;
     bool isOutput;
+    inline MIDI_Ctrl_Cfg(const string& rDev, const string& rName, bool rIn, bool rOut):
+        device(rDev), name(rName), isInput(rIn), isOutput(rOut){}
 };
-
-typedef std::vector<MIDI_Ctrl_Cfg,std::allocator<MIDI_Ctrl_Cfg>> MIDI_Ctrl_Cfg_Vect;
 
 /*******************************************************************************
  * MIDI CONTROLLER
@@ -64,6 +64,16 @@ private:
     MIDI_Controller_Mgr& m_mgr;
 }; // class MIDI_Controller
 
+struct MIDI_Ctrl_Instance
+{
+    MIDI_Ctrl_Cfg cfg;
+    MIDI_Controller* pCtrl;
+    MIDI_Ctrl_Instance(const MIDI_Ctrl_Cfg& cfgRef):
+        cfg(cfgRef), pCtrl(nullptr){};
+};
+
+using MIDI_Ctrl_Instance_Vect = std::vector<MIDI_Ctrl_Instance>;
+
 
 /*******************************************************************************
  * MIDI CONTROLLER MANAGER
@@ -77,16 +87,16 @@ public:
     static MIDI_Controller_Mgr& instance();
     virtual ~MIDI_Controller_Mgr(void){}
     void loop(void);
-    const MIDI_Ctrl_Cfg_Vect getControllers(void);
-    void onDisconnect (const MIDI_Ctrl_Cfg& cfg);
+    MIDI_Ctrl_Instance_Vect getControllers(void);
+    void onDisconnect (MIDI_Controller* pCtrl);
     inline void doMidiLearn(MainMenu::Key key){mMidiLearn = key;}
     inline void cancelMidiLearn(){mMidiLearn = MainMenu::KEY_NONE;}
     inline MainMenu::Key getMidiLearn(){return mMidiLearn;}
 private:
     MIDI_Controller_Mgr(void);
-    void onInputConnect (const MIDI_Ctrl_Cfg& cfg);
+    void onInputConnect (MIDI_Ctrl_Instance& cfg);
     virtual void body(void);
-    MIDI_Ctrl_Cfg_Vect m_InputControllers;
+    MIDI_Ctrl_Instance_Vect m_InputControllers;
     std::mutex m_mutex;
     MainMenu::Key mMidiLearn;
 };
