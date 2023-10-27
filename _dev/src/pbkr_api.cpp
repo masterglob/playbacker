@@ -93,30 +93,35 @@ std::string onKeyboardCmd  (const std::string& msg)
     string text(msg);
     const string cmd(::getNextWord(text));
     const string p1(::getNextWord(text));
-    static const std::string badCmd ("Unknown Command :");
+    static const std::string badCmd ("Unknown Command. Type 'HELP'");
     // static bool logged (false);
 #if 1
-    if (cmd == "/R")
+    if (cmd == "/R") // explicitely undocumented
     {
         Thread::doExit();
         return "Reboot command OK";
     }
 #endif
-    if (cmd == "/H")
+    if (cmd == "HELP")
     {
-        return "/MEM /CPU /V";
+        if (OSC::p_osc_instance != nullptr)
+        {
+            OSC::p_osc_instance->pushKbdFeedBack("!V  !MEM  !CPU");
+            OSC::p_osc_instance->pushKbdFeedBack("ML [L|R|U|D|O|C] (Midi learn)");
+        }
+        return "Commands :";
     }
-    if (cmd == "/V")
+    if (cmd == "!V")
     {
         return string("PBKR V" PBKR_VERSION) + " B " + to_string(PBKR_BUILD_ID);
     }
-    if (cmd == "/MEM")
+    if (cmd == "!MEM")
     {
         system ("free -k|head -2 | tail -1|awk '{printf \"%d%%\\n\",(100*$3)/$2;}' > /tmp/mem.used");
         const string res (Config::instance().loadStr ("/tmp/mem.used","??",true));
         return string("Used memory : ") + res;
     }
-    if (cmd == "/CPU")
+    if (cmd == "!CPU")
     {
         system ("top -n 1 |head -n 2|tail -n 1|awk '{printf \"%s %s\\n\", $1, $2}' > /tmp/cpu.used");
         const string res (Config::instance().loadStr ("/tmp/cpu.used","??",true));
@@ -137,7 +142,7 @@ std::string onKeyboardCmd  (const std::string& msg)
                 + MainMenu::keyToString(key) + "'. Waiting for MIDI event...";
         return res;
     }
-    return badCmd + msg;
+    return badCmd;
 }
 
 
