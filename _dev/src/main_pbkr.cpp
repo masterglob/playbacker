@@ -176,8 +176,6 @@ int main (int argc, char**argv)
     static const OSC::OSC_Ctrl_Cfg oscCfg (8000,9000);
     static OSC::OSC_Controller osc(oscCfg);
 
-    static MIDI::MIDI_Controller_Mgr midiMgr;
-
 	GPIOs::GPIO::begin();
 
 	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos

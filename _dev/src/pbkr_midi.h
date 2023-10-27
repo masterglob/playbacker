@@ -73,12 +73,13 @@ private:
 class MIDI_Controller_Mgr : private Thread
 {
 public:
-    MIDI_Controller_Mgr(void);
+    static MIDI_Controller_Mgr& instance();
     virtual ~MIDI_Controller_Mgr(void){}
     void loop(void);
     const MIDI_Ctrl_Cfg_Vect getControllers(void);
     void onDisconnect (const MIDI_Ctrl_Cfg& cfg);
 private:
+    MIDI_Controller_Mgr(void);
     void onInputConnect (const MIDI_Ctrl_Cfg& cfg);
     virtual void body(void);
     MIDI_Ctrl_Cfg_Vect m_InputControllers;

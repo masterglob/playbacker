@@ -285,6 +285,14 @@ void MIDI_Controller::body(void)
 /*******************************************************************************
  * MIDI CONTROLLER MANAGER
  *******************************************************************************/
+MIDI_Controller_Mgr& MIDI_Controller_Mgr::instance()
+{
+    static MIDI_Controller_Mgr _instance;
+    return _instance;
+}
+static MIDI::MIDI_Controller_Mgr& midiMgr(MIDI_Controller_Mgr::instance());
+
+/*******************************************************************************/
 MIDI_Controller_Mgr::MIDI_Controller_Mgr(void):
         Thread("MIDI_Controller_Mgr")
 {
