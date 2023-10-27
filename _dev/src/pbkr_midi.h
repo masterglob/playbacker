@@ -90,7 +90,7 @@ private:
     std::mutex m_mutex;
     MainMenu::Key mMidiLearn;
 };
-
+extern MIDI::MIDI_Controller_Mgr& midiMgrInstance;
 
 }  // namespace MIDI
 } // namespace PBKR

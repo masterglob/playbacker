@@ -290,11 +290,12 @@ MIDI_Controller_Mgr& MIDI_Controller_Mgr::instance()
     static MIDI_Controller_Mgr _instance;
     return _instance;
 }
-static MIDI::MIDI_Controller_Mgr& midiMgr(MIDI_Controller_Mgr::instance());
+MIDI::MIDI_Controller_Mgr& midiMgrInstance(MIDI_Controller_Mgr::instance());
 
 /*******************************************************************************/
 MIDI_Controller_Mgr::MIDI_Controller_Mgr(void):
-        Thread("MIDI_Controller_Mgr")
+        Thread("MIDI_Controller_Mgr"),
+        mMidiLearn(MainMenu::KEY_NONE)
 {
     m_InputControllers.clear();
     start();
