@@ -284,6 +284,8 @@ MIDI_Controller_Mgr& MIDI_Controller_Mgr::instance()
     return _instance;
 }
 MIDI::MIDI_Controller_Mgr& midiMgrInstance(MIDI_Controller_Mgr::instance());
+MIDI_Ctrl_Cfg lastMidiDevicePlugged;
+const MIDI_Ctrl_Cfg& getLastMidiDevicePlugged() {return lastMidiDevicePlugged;}
 
 /*******************************************************************************/
 MIDI_Controller_Mgr::MIDI_Controller_Mgr(void):
@@ -310,6 +312,7 @@ void MIDI_Controller_Mgr::onInputConnect (MIDI_Ctrl_Instance& inst)
     printf("Found: %s (%s)\n", inst.cfg.name.c_str(), inst.cfg.device.c_str());
     inst.pCtrl = new MIDI_Controller (inst.cfg, *this);
     m_InputControllers.push_back(inst);
+    lastMidiDevicePlugged = inst.cfg;
 }
 
 

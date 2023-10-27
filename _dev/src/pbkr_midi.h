@@ -44,6 +44,7 @@ struct MIDI_Ctrl_Cfg
     bool isOutput;
     inline MIDI_Ctrl_Cfg(const string& rDev, const string& rName, bool rIn, bool rOut):
         device(rDev), name(rName), isInput(rIn), isOutput(rOut){}
+    inline MIDI_Ctrl_Cfg(): isInput(false), isOutput(false){}
 };
 
 /*******************************************************************************
@@ -101,6 +102,7 @@ private:
     MainMenu::Key mMidiLearn;
 };
 extern MIDI::MIDI_Controller_Mgr& midiMgrInstance;
+const MIDI_Ctrl_Cfg& getLastMidiDevicePlugged();
 
 }  // namespace MIDI
 } // namespace PBKR
