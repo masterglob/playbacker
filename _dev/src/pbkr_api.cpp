@@ -2,6 +2,7 @@
 #include "pbkr_api.h"
 #include "pbkr_console.h"
 #include "pbkr_display_mgr.h"
+#include "pbkr_midi.h"
 #include "pbkr_osc.h"
 #include "pbkr_cfg.h"
 #include "pbkr_menu.h"
@@ -11,6 +12,7 @@
 
 namespace
 {
+using namespace std;
 float globalVolume = 1.0f;
 float clicVolume = 1.0f;
 float samplesVolume = 1.0f;
@@ -23,6 +25,22 @@ inline float normalizeVolume(const float& v)
     return v;
 }
 
+string getNextWord(string& str)
+{
+    const char* cStr(str.c_str());
+    size_t pos1 = 0;
+    // remove leading spaces
+    for (;(*cStr) == ' ' && (*cStr) != 0 && pos1++; cStr++);
+    if (pos1 > 0)
+    {
+        str.erase(0,pos1);
+    }
+    string res;
+    size_t wPos(str.find(" "));
+    res = str.substr(0, wPos);
+    str.erase(0,wPos);
+    return res;
+}
 }
 
 namespace PBKR
@@ -72,33 +90,51 @@ void setClicVolume  (const float& v)
 /*******************************************************************************/
 std::string onKeyboardCmd  (const std::string& msg)
 {
+    string text(msg);
+    const string cmd(::getNextWord(text));
+    const string p1(::getNextWord(text));
     static const std::string badCmd ("Unknown Command :");
     // static bool logged (false);
 #if 1
-    if (msg == "/R")
+    if (cmd == "/R")
     {
         Thread::doExit();
         return "Reboot command OK";
     }
 #endif
-    if (msg == "/H")
+    if (cmd == "/H")
     {
         return "/MEM /CPU /V";
     }
-    if (msg == "/V")
+    if (cmd == "/V")
     {
         return string("PBKR V" PBKR_VERSION) + " B " + to_string(PBKR_BUILD_ID);
     }
-    if (msg == "/MEM")
+    if (cmd == "/MEM")
     {
         system ("free -k|head -2 | tail -1|awk '{printf \"%d%%\\n\",(100*$3)/$2;}' > /tmp/mem.used");
         const string res (Config::instance().loadStr ("/tmp/mem.used","??",true));
         return string("Used memory : ") + res;
     }
-    if (msg == "/CPU")
+    if (cmd == "/CPU")
     {
         system ("top -n 1 |head -n 2|tail -n 1|awk '{printf \"%s %s\\n\", $1, $2}' > /tmp/cpu.used");
         const string res (Config::instance().loadStr ("/tmp/cpu.used","??",true));
+        return res;
+    }
+    // MIDI LEARN
+    if (cmd == "ML")
+    {
+        using namespace MIDI;
+        MIDI_Controller_Mgr& midi(MIDI_Controller_Mgr::instance());
+        const MainMenu::Key key(MainMenu::stringToKey(p1));
+        if (key == MainMenu::KEY_NONE)
+        {
+            midi.cancelMidiLearn();
+            return "MIDI LEARN CANCELED";
+        }
+        string res = "MIDI Learn for key '"
+                + MainMenu::keyToString(key) + "'. Waiting for MIDI event...";
         return res;
     }
     return badCmd + msg;
@@ -123,12 +159,21 @@ void forceRefresh    (void)
  *******************************************************************************/
 
 /*******************************************************************************/
+// Replace NOTE ON with 00 Velocity by a NOTE OFF
+static uint8_t midiActualCmd(const MIDI::MIDI_Msg& msg)
+{
+    uint8_t cmd(msg.m_msg[0] & 0xF0);
+    if (cmd == 0x90 && msg.m_len> 2 && msg.m_msg[2] == 0)
+        cmd ^= 0x10; // 0x90 => 0x80
+    return cmd;
+}
+/*******************************************************************************/
 void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
 {
     static const uint8_t SYS_EX_START(0xF0);
     static const uint8_t SYS_EX_STOP(0xF7);
     if (msg.m_len == 0) return;
-    const uint8_t cmd(msg.m_msg[0]);
+    const uint8_t cmd(midiActualCmd(msg));
     const uint8_t b1(msg.m_len> 1 ? msg.m_msg[1] : 0);
     const uint8_t b2(msg.m_len> 2 ? msg.m_msg[2] : 0);
     const uint8_t lst(msg.m_msg[msg.m_len-1]);
