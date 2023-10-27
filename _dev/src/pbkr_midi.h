@@ -6,6 +6,7 @@
 #define I_pbkr_midi_h_I
 
 #include "pbkr_config.h"
+#include "pbkr_menu.h"
 #include "pbkr_utils.h"
 #include <mutex>
 #include <inttypes.h>
@@ -78,12 +79,16 @@ public:
     void loop(void);
     const MIDI_Ctrl_Cfg_Vect getControllers(void);
     void onDisconnect (const MIDI_Ctrl_Cfg& cfg);
+    inline void doMidiLearn(MainMenu::Key key){mMidiLearn = key;}
+    inline void cancelMidiLearn(){mMidiLearn = MainMenu::KEY_NONE;}
+    inline MainMenu::Key getMidiLearn(){return mMidiLearn;}
 private:
     MIDI_Controller_Mgr(void);
     void onInputConnect (const MIDI_Ctrl_Cfg& cfg);
     virtual void body(void);
     MIDI_Ctrl_Cfg_Vect m_InputControllers;
     std::mutex m_mutex;
+    MainMenu::Key mMidiLearn;
 };
 
 

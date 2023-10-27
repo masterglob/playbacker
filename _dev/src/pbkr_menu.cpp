@@ -1365,6 +1365,36 @@ MainMenu::refresh(void)const
 }
 
 /*******************************************************************************/
+MainMenu::Key
+MainMenu::stringToKey(const string& str)
+{
+    if (str == "L") return KEY_LEFT;
+    if (str == "R") return KEY_RIGHT;
+    if (str == "U") return KEY_UP;
+    if (str == "D") return KEY_DOWN;
+    if (str == "O") return KEY_OK;
+    if (str == "C") return KEY_CANCEL;
+    return KEY_NONE;
+}
+
+/*******************************************************************************/
+string
+MainMenu::keyToString(const Key key)
+{
+    switch (key)
+    {
+    case KEY_LEFT: return "LEFT";
+    case KEY_RIGHT: return "RIGHT";
+    case KEY_UP:return "UP";
+    case KEY_DOWN:return "DOWN";
+    case KEY_OK:return "OK";
+    case KEY_CANCEL:return "CANCEL";
+    default:return "NONE";
+    }
+
+}
+
+/*******************************************************************************/
 void
 MainMenu::pressKey(const Key& key)
 {

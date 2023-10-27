@@ -79,7 +79,9 @@ public:
     bool isPlayMenuShown(void)const;
     virtual const std::string menul1(void)const{return m_currentMenu->menul1();}
     virtual const std::string menul2(void)const{return m_currentMenu->menul2();}
-    typedef enum {KEY_LEFT,KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_OK, KEY_CANCEL} Key;
+    typedef enum {KEY_LEFT,KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_OK, KEY_CANCEL, KEY_NONE} Key;
+    static Key stringToKey(const string& str);
+    static string keyToString(const Key key);
     void pressKey(const Key& key);
     void refresh(void)const;
 private:
