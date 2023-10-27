@@ -37,7 +37,22 @@ static const std::string dataPath(std::string (INTERNAL_MOUNT_POINT) + "/pbkr.co
 
 namespace PBKR
 {
-const char* config_filename ("pbk.cfg");
+bool checkOrCreateDir(const string& path)
+{
+    // Check data path
+    if (! checkDir (path))
+    {
+        // Creaate it
+        mkdir(path.c_str(), 0777);
+        printf ("Create path : %s\n", path.c_str());
+        if (! checkDir (path))
+        {
+            printf ("Failed to create path : %s\n", path.c_str());
+            return false;
+        }
+    }
+    return true;
+}
 
 Config::Config(void):m_ready(false), m_error(false)
 {
@@ -72,17 +87,8 @@ void Config::prepare (void)
     }
 
     // Check data path
-    if (! checkDir (dataPath))
-    {
-        // Creaate it
-        mkdir(dataPath.c_str(), 0777);
-        if (! checkDir (dataPath))
-        {
-            printf ("Failed to create  SAVE path : %s\n", dataPath.c_str());
-            m_error = true;
-            return;
-        }
-    }
+    if (! checkOrCreateDir(dataPath))
+        m_error = true;
 } // Config::prepare
 
 void Config::saveInt(const std::string& name, const int value)

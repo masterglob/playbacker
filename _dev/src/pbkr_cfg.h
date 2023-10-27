@@ -16,6 +16,7 @@ extern const char* config_filename;
 /*******************************************************************************
  * CONFIG
  *******************************************************************************/
+bool checkOrCreateDir(const string& path);
 
 class Config
 {

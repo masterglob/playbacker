@@ -290,7 +290,7 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
     if (learnKey != MainMenu::KEY_NONE)
     {
         MIDI::MIDI_Event_Type event(msg);
-        MIDI::midiMgrInstance.doMidiLearn(MainMenu::KEY_NONE);
+        MIDI::midiMgrInstance.applyMidiLearn(event, cfg);
         if (OSC::p_osc_instance != nullptr)
         {
             static const string prefix("MIDI learn:");

@@ -64,6 +64,8 @@ struct MIDI_Event_Type
     uint8_t eventId; // will be PC, or CC number or note number...
     MIDI_Event_Type(const MIDI_Msg& msg);
     string toString(void)const;
+    string toFilename(void)const;
+
 };
 
 /*******************************************************************************
@@ -112,9 +114,11 @@ public:
     inline void doMidiLearn(MainMenu::Key key){mMidiLearn = key;}
     inline void cancelMidiLearn(){mMidiLearn = MainMenu::KEY_NONE;}
     inline MainMenu::Key getMidiLearn(){return mMidiLearn;}
+    void applyMidiLearn(const MIDI_Event_Type& event, const MIDI::MIDI_Ctrl_Cfg& cfg);
 private:
     MIDI_Controller_Mgr(void);
     void onInputConnect (MIDI_Ctrl_Instance& cfg);
+    void loadMidiShortcuts(void);
     virtual void body(void);
     MIDI_Ctrl_Instance_Vect m_InputControllers;
     std::mutex m_mutex;

@@ -1,12 +1,15 @@
 #include "pbkr_midi.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_api.h"
+#include "pbkr_cfg.h"
+#include "pbkr_config.h"
 
 #include <inttypes.h>
 #include <alsa/asoundlib.h>
 #include <sys/soundcard.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <stdio.h>
 
 #include <stdexcept>
@@ -17,6 +20,7 @@
 namespace
 {
 using namespace PBKR;
+static const std::string midiDataPath(std::string (INTERNAL_MOUNT_POINT) + "/pbkr.midi_devices");
 
 uint8_t* dupMem(const uint8_t* data, const size_t len)
 {
@@ -185,6 +189,7 @@ MIDI_Event_Type::MIDI_Event_Type(const MIDI_Msg& msg):
         eventType = EC_NOTE_OFF;
     }
 }
+
 string
 MIDI_Event_Type::toString(void)const
 {
@@ -200,6 +205,23 @@ MIDI_Event_Type::toString(void)const
     case EC_PITCH: return string("PITCH #") + id;
     case EC_UNSUPPORTED: return string("Unsupported");
     default : return "Invalid";
+    }
+}
+string
+MIDI_Event_Type::toFilename(void)const
+{
+    const string id(std::to_string(eventId));
+    switch (eventType)
+    {
+    case EC_NOTE_OFF: return string("OF") + id;
+    case EC_NOTE_ON: return string("ON") + id;
+    case EC_POLY_A_T: return string("PA") + id;
+    case EC_CC: return string("CC") + id;
+    case EC_PC: return string("PC") + id;
+    case EC_MONO_A_T: return string("MA") + id;
+    case EC_PITCH: return string("PI") + id;
+    case EC_UNSUPPORTED: return string("");
+    default : return "";
     }
 }
 
@@ -330,6 +352,7 @@ MIDI_Controller_Mgr::MIDI_Controller_Mgr(void):
         mMidiLearn(MainMenu::KEY_NONE)
 {
     m_InputControllers.clear();
+    loadMidiShortcuts();
     start();
 } // MIDI_Controller_Mgr::MIDI_Controller_Mgr
 
@@ -342,6 +365,32 @@ void MIDI_Controller_Mgr::body(void)
         usleep(100 * 1000);
     }
 };
+
+/*******************************************************************************/
+void MIDI_Controller_Mgr::loadMidiShortcuts(void)
+{
+    using StringVect = vector<string>;
+    checkOrCreateDir(midiDataPath);
+    StringVect subDirs;
+    DIR *dir = opendir(midiDataPath.c_str());
+    struct dirent *entry = readdir(dir);
+    while (entry != NULL)
+    {
+        if (entry->d_type == DT_DIR && entry->d_name[0] != '.')
+        {
+            subDirs.push_back(entry->d_name);
+        }
+        entry = readdir(dir);
+    }
+    closedir(dir);
+
+    for (const string& s: subDirs)
+    {
+        printf("Found MIDI device %s. Reading settings...\n", s.c_str());
+
+    }
+#warning "TODO"
+}
 
 /*******************************************************************************/
 void MIDI_Controller_Mgr::onInputConnect (MIDI_Ctrl_Instance& inst)
@@ -365,6 +414,27 @@ void MIDI_Controller_Mgr::onDisconnect (MIDI_Controller* pCtrl)
             break;
         }
     }
+}
+
+/*******************************************************************************/
+void MIDI_Controller_Mgr::applyMidiLearn(const MIDI_Event_Type& event, const MIDI::MIDI_Ctrl_Cfg& cfg)
+{
+    if (mMidiLearn == MainMenu::KEY_NONE) return;
+    const string path = midiDataPath + "/" + cfg.name;
+    if (!checkOrCreateDir(path))
+    {
+        printf("Failed to create folder <%s>\n", path.c_str());
+        return;
+    }
+    const string filename = path + "/" + event.toFilename();
+    printf("Create file <%s> to store event <%s>\n", filename.c_str(), event.toString().c_str());
+    std::ofstream outfile(filename);
+
+    outfile << MainMenu::keyToString(mMidiLearn) << std::endl;
+    outfile.close();
+#warning "TODO: insert new shortcut in current list"
+
+    cancelMidiLearn();
 }
 
 /*******************************************************************************/
