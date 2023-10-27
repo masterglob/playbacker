@@ -155,6 +155,17 @@ void insert_subdevice_list(snd_ctl_t *ctl, int card, int device,
    }
 } // get_subdevice_list
 
+MIDI::MIDI_Event_Type::Event_Class midiByte0ToEvent_Class(uint8_t b)
+{
+    using namespace MIDI;
+    b &= 0xF0;
+    if (b == 0x80) return MIDI_Event_Type::EC_NOTE_OFF;
+    if (b == 0x90) return MIDI_Event_Type::EC_NOTE_ON;
+    if (b == 0xB0) return MIDI_Event_Type::EC_CC;
+    if (b == 0xC0) return MIDI_Event_Type::EC_PC;
+    if (b == 0xD0) return MIDI_Event_Type::EC_PITCH;
+    return MIDI_Event_Type::EC_UNSUPPORTED;
+}
 } // namespace
 
 
@@ -165,6 +176,32 @@ namespace PBKR
 {
 namespace MIDI
 {
+MIDI_Event_Type::MIDI_Event_Type(const MIDI_Msg& msg):
+        eventType(midiByte0ToEvent_Class(msg.m_len > 0 ? msg.m_msg[0] : 0)),
+        eventId(msg.m_len > 1 ? msg.m_msg[1] : 0)
+{
+    if (eventType == EC_NOTE_ON && msg.m_len > 2 && msg.m_msg[2] == 0)
+    {
+        eventType = EC_NOTE_OFF;
+    }
+}
+string
+MIDI_Event_Type::toString(void)const
+{
+    const string id(std::to_string(eventId));
+    switch (eventType)
+    {
+    case EC_NOTE_OFF: return string("NoteOff #") + id;
+    case EC_NOTE_ON: return string("NoteOn #") + id;
+    case EC_POLY_A_T: return string("Poly #") + id;
+    case EC_CC: return string("CC #") + id;
+    case EC_PC: return string("PC #") + id;
+    case EC_MONO_A_T: return string("Mono AT #") + id;
+    case EC_PITCH: return string("PITCH #") + id;
+    case EC_UNSUPPORTED: return string("Unsupported");
+    default : return "Invalid";
+    }
+}
 
 MIDI_Msg::MIDI_Msg(const uint8_t* data, const size_t len):
     m_len(len),m_msg(::dupMem(data,len)) {}
@@ -315,7 +352,6 @@ void MIDI_Controller_Mgr::onInputConnect (MIDI_Ctrl_Instance& inst)
     lastMidiDevicePlugged = inst.cfg;
 }
 
-
 /*******************************************************************************/
 void MIDI_Controller_Mgr::onDisconnect (MIDI_Controller* pCtrl)
 {
@@ -399,10 +435,10 @@ void MIDI_Controller_Mgr::loop(void)
 } // MIDI_Controller_Mgr::body
 
 /*******************************************************************************/
-const MIDI_Ctrl_Instance_Vect  MIDI_Controller_Mgr::getControllers(void)
+MIDI_Ctrl_Instance_Vect  MIDI_Controller_Mgr::getControllers(void)
 {
     m_mutex.lock();
-    const MIDI_Ctrl_Instance_Vect v(m_InputControllers);
+    MIDI_Ctrl_Instance_Vect v(m_InputControllers);
     m_mutex.unlock();
     return v;
 } // MIDI_Controller_Mgr::getControllers

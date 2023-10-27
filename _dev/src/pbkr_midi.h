@@ -47,6 +47,25 @@ struct MIDI_Ctrl_Cfg
     inline MIDI_Ctrl_Cfg(): isInput(false), isOutput(false){}
 };
 
+struct MIDI_Event_Type
+{
+    enum Event_Class
+    {
+        EC_NOTE_OFF,
+        EC_NOTE_ON,
+        EC_POLY_A_T,
+        EC_CC,
+        EC_PC,
+        EC_MONO_A_T,
+        EC_PITCH,
+        EC_UNSUPPORTED,
+    };
+    Event_Class eventType;
+    uint8_t eventId; // will be PC, or CC number or note number...
+    MIDI_Event_Type(const MIDI_Msg& msg);
+    string toString(void)const;
+};
+
 /*******************************************************************************
  * MIDI CONTROLLER
  *******************************************************************************/

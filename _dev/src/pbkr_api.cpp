@@ -5,14 +5,19 @@
 #include "pbkr_midi.h"
 #include "pbkr_osc.h"
 #include "pbkr_cfg.h"
+#include "pbkr_midi.h"
 #include "pbkr_menu.h"
 #include "pbkr_version.h"
 
 #include <stdlib.h>
 
+#define DEBUG_MIDI 0
+
+#define MIDI_NAME_TINYPAD "TINYPAD MIDI 1"
 namespace
 {
 using namespace std;
+using namespace PBKR;
 float globalVolume = 1.0f;
 float clicVolume = 1.0f;
 float samplesVolume = 1.0f;
@@ -41,7 +46,107 @@ string getNextWord(string& str)
     str.erase(0,wPos);
     return res;
 }
+
+/*******************************************************************************/
+// Replace NOTE ON with 00 Velocity by a NOTE OFF
+static uint8_t midiActualCmd(const MIDI::MIDI_Msg& msg)
+{
+    uint8_t cmd(msg.m_msg[0] & 0xF0);
+    if (cmd == 0x90 && msg.m_len> 2 && msg.m_msg[2] == 0)
+        cmd ^= 0x10; // 0x90 => 0x80
+    return cmd;
 }
+
+static void midiDebug(const string& name, const MIDI::MIDI_Msg& msg)
+{
+#if DEBUG_MIDI
+    for (size_t i(0); i< msg.m_len;i++)
+        printf("%02X ",msg.m_msg[i]);
+    const uint8_t b0(msg.m_msg[0]);
+    printf(" => Recv MIDI event from '%s' [", name.c_str());
+    const uint8_t b1(msg.m_len> 1 ? msg.m_msg[1] : 0);
+    const uint8_t b2(msg.m_len> 2 ? msg.m_msg[2] : 0);
+    if ((b0 & 0xF0) == 0xF0)
+    {
+        printf("<SYSEX>");
+    }
+    else if (b0 & 0x80)
+    {
+        const uint8_t cmd((midiActualCmd(msg) & 0x70) >> 4);
+        const uint8_t channel(b0 & 0xF);
+        // normal message with channel
+        const char* names[7] = {"Note Off", "Note On", "Poly Aft.", "CC", "PC", "Chan. Aft.", "Pitch"};
+        const bool  has2prms[7] = {true, true, true, true, false, false, true};
+        printf("Chan %d, %s(%d", channel, names[cmd], b1);
+        if (has2prms[cmd]) printf(", %d", b2);
+        printf(")");
+    }
+    printf("]\n");
+#endif
+}
+
+string doMidiTest(const string & param)
+{
+    using namespace MIDI;
+    const MIDI_Ctrl_Instance_Vect vect(midiMgrInstance.getControllers());
+    for (const MIDI_Ctrl_Instance& inst : vect)
+    {
+        if (inst.cfg.name == getLastMidiDevicePlugged().name)
+        {
+            printf("%s, dev=%s In/out = %d/%d\n",
+                    inst.cfg.name.c_str(),
+                    inst.cfg.device.c_str(),
+                    inst.cfg.isInput,
+                    inst.cfg.isOutput);
+            if (param.empty()) return string("Found ") + inst.cfg.name;
+
+            if (!inst.cfg.isOutput) return inst.cfg.name + " has not output";
+
+            uint8_t msg[32];
+            size_t msgLen(0);
+            uint8_t val8=0;
+            bool firstHalf = true;
+            for (const char* buff=param.c_str(); *buff != 0; buff++)
+            {
+                char c(*buff);
+                uint8_t val4=0;
+                if (c >= '0' && c <='9')
+                {
+                    val4 = c - '0';
+                }
+                else if (c >= 'A' && c <= 'F')
+                {
+                    val4 = c - 'A' + 10;
+                }
+                else
+                {
+                    return "Invalid param";
+                }
+                if (firstHalf)
+                {
+                    val8 = val4 * 0x10;
+                }
+                else
+                {
+                    if (msgLen > sizeof(msg))
+                    {
+                        return "Too many data..";
+                    }
+                    msg[msgLen] = val8 + val4;
+                    val8 = 0;
+                    msgLen ++;
+                }
+                firstHalf = ! firstHalf;
+            }
+            MIDI_Msg midiMsg(msg, msgLen);
+            midiDebug(MIDI_NAME_TINYPAD, midiMsg);
+            return "TODO";
+        }
+    }
+    return "WIP...";
+} // doMidiTest
+
+} // namespace
 
 namespace PBKR
 {
@@ -138,9 +243,15 @@ std::string onKeyboardCmd  (const std::string& msg)
             midi.cancelMidiLearn();
             return "MIDI LEARN CANCELED";
         }
+        MIDI::midiMgrInstance.doMidiLearn(key);
         string res = "MIDI Learn for key '"
                 + MainMenu::keyToString(key) + "'. Waiting for MIDI event...";
         return res;
+    }
+    // MIDI TEST (temporary)
+    if (cmd == "MT")
+    {
+        return doMidiTest(p1);
     }
     return badCmd;
 }
@@ -164,15 +275,6 @@ void forceRefresh    (void)
  *******************************************************************************/
 
 /*******************************************************************************/
-// Replace NOTE ON with 00 Velocity by a NOTE OFF
-static uint8_t midiActualCmd(const MIDI::MIDI_Msg& msg)
-{
-    uint8_t cmd(msg.m_msg[0] & 0xF0);
-    if (cmd == 0x90 && msg.m_len> 2 && msg.m_msg[2] == 0)
-        cmd ^= 0x10; // 0x90 => 0x80
-    return cmd;
-}
-/*******************************************************************************/
 void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
 {
     static const uint8_t SYS_EX_START(0xF0);
@@ -183,7 +285,21 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
     const uint8_t b2(msg.m_len> 2 ? msg.m_msg[2] : 0);
     const uint8_t lst(msg.m_msg[msg.m_len-1]);
 
-    if (cfg.name == std::string("TINYPAD MIDI 1"))
+    // In case of Midi learn, do not apply the event
+    const MainMenu::Key learnKey = MIDI::midiMgrInstance.getMidiLearn();
+    if (learnKey != MainMenu::KEY_NONE)
+    {
+        MIDI::MIDI_Event_Type event(msg);
+        MIDI::midiMgrInstance.doMidiLearn(MainMenu::KEY_NONE);
+        if (OSC::p_osc_instance != nullptr)
+        {
+            static const string prefix("MIDI learn:");
+            OSC::p_osc_instance->pushKbdFeedBack(prefix + event.toString());
+        }
+        return;
+    }
+
+    if (cfg.name == MIDI_NAME_TINYPAD)
     {
         /** TInyPad MINI:
          */
@@ -281,10 +397,12 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
             }
         }
     }
-    printf("Recv MIDI event from device <%s>:[",cfg.name.c_str());
+    /*
+     * printf("Recv MIDI event from device <%s>:[",cfg.name.c_str());
     for (size_t i(0); i< msg.m_len;i++)
         printf("%02X ",msg.m_msg[i]);
     printf("]\n");
+    */
 } // onMidiEvent
 
 
