@@ -9,6 +9,8 @@
 #include "pbkr_menu.h"
 #include "pbkr_utils.h"
 #include <mutex>
+#include <map>
+#include <vector>
 #include <inttypes.h>
 #include <alsa/asoundlib.h>
 #include <sys/soundcard.h>
@@ -63,10 +65,11 @@ struct MIDI_Event_Type
     Event_Class eventType;
     uint8_t eventId; // will be PC, or CC number or note number...
     MIDI_Event_Type(const MIDI_Msg& msg);
+    MIDI_Event_Type(const string& filename);
     string toString(void)const;
     string toFilename(void)const;
-
 };
+bool operator<(const MIDI_Event_Type&e1, const MIDI_Event_Type& e2);
 
 /*******************************************************************************
  * MIDI CONTROLLER
@@ -115,11 +118,15 @@ public:
     inline void cancelMidiLearn(){mMidiLearn = MainMenu::KEY_NONE;}
     inline MainMenu::Key getMidiLearn(){return mMidiLearn;}
     void applyMidiLearn(const MIDI_Event_Type& event, const MIDI::MIDI_Ctrl_Cfg& cfg);
+    bool applyMidiEvent(const MIDI_Event_Type& event, const MIDI::MIDI_Ctrl_Cfg& cfg);
 private:
     MIDI_Controller_Mgr(void);
     void onInputConnect (MIDI_Ctrl_Instance& cfg);
     void loadMidiShortcuts(void);
     virtual void body(void);
+    using ShortCutMap = std::map<MIDI_Event_Type, MainMenu::Key>;
+    using DeviceShortCutMap = std::map<string, ShortCutMap>;
+    DeviceShortCutMap m_shortcuts;
     MIDI_Ctrl_Instance_Vect m_InputControllers;
     std::mutex m_mutex;
     MainMenu::Key mMidiLearn;

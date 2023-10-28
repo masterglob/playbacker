@@ -1383,13 +1383,13 @@ MainMenu::keyToString(const Key key)
 {
     switch (key)
     {
-    case KEY_LEFT: return "LEFT";
-    case KEY_RIGHT: return "RIGHT";
-    case KEY_UP:return "UP";
-    case KEY_DOWN:return "DOWN";
-    case KEY_OK:return "OK";
-    case KEY_CANCEL:return "CANCEL";
-    default:return "NONE";
+    case KEY_LEFT: return "L";
+    case KEY_RIGHT: return "R";
+    case KEY_UP:return "U";
+    case KEY_DOWN:return "D";
+    case KEY_OK:return "O";
+    case KEY_CANCEL:return "C";
+    default:return "N";
     }
 
 }

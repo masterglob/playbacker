@@ -9,8 +9,9 @@
 #include <sys/soundcard.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <dirent.h>
 #include <stdio.h>
+#include <string>
+#include <iostream>
 
 #include <stdexcept>
 
@@ -188,6 +189,61 @@ MIDI_Event_Type::MIDI_Event_Type(const MIDI_Msg& msg):
     {
         eventType = EC_NOTE_OFF;
     }
+    if (eventType == EC_CC && msg.m_len > 2 && msg.m_msg[2] == 0)
+    {
+        eventType = EC_UNSUPPORTED;
+    }
+}
+
+MIDI_Event_Type::MIDI_Event_Type(const string& filename):
+        eventType(EC_UNSUPPORTED),
+        eventId(0)
+{
+    if (filename.length()>=3)
+    {
+        const char * s = filename.c_str();
+        if (s[0] == 'O')
+        {
+            if (s[1] == 'N')
+            {
+                eventType = EC_NOTE_ON;
+            }
+            else if (s[1] == 'F')
+            {
+                eventType = EC_NOTE_ON;
+            }
+        }
+        else if (s[1] == 'C')
+        {
+            if (s[0] == 'P')
+            {
+                eventType = EC_PC;
+            }
+            else if (s[0] == 'C')
+            {
+                eventType = EC_CC;
+            }
+        }
+        else if (s[1] == 'A')
+        {
+            if (s[0] == 'P')
+            {
+                eventType = EC_POLY_A_T;
+            }
+            else if (s[0] == 'M')
+            {
+                eventType = EC_MONO_A_T;
+            }
+        }
+        else if (s[0] == 'P' && s[1] == 'I')
+        {
+            eventType = EC_PITCH;
+        }
+        if ( eventType != EC_UNSUPPORTED)
+        {
+            eventId = std::atoi(&s[2]);
+        }
+    }
 }
 
 string
@@ -223,6 +279,12 @@ MIDI_Event_Type::toFilename(void)const
     case EC_UNSUPPORTED: return string("");
     default : return "";
     }
+}
+
+bool operator<(const MIDI_Event_Type& e1, const MIDI_Event_Type& e2)
+{
+    return (e1.eventId < e2.eventId) ||
+            (e1.eventId == e2.eventId && e1.eventType < e2.eventType);
 }
 
 MIDI_Msg::MIDI_Msg(const uint8_t* data, const size_t len):
@@ -369,27 +431,34 @@ void MIDI_Controller_Mgr::body(void)
 /*******************************************************************************/
 void MIDI_Controller_Mgr::loadMidiShortcuts(void)
 {
-    using StringVect = vector<string>;
+    printf("Loading MIDI shortcuts\n");
     checkOrCreateDir(midiDataPath);
-    StringVect subDirs;
-    DIR *dir = opendir(midiDataPath.c_str());
-    struct dirent *entry = readdir(dir);
-    while (entry != NULL)
+
+    for (const string& d: Config::listDirs(midiDataPath))
     {
-        if (entry->d_type == DT_DIR && entry->d_name[0] != '.')
+        printf("- Found MIDI device %s.\n", d.c_str());
+
+        DeviceShortCutMap::iterator it = m_shortcuts.find(d);
+        if (it == m_shortcuts.end())
         {
-            subDirs.push_back(entry->d_name);
+            ShortCutMap empty;
+            m_shortcuts.emplace(d, empty);
+            it = m_shortcuts.find(d);
         }
-        entry = readdir(dir);
-    }
-    closedir(dir);
+        ShortCutMap& list = (*it).second;
 
-    for (const string& s: subDirs)
-    {
-        printf("Found MIDI device %s. Reading settings...\n", s.c_str());
-
+        const string pathname= midiDataPath + "/" + d;
+        for (const string& f: Config::listFiles(pathname))
+        {
+            const string filename = pathname + "/" + f;
+            const string value = Config::instance().loadStr(filename, "", true);
+            const MainMenu::Key key(MainMenu::stringToKey(value));
+            if (key == MainMenu::KEY_NONE) continue;
+            printf("  - Found File %s -> %s\n", f.c_str(), MainMenu::keyToString(key).c_str());
+            const MIDI_Event_Type event(f);
+            list.emplace(event, key);
+        }
     }
-#warning "TODO"
 }
 
 /*******************************************************************************/
@@ -435,6 +504,19 @@ void MIDI_Controller_Mgr::applyMidiLearn(const MIDI_Event_Type& event, const MID
 #warning "TODO: insert new shortcut in current list"
 
     cancelMidiLearn();
+}
+
+/*******************************************************************************/
+bool MIDI_Controller_Mgr::applyMidiEvent(const MIDI_Event_Type& event, const MIDI::MIDI_Ctrl_Cfg& cfg)
+{
+    DeviceShortCutMap::const_iterator it(m_shortcuts.find(cfg.name));
+    if (it == m_shortcuts.end()) return false;
+    const ShortCutMap& map = (*it).second;
+    ShortCutMap::const_iterator jt(map.find(event));
+    if (jt == map.end()) return false;
+    const MainMenu::Key& key((*jt).second);
+    MainMenu::instance().pressKey(key);
+    return true;
 }
 
 /*******************************************************************************/

@@ -4,10 +4,13 @@
 #include "pbkr_config.h"
 
 #include <string>
+#include <vector>
 
 namespace PBKR
 {
 using namespace std;
+using StringVect = vector<string>;
+
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
@@ -26,6 +29,8 @@ public:
     int loadInt(const string& name, const int defaultValue);
     void saveStr(const string& name, const string& value);
     string loadStr(const string& name, const string& defaultValue = "", bool absPath=false);
+    static StringVect listDirs(const string& path);
+    static StringVect listFiles(const string& path);
 protected:
     Config(void);
 	virtual ~Config(void);

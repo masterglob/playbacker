@@ -277,6 +277,7 @@ void forceRefresh    (void)
 /*******************************************************************************/
 void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
 {
+    midiDebug(cfg.name, msg);
     static const uint8_t SYS_EX_START(0xF0);
     static const uint8_t SYS_EX_STOP(0xF7);
     if (msg.m_len == 0) return;
@@ -287,9 +288,9 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
 
     // In case of Midi learn, do not apply the event
     const MainMenu::Key learnKey = MIDI::midiMgrInstance.getMidiLearn();
+    const MIDI::MIDI_Event_Type event(msg);
     if (learnKey != MainMenu::KEY_NONE)
     {
-        MIDI::MIDI_Event_Type event(msg);
         MIDI::midiMgrInstance.applyMidiLearn(event, cfg);
         if (OSC::p_osc_instance != nullptr)
         {
@@ -299,14 +300,18 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
         return;
     }
 
+    // Check if MIDI key is assigned
+    if (MIDI::midiMgrInstance.applyMidiEvent(event, cfg))
+        return;
+
     if (cfg.name == MIDI_NAME_TINYPAD)
     {
         /** TInyPad MINI:
          */
         if (msg.m_len == 3)
         {
-            static const uint8_t CMD_NOTE(0x99);
-            static const uint8_t CMD_CTRL(0xB9);
+            static const uint8_t CMD_NOTE(0x90);
+            static const uint8_t CMD_CTRL(0xB0);
 
             if (cmd == CMD_NOTE && b2 == 0) return;
             if (cmd == CMD_NOTE && b2 != 0)

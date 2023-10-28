@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <iostream>
 #include <fstream>
 
@@ -118,6 +119,40 @@ int Config::loadInt(const std::string& name, const int defaultValue)
 
     return value;
 } // Config::loadInt
+
+StringVect Config::listDirs(const string& path)
+{
+    StringVect res;
+    DIR *dir = opendir(path.c_str());
+    struct dirent *entry = readdir(dir);
+    while (entry != NULL)
+    {
+        if (entry->d_type == DT_DIR && entry->d_name[0] != '.')
+        {
+            res.push_back(entry->d_name);
+        }
+        entry = readdir(dir);
+    }
+    closedir(dir);
+    return res;
+}
+
+StringVect Config::listFiles(const string& path)
+{
+    StringVect res;
+    DIR *dir = opendir(path.c_str());
+    struct dirent *entry = readdir(dir);
+    while (entry != NULL)
+    {
+        if (entry->d_type == DT_REG && entry->d_name[0] != '.')
+        {
+            res.push_back(entry->d_name);
+        }
+        entry = readdir(dir);
+    }
+    closedir(dir);
+    return res;
+}
 
 string Config::loadStr(const string& name, const string& defaultValue, bool absPath)
 {
