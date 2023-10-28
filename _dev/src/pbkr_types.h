@@ -34,6 +34,11 @@ static inline std::string substring(const std::string& s, size_t from, size_t le
     return s.substr(from, len);
 }
 
+static inline std::string strerase(std::string& s, size_t from, size_t len = std::string::npos)
+{
+    return s.erase(from, len);
+}
+
 } // namespace PBKR
 
 static inline void fread(std::ifstream& f, char* buffer, size_t count)

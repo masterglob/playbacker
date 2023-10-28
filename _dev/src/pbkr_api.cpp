@@ -38,12 +38,12 @@ string getNextWord(string& str)
     for (;(*cStr) == ' ' && (*cStr) != 0 && pos1++; cStr++);
     if (pos1 > 0)
     {
-        str.erase(0,pos1);
+        strerase(str, 0, pos1);
     }
     string res;
     size_t wPos(str.find(" "));
-    res = str.substr(0, wPos);
-    str.erase(0,wPos);
+    res = substring(str, 0, wPos);
+    strerase(str, 0,wPos);
     return res;
 }
 
