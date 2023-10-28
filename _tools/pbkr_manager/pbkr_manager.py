@@ -317,54 +317,110 @@ class _ProjectUI():
             self.mgr.deleteCurrentProject()
         else:
             messagebox.showerror("Bad confirmation", "bad confirmation: not deleted")
+
+class Keyboard:
+    def __init__(self, mgr, win):
+        self.mgr=mgr
+        BTN_W=1
+        BTN_H=2
+        SPC=5
+        
+        fr  = tk.Frame(win)
+        maxX=0
+        keybLines=["1234567890","AZERTYUIOP", "QSDFGHJKLM", "WXCVBN/:!"]
+        y=1
+        for line in keybLines:
+            x=y
+            b=tk.Button(fr, text="", height=BTN_H, width=BTN_W*y, state=tk.DISABLED,
+                        highlightthickness = 0, bd = 0)
+            b.grid(row = y, column=0, columnspan=x)
+            for c in line:
+                tk.Button(fr, text=c, height=BTN_H, width=BTN_W*SPC,
+                          #command = lambda self=self: self.mgr.sendControl(c)
+                          ).grid(row = y, column=x, columnspan=SPC)
+                maxX = max(maxX,x)
+                x+=SPC
+            y+=1
             
+        # Enter Key
+        tk.Button(fr, text="ENTER", height=BTN_H*2, width=BTN_W*SPC*2,
+                  ).grid(row = 2, column=maxX+SPC, columnspan=SPC*3, rowspan=2)
+        # Space bar              
+        tk.Button(fr, text=" ", height=BTN_H, width=BTN_W*SPC*10,
+                  ).grid(row = y, column=y-(SPC-1), columnspan=SPC*10)
+            
+        fr.pack(side = tk.TOP)
+        # Feedback lines
+        
+        fr  = tk.Frame(win)
+
+        x=1
+        y=1
+        self.kbdLines=[]
+        for i in range(5):
+            y+=1
+            var = tk.StringVar(value="")
+            self.kbdLines.append(var)
+            
+            tk.Label(fr, textvariable=var, width = 60,
+                     anchor  = "w", 
+                     bg="#1010FF", fg= "#F0F0FF", bd=1,
+                      font=("Courier new", 10)).grid(row=y, column=x)
+        
+        fr.pack(side = tk.BOTTOM)
+        
+        
 class RemoteControl (Thread):
     def __init__(self, mgr, win):
         Thread.__init__(self)
         self.mgr, self.win = mgr, win
+        BTN_W=5
+        BTN_H=3
         
-        frDisplay  = tk.Frame(win)
+        fr0  = tk.Frame(win)
+        fr  = tk.Frame(fr0)
         
         self.menul1= tk.StringVar(value="Menu L1")
         self.menul2= tk.StringVar(value="Menu L2")
-        tk.Label(frDisplay, textvariable=self.menul1, width = 16,
+        tk.Label(fr, textvariable=self.menul1, width = 16,
                  anchor  = "w", 
                  bg="#1010FF", fg= "#F0F0FF", bd=1,
                   font=("Courier new", 14)).grid(row=1, column=1)
-        tk.Label(frDisplay, text=" ", width=1).grid(row=1, column=2)
-        tk.Label(frDisplay, textvariable=self.menul2, width = 16,
+        tk.Label(fr, text=" ", width=1).grid(row=1, column=2)
+        tk.Label(fr, textvariable=self.menul2, width = 16,
                  anchor  = "w", 
                  bg="#1010FF", fg= "#F0F0FF", bd=1,
                   font=("Courier new", 14)).grid(row=2, column=1)
-        tk.Label(frDisplay, text=" ", width=1).grid(row=2, column=2)
+        tk.Label(fr, text=" ", width=1).grid(row=2, column=2)
         
-        frDisplay.pack(side = tk.RIGHT)
+        fr.pack(side = tk.RIGHT)
         
-        fr  = tk.Frame(win)
-        tk.Button(fr, text="OK", height=4, width=8,
+        fr  = tk.Frame(fr0)
+        tk.Button(fr, text="OK", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pOk")
                   ).grid(row = 1, column=1)
         tk.Label(fr, text=" ", width=1).grid(row=1, column=2)
-        tk.Button(fr, text="Cancel", height=4, width=8,
+        tk.Button(fr, text="Cancel", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pClose")
                   ).grid(row = 1, column=3)
         tk.Label(fr, text=" ", width=1).grid(row=1, column=4)
         fr.pack(side = tk.LEFT)
         
-        fr  = tk.Frame(win)
-        tk.Button(fr, text="Left", height=4, width=8,
+        fr  = tk.Frame(fr0)
+        tk.Button(fr, text="Left", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pLeft")
                   ).grid(row = 2, column=1, columnspan=2)
-        tk.Button(fr, text="Right", height=4, width=8,
+        tk.Button(fr, text="Right", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pRight")
                   ).grid(row = 2, column=3, columnspan=2)
-        tk.Button(fr, text="Up", height=4, width=8,
+        tk.Button(fr, text="Up", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pUp")
                   ).grid(row = 1, column=2, columnspan=2)
-        tk.Button(fr, text="Down", height=4, width=8,
+        tk.Button(fr, text="Down", height=BTN_H, width=BTN_W,
                   command = lambda self=self: self.sendControl("pDown")
                   ).grid(row = 3, column=2, columnspan=2)
         fr.pack(side = tk.LEFT)
+        fr0.pack(side = tk.TOP)
         
         self.start()
 
@@ -516,6 +572,14 @@ class _UI():
             fr= tk.Frame(tab3)
             self.remoteControl = RemoteControl(mgr, fr)
             fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
+            
+            #############################
+            # TAB 4 :  Keyboard
+            tab4 = tabs0.addTab('Keyboard')
+            fr= tk.Frame(tab4)
+            self.kbd = Keyboard(mgr, fr)
+            fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
+            
             
         ##################
         # Status bar
