@@ -142,16 +142,29 @@ static NetConnMenuItem netConnMenuItem ("Show conns", &netMenuItem);
 
 
 /*******************************************************************************/
-struct SettingsMenuItem : MenuItem
+struct VersionMenuItem : MenuItem
 {
-    SettingsMenuItem(const std::string & title, MenuItem* parent);
-    virtual ~SettingsMenuItem(void){}
+    VersionMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~VersionMenuItem(void){}
     virtual void onLeftRightPress(const bool isLeft){}
     virtual const std::string menul1(void);
     virtual const std::string menul2(void);
 protected:
 };
-static SettingsMenuItem settingsMenuItem ("Settings", &mainMenuItem);
+
+/*******************************************************************************/
+struct OscSettingsMenuItem : MenuItem
+{
+    OscSettingsMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~OscSettingsMenuItem(void){}
+    virtual void onLeftRightPress(const bool isLeft){}
+    virtual const std::string menul1(void);
+    virtual const std::string menul2(void);
+protected:
+};
+static MenuItem settingsMenuItem ("Settings", &mainMenuItem);
+static VersionMenuItem versionMenuItem ("Version", &settingsMenuItem);
+static OscSettingsMenuItem oscSettingsMenuItem ("OSC", &settingsMenuItem);
 
 /*******************************************************************************/
 struct SongParamsMenuItem : ListMenuItem
@@ -1037,21 +1050,36 @@ const std::string NetConnMenuItem::menul2(void)
 ##    ## ##          ##       ##     ##  ##   ### ##    ##  ##    ##
  ######  ########    ##       ##    #### ##    ##  ######    ######
 *******************************************************************************/
-SettingsMenuItem::SettingsMenuItem(const std::string & title, MenuItem* parent)
+VersionMenuItem::VersionMenuItem(const std::string & title, MenuItem* parent)
 :
         MenuItem(title,parent)
 {
 
 }
-const std::string SettingsMenuItem::menul1(void)
+const std::string VersionMenuItem::menul1(void)
 {
     return "Version";
 }
-const std::string SettingsMenuItem::menul2(void)
+const std::string VersionMenuItem::menul2(void)
 {
     static const std::string version (PBKR_VERSION);
     static const std::string build (std::to_string(PBKR_BUILD_ID));
     return version+" b"+build;
+}
+
+OscSettingsMenuItem::OscSettingsMenuItem(const std::string & title, MenuItem* parent)
+:
+        MenuItem(title,parent)
+{
+
+}
+const std::string OscSettingsMenuItem::menul1(void)
+{
+    return "OSC";
+}
+const std::string OscSettingsMenuItem::menul2(void)
+{
+    return "TODO";
 }
 
 /*******************************************************************************
