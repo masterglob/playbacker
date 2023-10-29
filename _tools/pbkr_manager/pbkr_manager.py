@@ -10,6 +10,7 @@ if python_version == 3:
     from tkinter import ttk
     try:from idlelib.tooltip import Hovertip
     except:pass # for python 3.6
+    import socket
 elif python_version == 2:
     raise Exception("This code requires adaptations to run under python2")
     import Tkinter as tk
@@ -319,15 +320,42 @@ class _ProjectUI():
             messagebox.showerror("Bad confirmation", "bad confirmation: not deleted")
 
 class Keyboard:
-    def __init__(self, mgr, win):
-        self.mgr=mgr
+    def nameof(c):
+        if c==' ': return "Space"
+        if c=='!': return "Excl"
+        if c=='/': return "Slash"
+        if c==",": return "Comma"
+        if c==";": return "SemiColon"
+        if c==":": return "Colon"
+        if c=="\\": return "BSlash"
+        if ord(c) == 8 : return "DEL" 
+        if ord(c) == 13 : return "Enter" 
+        if c >= 'a' and c<="z" : return c.upper()
+        if c >= 'A' and c<="Z" : return c.upper()
+        if c >= '0' and c<="9" : return c
+        return ""
+    def __init__(self, osc, win):
+        self.osc=osc
         BTN_W=1
         BTN_H=2
         SPC=5
         
         fr  = tk.Frame(win)
+        self.varFB = tk.StringVar()
+        self.wgtFB = tk.Entry(fr, textvariable=self.varFB, width = 60,
+                 # anchor  = "w", 
+                 bg="#1010EF", fg= "#F0F0EF", bd=1,
+                 font=("Courier new", 10))
+        _cmd = self.wgtFB.register(self.validateFB)
+        self.wgtFB.configure(validatecommand=(_cmd, '%P'), validate='key')
+        self.wgtFB.grid(row=1, column=1)
+        self.wgtFB.bind("<Key>", self.simulateFB)                 
+        fr.pack(side = tk.TOP)
+        
+        fr  = tk.Frame(win)
         maxX=0
-        keybLines=["1234567890","AZERTYUIOP", "QSDFGHJKLM", "WXCVBN/:!"]
+        keybLines=["1234567890","AZERTYUIOP", "QSDFGHJKLM", "WXCVBN/,:!"]
+        
         y=1
         for line in keybLines:
             x=y
@@ -336,17 +364,23 @@ class Keyboard:
             b.grid(row = y, column=0, columnspan=x)
             for c in line:
                 tk.Button(fr, text=c, height=BTN_H, width=BTN_W*SPC,
-                          #command = lambda self=self: self.mgr.sendControl(c)
+                          command = lambda self=self,c=c: self.sendKey(Keyboard.nameof(c))
                           ).grid(row = y, column=x, columnspan=SPC)
                 maxX = max(maxX,x)
                 x+=SPC
             y+=1
             
+        # DEL Key
+        tk.Button(fr, text="DEL", height=BTN_H, width=BTN_W*SPC*2,
+                          command = lambda self=self,c=c: self.sendKey("DEL")
+                  ).grid(row = 1, column=maxX+SPC, rowspan=1)
         # Enter Key
         tk.Button(fr, text="ENTER", height=BTN_H*2, width=BTN_W*SPC*2,
+                          command = lambda self=self,c=c: self.sendKey("Enter")
                   ).grid(row = 2, column=maxX+SPC, columnspan=SPC*3, rowspan=2)
         # Space bar              
         tk.Button(fr, text=" ", height=BTN_H, width=BTN_W*SPC*10,
+                          command = lambda self=self,c=c: self.sendKey("Space")
                   ).grid(row = y, column=y-(SPC-1), columnspan=SPC*10)
             
         fr.pack(side = tk.TOP)
@@ -368,7 +402,230 @@ class Keyboard:
                       font=("Courier new", 10)).grid(row=y, column=x)
         
         fr.pack(side = tk.BOTTOM)
+    
+    def validateFB(self,valeur):return False
+    def simulateFB(self, event): 
+        try: v = Keyboard.nameof(event.char)
+        except Exception as E:
+            return
+        if v:
+            self.sendKey(v)
         
+    def sendKey(self, key):
+        msg = OSC.build(OSC.OSC_KBD, [key], 1)
+        self.osc.send(msg)
+    def updateFB(self, text):
+        self.varFB.set(text)    
+    def updateOutput(self, i, text:str):
+        try:
+            self.kbdLines[i].set(text)
+        except:pass    
+         
+               
+class OSC (Thread):
+    OSC_PAGE = b"/pbkrctrl/"
+    OSC_KBD  = b"/pbkrkbd/"
+    OSC_MENU = b"/pbkrmenu/"
+    def __init__(self, mgr, win):
+        Thread.__init__(self)
+        self.mgr = mgr
+        fr  = tk.Frame(win)
+        
+        fr2  = tk.LabelFrame(fr, text= "OSC connection")
+        self.varIP = tk.StringVar(value="192.168.7.80")
+        tk.Label(fr2, text="Address").grid(row=1, column=1)
+        self.wgt_IP= tk.Entry(fr2, textvariable=self.varIP, width = 16, font=("Courier new", 10))
+        self.wgt_IP.grid(row=1, column=2)
+        tk.Label(fr2, text="Status:").grid(row=2, column=1)
+        self.varStatus = tk.StringVar(value="")
+        self.wgt_Status= tk.Label(fr2, textvariable=self.varStatus, fg='red')
+        self.wgt_Status.grid(row=2, column=2)
+        
+        self.varPortIn = tk.IntVar(value=8000)
+        self.varPortOut = tk.IntVar(value=9000)
+        tk.Label(fr2, text="Port In").grid(row=1, column=3)
+        self.wgt_portIn = tk.Entry(fr2, textvariable=self.varPortIn, width = 8, font=("Courier new", 10))
+        self.wgt_portIn.grid(row=1, column=4)
+        tk.Label(fr2, text="Port Out").grid(row=2, column=3)
+        self.wgt_portOut=tk.Entry(fr2, textvariable=self.varPortOut, width = 8, font=("Courier new", 10))
+        self.wgt_portOut.grid(row=2, column=4)
+        
+        self.btnCnx = tk.Button(fr2, text="Connect", command=self._connect, width = 12)
+        self.btnCnx.grid(row=1, column=5)
+        self.btnDiscnx = tk.Button(fr2, text="Disconnect", command=self._disconnect, width = 12)
+        self.btnDiscnx.grid(row=2, column=5)
+        fr2.pack(side = tk.TOP)
+        
+        #fr2  = tk.LabelFrame(fr, text=  "OSC connection")
+        #fr2.pack(side = tk.TOP)
+
+        fr.pack(side = tk.TOP)
+        
+        # Keyboard
+        fr  = tk.LabelFrame(win)
+        self.kbd = Keyboard(self, fr)
+        fr.pack(side = tk.TOP)
+        
+        self._refState=None
+        self._disconnect()
+        self.refresh()
+        self.start()
+        
+    @staticmethod
+    def build(section, path :[], value):
+        msg1 = section + b"/".join([v.encode("utf-8") for v in path])
+        # complete path
+        msg2 = b"\0" * (4- (len(msg1) % 4))
+        
+        if isinstance(value, int):
+            msg3=b",i\0\0"
+            msg4=value.to_bytes(4, byteorder='big')
+        elif isinstance(value, float):
+            msg3=b",f\0\0"
+            msg4=value.to_bytes(4, byteorder='big')
+        else:
+            msg3=b",\0\0\0"
+            msg4=b""
+
+
+        return msg1+msg2+msg3+msg4
+        
+    def refresh(self):
+        
+        discState=[tk.NORMAL, tk.NORMAL, tk.DISABLED]
+        connState=[tk.DISABLED, tk.DISABLED, tk.NORMAL]
+        statusColor=["#2020C0", "#30A020", "red"]
+        statusName=["Connecting...", "Connected", "Disconnected"]
+        prevState= self._refState
+        if self.connecting:
+            self._refState = 0
+        elif self.connection:
+            self._refState = 1
+        else:
+            self._refState = 2
+         
+        if prevState != self._refState:
+            prevState = self._refState
+            self.btnDiscnx.config(state=discState[prevState])
+            self.btnCnx.config(state=connState[prevState])
+            self.wgt_IP.config(state=connState[prevState])
+            self.wgt_portOut.config(state=connState[prevState])
+            self.wgt_portIn.config(state=connState[prevState])
+            self.wgt_Status.config(fg=statusColor[prevState])
+            self.varStatus.set(statusName[prevState])
+        
+            
+    def _connect(self):
+        self.connecting=(self.varIP.get(), self.varPortIn.get(), self.varPortOut.get())
+        self.refresh()
+        
+    def _disconnect(self):
+        self.toSend=[]
+        self.connecting=None
+        self.connection=None
+        self.refresh()
+        self.kbd.updateFB("")
+    
+    def run(self):
+        sOut=None
+        sIn=None
+        while not self.mgr.quitting:
+            if sIn == None and self.connecting:
+                try:
+                    ip, pIn, pOut = self.connecting
+                    addrIn=("", pOut)
+                    addrOut=(ip,pIn)
+                    sIn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sOut = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sIn.settimeout(0.01)
+                    print("Bind socket on %s:%d"%(addrIn))
+                    sIn.bind(addrIn)
+                except Exception as E:
+                    print (E)
+                    print("Failed to bind socket on %s:%d"%(addrIn))
+                    sIn,sOut = None,None
+                    self.connecting = None
+                    
+            if sOut != None and self.connecting:
+                try:
+                    # print("send '/ping' to %s:%d"%(addrOut))
+                    sOut.sendto(b"/ping", addrOut)
+                except Exception as E:
+                    print (E)
+                    print("Failed to send socket on %s:%d"%(addrOut))
+                
+            if sOut:
+                while self.toSend:
+                    msg=self.toSend.pop(0)
+                    try:
+                        sOut.sendto(msg, addrOut)
+                    except:    
+                        print ("Failed to send msg [%s]", msg)
+                    
+            if sIn != None:
+                while True:
+                    try:
+                        data, address = sIn.recvfrom(4096)
+                    except Exception as E:
+                        break
+                    if data:
+                        if self.connecting:
+                            self.connecting=None
+                            self.connection=(sIn,sOut)
+                        self._onMsgRecv(data)
+                    
+            if sIn != None and not self.connection and not self.connecting:
+                sIn.close()
+                sIn = None
+                sOut.close()
+                sOut=None
+                self._disconnect()
+                print("Close socket")
+                    
+            self.refresh()
+            time.sleep(0.1)
+     
+    def send(self, msg):
+        if self.connection:
+            self.toSend.append(msg)
+            
+    def _onMsgRecv(self,data):
+        current=""
+        path=None
+        params=[]
+        try:
+            for c in data:
+                if c != 0:
+                    current+="%c"%c
+                elif current:
+                    if path == None:
+                        path=current
+                    else:
+                        params.append(current)
+                    current=""
+        except:
+            print ("Decoding failed!")
+            return
+        l=len(params)
+        if params:
+            if params[0] == ",s" and l >= 2:
+                self.mgr.onOSC(path=path, param=str(params[1]))
+        
+    def onOSC(self, path:[], param):
+        if not path : return
+        cmd=path[0]
+        if cmd == 'InputFB':
+            self.kbd.updateFB(param)
+        if cmd == 'Output1':
+            self.kbd.updateOutput(0, param)
+        if cmd == 'Output2':
+            self.kbd.updateOutput(1, param)
+        if cmd == 'Output3':
+            self.kbd.updateOutput(2, param)
+        if cmd == 'Output4':
+            self.kbd.updateOutput(3, param)
+        if cmd == 'Output5':
+            self.kbd.updateOutput(4, param)
         
 class RemoteControl (Thread):
     def __init__(self, mgr, win):
@@ -574,10 +831,10 @@ class _UI():
             fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
             
             #############################
-            # TAB 4 :  Keyboard
-            tab4 = tabs0.addTab('Keyboard')
+            # TAB 4 :  OSC
+            tab4 = tabs0.addTab('OSC')
             fr= tk.Frame(tab4)
-            self.kbd = Keyboard(mgr, fr)
+            self.kbd = OSC(mgr, fr)
             fr.pack(side = tk.TOP, expand = True, fill=tk.BOTH)
             
             
@@ -1038,7 +1295,20 @@ class _Manager:
         if success: self.__currentBackupDone += 1
         self.ui.project.makeInactive("Backup in progress... (%d/%d)"%(
             self.__currentBackupDone, len(self.__currentBackupList)))
-            
+        
+    def onOSC(self, path :str, param):
+        if not path or path[0] != "/":return
+        path=path[1:].split("/")
+        if not path: return
+        if path[0] == "pbkrkbd":
+            self.ui.kbd.onOSC(path[1:],param)
+        elif path[0] == "pbkrctrl":
+            pass
+        elif path[0] == "pbkrmenu":
+            pass
+        else:
+            print ("Received '%s': %s(%s)"%(path,param,type(param)))
+                   
 if __name__ == '__main__':
     mgr = _Manager(sys.argv[:])
     mgr.run()
