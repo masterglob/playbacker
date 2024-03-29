@@ -80,8 +80,20 @@ class WavFileChecker:
                 raise InvalidWavFileFormat("File Header Type")
             cksize -= 4
             
+            # remove optional extensions (JUNK/bext) -used by protools
+            while True:
+                print (f"Reading @{fh.tell():02X}")
+                try:
+                    fmt, fmtSize = struct.unpack('<4sI', fh.read(8))
+                except:
+                    fmt = b""
+                    break
+                fmtSize += (fmtSize % 2)
+                if fmt == b"fmt ": break
+                print(f"Skipping Data section {fmt}")
+                fh.read(fmtSize)
+            
             # fmt Chunk
-            fmt, fmtSize = struct.unpack('<4sI', fh.read(8)) 
             if fmt != b"fmt ":
                 raise InvalidWavFileFormat("FMT")
             
@@ -93,6 +105,8 @@ class WavFileChecker:
             if nChannels < 2 or nChannels > 4:
                 raise InvalidWavFileFormat("nChannels=%d"%nChannels)
             
+            if wBitsPerSample != 16:
+                raise InvalidWavFileFormat("wBitsPerSample=%d (exp 16)"%wBitsPerSample)
             if fmtSize > 16:
                 if fmtSize < 18:
                     raise InvalidWavFileFormat("fmtSize=%s"%fmtSize)
