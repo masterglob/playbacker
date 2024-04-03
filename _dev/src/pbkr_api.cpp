@@ -384,10 +384,26 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                     fileManager.stopReading();
                     return;
                 case PAD_PREV:
-                    fileManager.backward();
+                    if (globalMenu.isPlayMenuShown())
+                    {
+                        if (DISPLAY::DisplayManager::instance().isPlaying())
+                            fileManager.backward();
+                        else
+                            fileManager.prevTrack();
+                    }
+                    else
+                        MainMenu::instance().pressKey(MainMenu::KEY_LEFT);
                     return;
                 case PAD_NEXT:
-                    fileManager.fastForward();
+                    if (globalMenu.isPlayMenuShown())
+                    {
+                        if (DISPLAY::DisplayManager::instance().isPlaying())
+                            fileManager.fastForward();
+                        else
+                            fileManager.nextTrack();
+                    }
+                    else
+                        MainMenu::instance().pressKey(MainMenu::KEY_RIGHT);
                     return;
                 default:
                     return;

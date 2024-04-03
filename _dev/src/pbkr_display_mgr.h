@@ -69,6 +69,7 @@ public:
     uint32_t printIdx(void)const{return m_printIdx;}
     void updateProjectList(void);
     void updateMenu(void);
+    bool isPlaying(void)const{return m_reading;}
 private:
     DisplayManager(void);
     virtual ~DisplayManager(void);
