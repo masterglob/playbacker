@@ -316,6 +316,7 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
             if (cmd == CMD_NOTE && b2 == 0) return;
             if (cmd == CMD_NOTE && b2 != 0)
             {
+                uint8_t btn(255);
                 // Pads
                 static const int nbPads(12);
                 const uint8_t padId[nbPads]={0x27,0x30,0x2D,0x2B,0x33,0x31,0x24,0x26,0x28,0x2A,0x2C,0x2E};
@@ -323,9 +324,23 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                 {
                     if (padId[i] == b1)
                     {
-                        fileManager.selectIndex (i + 1);
-                        return;
+                        btn = i;
+                        break;
                     }
+                }
+                if (btn != 255)
+                {
+                    static int tens(0);
+                    if (btn >= 10)
+                    {
+                        tens = btn - 9;
+                    }
+                    else
+                    {
+                        fileManager.selectIndex (btn + 1 + 10 * tens);
+                        tens = 0;
+                    }
+                    return;
                 }
 
                 // Bottom Controls (Notes)
