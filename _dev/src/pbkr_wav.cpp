@@ -70,8 +70,25 @@ WavFile::WavFile (const std::string& filename):
     CHECK_FIELD("Bad file size", mWavHdr.FileSize + 8, mLen);
 
     // CHECK AUDIO HEADER
-    fread(mIf, (char*)&mAudioHdr, sizeof(mAudioHdr));
-    CHECK_FIELD("File truncated2", mIf.gcount(), sizeof(mAudioHdr));
+    do
+    {
+        fread(mIf, (char*)&mAudioHdr, sizeof(mAudioHdr));
+        CHECK_FIELD("File truncated2", mIf.gcount(), sizeof(mAudioHdr));
+        if (mAudioHdr.ckID != WAV_HDR_FMT)
+        {
+            printf("Found unknown header '%.4s' at pos #%08X (%u bytes)\n",
+                    reinterpret_cast<const char*>(&mAudioHdr.ckID),
+                    static_cast<int>(mIf.tellg())-sizeof(mAudioHdr),
+                    mAudioHdr.cksize);
+            // Try to remove unknown headers
+            // Any header is always composed of a 4bytes identifier then a 4 bytes value (len)
+            // followed by 'len' bytes
+
+            // just skip remaining header
+            int toSkip(mAudioHdr.cksize + 8- sizeof(mAudioHdr));
+            mIf.seekg(toSkip, ios_base::cur);
+        }
+    } while (mAudioHdr.ckID != WAV_HDR_FMT);
     CHECK_FIELD("FMT type", mAudioHdr.ckID, WAV_HDR_FMT);
     CHECK_FIELD("cksize >= 16", mAudioHdr.cksize >= 16, true);
     const int addParams (mAudioHdr.cksize - 16);
