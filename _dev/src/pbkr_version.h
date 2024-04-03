@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.2"
+#define PBKR_VERSION "2.0.3"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -19,6 +19,12 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.2:
    - Add "/pbkrctrl/nTrack" on OSC
    - Add individual volume level for each song (Clic & Pb)
+ New in V2.0.3:
+   - Give more options to Tinypas (Menu/prev/next..)
+   - Add Python manager!
+   - Support PROTOOLS files
+   - Initiate "MIDI learn" feature (Not completed yet)
+   - General improvements for OSC & MIDI
 
  Known bugs:
    - Default MIDI volume is not applied until it is manually changed
