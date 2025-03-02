@@ -851,6 +851,7 @@ class _UI():
         fr.pack(side = tk.TOP, expand = False, fill = tk.X)
         
     def __cbConn(self):
+        if not self.__param_RemoteIp.get(): return
         self.mgr.ssh.connect(self.__param_RemoteIp.get(), 
                                 self.__param_RemotePort.get(), 
                                 self.__param_targetUserName.get(),
@@ -1310,6 +1311,12 @@ class _Manager:
             print ("Received '%s': %s(%s)"%(path,param,type(param)))
                    
 if __name__ == '__main__':
-    mgr = _Manager(sys.argv[:])
-    mgr.run()
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    os.chdir(dir_path)
+    try:
+        mgr = _Manager(sys.argv[:])
+        mgr.run()
+    except Exception as E:
+        print(f"Error {E}")
+        input()
     DEBUG("Program exited")

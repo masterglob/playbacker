@@ -1,12 +1,15 @@
 #/bin/python3
 import threading, time
 import cmd
+import sys
 
 try:
     import paramiko
 except Exception as e:
-    print("You need PARAMIKO to run this program")
+    print("You need PARAMIKO to run this program.")
+    print("You may install it with 'pip3 install paramiko'")
     print(e)
+    input()
     sys.exit(1)
 
 def DEBUG(x):
