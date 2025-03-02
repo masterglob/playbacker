@@ -727,7 +727,7 @@ class SSHFilePropReader(SSHCommander):
 class _UI():
     def __init__(self, mgr, win, params):
         self.win = win
-        self.mgr = mgr
+        self.mgr : _Manager = mgr
             
         ##################
         # Target selection
@@ -790,9 +790,14 @@ class _UI():
 
             tk.Label(fr, text=" ").pack(side = tk.LEFT)
             
-            w = tk.Button(fr,text="Create", command = self.mgr.createNewProject , width = 10)
+            w = tk.Button(fr,text="Create", command = self.mgr.createNewProject , width = 8)
             w.pack(side = tk.LEFT, expand = False)
             self.__btnDebug = w  
+            
+            tk.Label(fr, text=" ").pack(side = tk.LEFT)
+            w = tk.Button(fr,text="Rename", command = self.mgr.renameProject , width = 8)
+            w.pack(side = tk.LEFT, expand = False)
+            self.__btnRenameProj = w  
             
             tk.Label(fr, text=" ").pack(side = tk.LEFT)
                       
@@ -864,7 +869,7 @@ class _UI():
     def setStatus(self, msg):
         if msg:
             self.statusBar.set(msg)
-        connectedButtons=[self.__btnDisconnect, self.__btnGetList, self.__btnDebug]
+        connectedButtons=[self.__btnDisconnect, self.__btnGetList, self.__btnDebug, self.__btnRenameProj]
         disconnectedButtons=[self.__btnConnect, self.__entryIp, self.__entryPort, 
                              self.__entryUserName, self.__entryPassword]
         connectingButtons=[]
@@ -1163,6 +1168,31 @@ class _Manager:
                      lambda result, self=self : self.getProjList() )
         
     # WIP
+        
+    def renameProject(self):
+        
+        currProj = self.currentProjectName()
+        if not self._isConnected or not currProj: return
+        
+        name = askstring(parent = self.win,
+                          title = f"Rename project '{currProj}'",
+                          prompt =f" 'Enter new project name for '{currProj}'",
+                          initialvalue = currProj).strip()
+                          
+        if not name: return
+        
+        # Ensure projet does not already exist!
+        if name in self._projList:
+            messagebox.showerror("Bad project name", "A project with that name already exists")
+            return
+        
+        DEBUG (f"Renaming project {currProj} to '{name}'")
+        
+        initName = target_path_join(TARGET_PROJECTS, currProj)
+        fullname = target_path_join(TARGET_PROJECTS, name)
+        SSHCommander(self.ssh, f"mv {initName} {fullname}", 
+                     lambda result, self=self : self.getProjList() )
+        
         
     def currentProjectName(self):return self._currProject
     
