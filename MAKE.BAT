@@ -1,4 +1,5 @@
-@cd C:\Users\MAO\Documents\Arduino\Rasberry\PROJECTS\playbacker
+cd "%~dp0"
+
 @cd _dev
 @set /p BUILD=<build_id
 @set /a BUILD=%BUILD%+1

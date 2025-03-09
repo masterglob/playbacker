@@ -1,6 +1,8 @@
+cd "%~dp0"
+
 @set IP=192.168.7.80
 @set USER=tc
-@set PPK=C:\Users\MAO\.ssh\id_rsa.ppk
+@set PPK=.ssh\id_rsa.ppk
 
 @set PUTTYPATH="C:\Program Files\PuTTY"
 
