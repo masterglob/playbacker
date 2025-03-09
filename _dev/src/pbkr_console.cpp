@@ -10,6 +10,7 @@
 #include "pbkr_projects.h"
 #include "pbkr_midi.h"
 #include "pbkr_menu.h"
+#include "pbkr_version.h"
 
 using namespace std;
 
@@ -64,6 +65,9 @@ Console::body(void)
                 doExit();
                 break;
                 // Sine on/off
+            case '?': // Show version
+                printf("Version " PBKR_VERSION " b%d\n", PBKR_BUILD_ID);
+			break;
             case 's':doSine = not doSine;
             break;
             case '+':
