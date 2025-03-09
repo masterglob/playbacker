@@ -303,20 +303,23 @@ void DisplayManager:: updateProjectList(void)
 
 
 /*******************************************************************************/
-void DisplayManager::forceRefresh(void)
+void DisplayManager::forceRefresh(bool full)
 {
     m_title.refresh();
     m_lTrack.set(m_filename);
-    updateProjectList();
 
     onEvent(evRefresh);
-    FOR (iter, m_trackName){
-        Property& p(*iter);
-        p.refresh();
-    }
-    FOR (iter, m_projectNames){
-        Property& p(*iter);
-        p.refresh();
+
+    if (full) {
+        updateProjectList();
+        FOR (iter, m_trackName){
+            Property& p(*iter);
+            p.refresh();
+        }
+        FOR (iter, m_projectNames){
+            Property& p(*iter);
+            p.refresh();
+        }
     }
 
     if (OSC::p_osc_instance)
@@ -442,6 +445,8 @@ void DisplayManager::onEvent (const Event e, const std::string& param)
         m_lTrack.set(m_filename);
         break;
     case evRefresh:
+        if (OSC::p_osc_instance)
+            OSC::p_osc_instance->setActiveTrack(atoi (m_trackIdx.get().c_str())-1);
         break;
     default:
         break;

@@ -269,6 +269,10 @@ void forceRefresh    (void)
     DISPLAY::DisplayManager::instance().forceRefresh();
     if (OSC::p_osc_instance) OSC::p_osc_instance->updateProjectList();
 }
+void forceRefreshLight  (void)
+{
+    DISPLAY::DisplayManager::instance().forceRefresh(false);
+}
 
 /*******************************************************************************
  * MIDI

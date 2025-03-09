@@ -113,7 +113,8 @@ OSC_Msg_Hdr::~OSC_Msg_Hdr(void)
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const OSC_Msg_To_Send& ref)
 :
-        OSC_Msg_Hdr(std::string (ref.m_name), ref.m_type, ref.m_valLen)
+        OSC_Msg_Hdr(std::string (ref.m_name), ref.m_type, ref.m_valLen),
+        asStr(ref.asStr)
 {
     memcpy (m_value, ref.m_value, m_valLen);
 } // copy constructor
@@ -121,14 +122,16 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const OSC_Msg_To_Send& ref)
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name)
 :
-        OSC_Msg_Hdr(name, osc_noType, 0)
+        OSC_Msg_Hdr(name, osc_noType, 0),
+        asStr("<VOID>")
 {
 } // empty constructor
 
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const std::string& strVal)
 :
-        OSC_Msg_Hdr(name, osc_stringType, oscLen(strVal))
+        OSC_Msg_Hdr(name, osc_stringType, oscLen(strVal)),
+        asStr(strVal)
 {
     strcpy((char*)m_value, strVal.c_str());
 } // string constructor
@@ -136,7 +139,8 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const std::string& strV
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const float fltVal)
 :
-        OSC_Msg_Hdr(name, osc_floatType, sizeof(float))
+        OSC_Msg_Hdr(name, osc_floatType, sizeof(float)),
+        asStr(std::to_string(fltVal))
 {
     uint32_t& le=*((uint32_t *)&fltVal);  // hold "native" value
     uint32_t& be=*((uint32_t *)m_value);  // hold "big-endian" value
@@ -146,7 +150,8 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const float fltVal)
 /*******************************************************************************/
 OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
 :
-        OSC_Msg_Hdr(name, osc_intType, sizeof(uint32_t))
+        OSC_Msg_Hdr(name, osc_intType, sizeof(uint32_t)),
+        asStr(std::to_string(i32Val))
 {
     uint32_t& le=*((uint32_t *)&i32Val);  // hold "native" value
     uint32_t& be=*((uint32_t *)m_value);  // hold "big-endian" value
@@ -162,7 +167,8 @@ OSC_Msg_To_Send::OSC_Msg_To_Send(const std::string& name,const int32_t i32Val)
 OSC_Controller::OSC_Controller(const OSC_Ctrl_Cfg& cfg):
         Thread("OSC_Controller"),
         m_cfg(cfg),
-        m_isClientKnown(false)
+        m_isClientKnown(false),
+        mActiveTrack(-1)
 {
 
     setLowPriority();
@@ -327,6 +333,12 @@ void OSC_Controller::setTrackName (const std::string& name, size_t trackIdx)
 }
 
 /*******************************************************************************/
+void OSC_Controller::refeshActiveTrack (void)
+{
+    setActiveTrack(mActiveTrack);
+}
+
+/*******************************************************************************/
 void OSC_Controller::setActiveTrack (int trackIdx)
 {
     if (trackIdx >=0)
@@ -339,6 +351,7 @@ void OSC_Controller::setActiveTrack (int trackIdx)
         sprintf(buff,"/%s/nTrack",OSC_PAGE);
         send (OSC_Msg_To_Send (buff, (int32_t) trackIdx));
     }
+    mActiveTrack = trackIdx;
 }
 
 /*******************************************************************************/
@@ -374,7 +387,7 @@ void OSC_Controller::send(const OSC_Msg_To_Send& msg)
         {
             printf("%02X ",((unsigned char*) msg.m_data)[i]);
         }
-        printf("] => %s\n",msg.m_name);
+        printf("] => %s = '%s'\n",msg.m_name, msg.asStr.c_str());
 #endif
     }
 }
@@ -482,7 +495,6 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
 #if DO_DEBUG_IN
         printf("OSC received <%s> type <%s>:",
                 name.c_str(), type.c_str());
-        printf("[");
         for (size_t i(0); i < len ; i++) printf("%02X ",((const uint8_t*)buff)[i]);
         printf("]\n");
 #endif
@@ -499,6 +511,14 @@ void OSC_Controller::processMsg(const void* buff, const size_t len)
         static const OSC::OSC_Msg_To_Send pingMsg("/ping");
         send(pingMsg);
         API::forceRefresh();
+        return;
+    }
+
+    if (cmd1 == "pingL") // light ping
+    {
+        static const OSC::OSC_Msg_To_Send pingMsg("/ping");
+        send(pingMsg);
+        API::forceRefreshLight();
         return;
     }
 

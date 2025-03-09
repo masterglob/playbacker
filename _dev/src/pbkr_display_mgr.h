@@ -65,7 +65,7 @@ public:
     void setProjectTitle (const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
     void setTimeCode(const string & timecode);
-    void forceRefresh(void);
+    void forceRefresh(bool full=true);
     uint32_t printIdx(void)const{return m_printIdx;}
     void updateProjectList(void);
     void updateMenu(void);

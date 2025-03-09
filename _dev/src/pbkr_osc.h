@@ -67,6 +67,7 @@ struct OSC_Msg_To_Send : public OSC_Msg_Hdr
     OSC_Msg_To_Send(const std::string& name,const int32_t i32Val);
     size_t len(void)const{return m_len;}
     const void* data(void)const{return m_data;}
+    const std::string asStr;
 };
 typedef std::vector<OSC_Msg_To_Send,std::allocator<OSC_Msg_To_Send>> OSC_Msg_To_Send_Vect;
 
@@ -84,6 +85,7 @@ public:
     void setProjectName(const std::string& title);
     void setTrackName (const std::string& name, size_t trackIdx);
     void setActiveTrack (int trackIdx);
+    void refeshActiveTrack (void);
     void setPbCtrlStatus(const bool isPlaying, const bool isPaused);
     void setClicVolume  (const float& v);
     void setMenuTxt  (const std::string& l1,const std::string& l2);
@@ -110,6 +112,7 @@ private:
     bool  m_isClientKnown;
     OSC_Msg_To_Send_Vect m_toSend;
     string mKbdFeedBack[NB_KBD_FEEDBACK_LINES];
+    int mActiveTrack;
 }; // class OSC_Controller
 extern OSC_Controller* p_osc_instance;
 

@@ -49,6 +49,7 @@ void onBackward     (void);
 void onFastForward     (void);
 void onChangeTrack  (const uint32_t idx);
 void forceRefresh    (void);
+void forceRefreshLight    (void);
 } // namespace API
 
 } // namespace PBKR
