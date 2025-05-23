@@ -6,9 +6,11 @@ import sys
 try:
     import paramiko
 except Exception as e:
-    print("You need PARAMIKO to run this program.")
-    print("You may install it with 'pip3 install paramiko'")
+    print("""You need PARAMIKO to run this program. You may install it with:
+ pip3 install paramiko (with internet)
+ pip3 install wheels/paramiko-3.5.1-py3-none-any.whl""")
     print(e)
+    print(sys.version)
     input()
     sys.exit(1)
 
