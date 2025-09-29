@@ -22,4 +22,4 @@ How to use:
 - Sender listens to GPIO5 and sends the GPIO status to Receiver using ESPNow
 - Receiver listens on ESPNow and updates its own GPIO5 as output accordingly
 - Both Sender and receiver also update LED2 (internal built-in led) accordingly input status.
-- Note: Sender GPIO5 is connected (+R 10kOhm) on RPI 'GPIO_13_PIN33' (Visual Red Led for CLic feedback)
+- Note: Sender GPIO5 is connected (+R 10kOhm) on RPI 'GPIO_13_PIN33' (Visual Red Led for CLic feedback). This is a Blue wire.
