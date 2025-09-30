@@ -80,15 +80,17 @@ try:
             print("Failed to add peer:", err)
             raise
 
-        def gpio5_irq(pin, e=e):
+        pin2 = Pin(2, Pin.OUT)
+        def gpio16_irq(pin, e=e, pin2=pin2):
             p = pin.value()
-            pin2 = Pin(2, Pin.OUT)
-            pin2.value(p)
+            
             print("[{} ms] GPIO5 : {}".format(time.ticks_ms(), p))
             if p:
                 msg = b"\xEF\xDC\x01"
+                pin2.value(1)
             else:
                 msg = b"\xEF\xDC\x00"
+                pin2.value(0)
             # Send the message without acknowledgment
             try:
                 if not e.send(receiver_mac, msg, False):
@@ -98,8 +100,8 @@ try:
             
         pin23 = Pin(23, Pin.OUT)
         pin23.value(1)
-        pin5 = Pin(5, Pin.IN, Pin.PULL_DOWN)
-        pin5.irq(trigger=Pin.IRQ_RISING|Pin.IRQ_FALLING, handler=gpio5_irq)
+        pin16 = Pin(16, Pin.IN, Pin.PULL_DOWN)
+        pin16.irq(trigger=Pin.IRQ_RISING|Pin.IRQ_FALLING, handler=gpio16_irq)
 
     else:
         print("Device is not recognized as Sender nor Receiver")     
