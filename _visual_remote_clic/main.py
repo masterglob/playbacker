@@ -1,41 +1,68 @@
 import network
-import espnow
 import time
 import ubinascii
+import machine
 from machine import Pin
 
-def macToString(mac):
-    return ubinascii.hexlify(mac, ':').decode().upper()
+INTERNAL_LED=2
+FLASH_LED=4
 
-receiver_mac = b'\x8C\xAA\xB5\x84\xDD\x74'
-sender_mac = b'\xA8\x42\xe3\xc9\xe5\x4C'  # Sender MAC
+# Error codes:
+EC_MAC_FAILED = 3
+EC_UNKNOWN_ROLE = 4
+EC_RCV_EXCPT = 5
 
+#receiver_mac = b'\x8C\xAA\xB5\x84\xDD\x74'
+# sender_mac = b'\xA8\x42\xe3\xc9\xe5\x4C'  # Sender MAC
+
+# receiver_mac = '8CAAB584DAA8'
+receiver_mac = '8CAAB584DD74'
+sender_mac = 'A842E3C9E54C'
+
+def nbLedFlash(n, leds):
+    for _ in range(n):
+        for led in leds:led.value(1)
+        time.sleep(1)
+        for led in leds:led.value(0)
+        time.sleep(0.1)
     
 try:
-    #receiver_mac = b'\xff\xff\xff\xff\xff\xff' #broadcast
+    print("Starting SW in 1 s")
+    time.sleep(1)
+    print("Starting SW")
 
-    # Initialize Wi-Fi in station mode
-    sta = network.WLAN(network.STA_IF)
-    sta.active(True)
-    # Adresse MAC brute (type bytes)
-    mac = sta.config('mac')
+    mac = ubinascii.hexlify(network.WLAN().config('mac')).decode().upper() 
+    print("Adresse MAC :", (mac))
 
-    print("Adresse MAC :", macToString(mac))
-
-    #sta.config(channel=1)  # Set channel explicitly if packets are not delivered
-    sta.disconnect()
+except :
+    led = Pin(INTERNAL_LED, Pin.OUT)
+    nbLedFlash(EC_MAC_FAILED, led)
+    time.sleep(5)
+    machine.reset()
     
+try:
+    import espnow
     # Initialize ESP-NOW
     e = espnow.ESPNow()
     try:
         e.active(True)
     except OSError as err:
-        print("Failed to initialize ESP-NOW:", err)
-        raise
+        ledOUT = Pin(INTERNAL_LED, Pin.OUT)
+        ledOUT.value(1)
+        raise Exception(f"Failed to initialize ESP-NOW:{err}")
     
     if mac == receiver_mac:
+        print("Init Seq")
+        leds = [Pin(INTERNAL_LED, Pin.OUT), Pin(FLASH_LED, Pin.OUT)]
+        
+        for i in range(10):
+            for led in leds: led.value(1)
+            time.sleep(0.1)
+            for led in leds: led.value(0)
+            time.sleep(0.05)
+            
+    
         print("Device is Receiver")
-        leds = [Pin(2, Pin.OUT), Pin(5, Pin.OUT)]
         def proc_rcv(msg, leds=leds):
             try:
                 # Vérifie que le message est bien au format attendu
@@ -50,7 +77,9 @@ try:
                 else:
                     print("Message inattendu :", msg)
             except Exception as e:
-                print("Erreur dans proc_rcv:", e)
+                nbLedFlash(EC_RCV_EXCPT, leds)
+                time.sleep(5)
+                machine.reset()
                 
         while True:
             try:
@@ -66,7 +95,6 @@ try:
             except KeyboardInterrupt:
                 print("Stopping receiver...")
                 e.active(False)
-                sta.active(False)
                 break
 
         
@@ -80,11 +108,10 @@ try:
             print("Failed to add peer:", err)
             raise
 
-        pin2 = Pin(2, Pin.OUT)
+        pin2 = Pin(INTERNAL_LED, Pin.OUT)
         def gpio16_irq(pin, e=e, pin2=pin2):
             p = pin.value()
-            
-            print("[{} ms] GPIO5 : {}".format(time.ticks_ms(), p))
+            print("[{} ms] GPIO16 : {}".format(time.ticks_ms(), p))
             if p:
                 msg = b"\xEF\xDC\x01"
                 pin2.value(1)
@@ -104,13 +131,26 @@ try:
         pin16.irq(trigger=Pin.IRQ_RISING|Pin.IRQ_FALLING, handler=gpio16_irq)
 
     else:
-        print("Device is not recognized as Sender nor Receiver")     
-    
+        print("Device is not recognized as Sender nor Receiver")
+        led = Pin(INTERNAL_LED, Pin.OUT)
+        nbLedFlash(EC_UNKNOWN_ROLE, [led])
+        time.sleep(5)
+        machine.reset()
+        
         
     while True:
         time.sleep(1)
-    
+
+except KeyboardInterrupt:
+    # Permet à Thonny de stopper le script avec CTRL+C
+    print("CTRL+C")
+    raise
+
 except Exception as e:
-    print("Error", e)
+    print (f"Exception:{e}")
+    time.sleep(5)
+
+
+
 
 
