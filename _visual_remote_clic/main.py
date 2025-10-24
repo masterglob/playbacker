@@ -4,6 +4,7 @@ import ubinascii
 import machine
 from machine import Pin
 
+RCV_TIMEOUT = 120
 INTERNAL_LED=2
 FLASH_LED=4
 
@@ -26,20 +27,21 @@ def nbLedFlash(n, leds):
         for led in leds:led.value(0)
         time.sleep(0.1)
     
+led = Pin(INTERNAL_LED, Pin.OUT)
 try:
-    print("Starting SW in 1 s")
-    time.sleep(1)
     print("Starting SW")
 
     mac = ubinascii.hexlify(network.WLAN().config('mac')).decode().upper() 
     print("Adresse MAC :", (mac))
 
-except :
-    led = Pin(INTERNAL_LED, Pin.OUT)
-    nbLedFlash(EC_MAC_FAILED, led)
+except Exception as E:
+    print(E)
+    nbLedFlash(EC_MAC_FAILED, [led])
     time.sleep(5)
     machine.reset()
     
+led.value(1)
+
 try:
     import espnow
     # Initialize ESP-NOW
@@ -61,9 +63,13 @@ try:
             for led in leds: led.value(0)
             time.sleep(0.05)
             
+        for led in leds: led.value(1)
     
         print("Device is Receiver")
+        lastRcv=time.time()
         def proc_rcv(msg, leds=leds):
+            global lastRcv
+            lastRcv=time.time()
             try:
                 # Vérifie que le message est bien au format attendu
                 if len(msg) == 3 and msg[0] == 0xEF and msg[1] == 0xDC:
@@ -87,6 +93,10 @@ try:
                 host, msg = e.recv(100)
                 if msg:
                     proc_rcv(msg)
+                if time.time() - lastRcv > RCV_TIMEOUT:
+                    print("RcvTimeout")
+                    lastRcv=time.time()
+                    for led in leds: led.value(1)
                 
             except OSError as err:
                 print("Error:", err)
