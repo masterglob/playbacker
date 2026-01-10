@@ -1,10 +1,11 @@
+import sys
 import network
 import time
 import ubinascii
 import machine
 from machine import Pin
 
-RCV_TIMEOUT = 120
+RCV_TIMEOUT = 10
 INTERNAL_LED=2
 FLASH_LED=4
 
@@ -19,6 +20,15 @@ EC_RCV_EXCPT = 5
 # receiver_mac = '8CAAB584DAA8'
 receiver_mac = '8CAAB584DD74'
 sender_mac = 'A842E3C9E54C'
+
+def mac_str_to_bytes(mac_str):
+    """
+    Convertit '8CAAB584DD74' ou '8C:AA:B5:84:DD:74' en bytes
+    """
+    mac_str = mac_str.replace(":", "").replace("-", "")
+    if len(mac_str) != 12:
+        raise ValueError("MAC invalide")
+    return bytes(int(mac_str[i:i+2], 16) for i in range(0, 12, 2))
 
 def nbLedFlash(n, leds):
     for _ in range(n):
@@ -44,6 +54,10 @@ led.value(1)
 
 try:
     import espnow
+    sta = network.WLAN(network.STA_IF)
+    sta.active(True)
+
+    sta.disconnect()
     # Initialize ESP-NOW
     e = espnow.ESPNow()
     try:
@@ -65,7 +79,7 @@ try:
             
         for led in leds: led.value(1)
     
-        print("Device is Receiver")
+        print(f"Device is Receiver ({receiver_mac}), Expected sender is {sender_mac}")
         lastRcv=time.time()
         def proc_rcv(msg, leds=leds):
             global lastRcv
@@ -111,10 +125,11 @@ try:
         
     elif mac == sender_mac:
         print("Device is Sender")
+        print(f"Device is Sender ({sender_mac}), Expected Receiver is {receiver_mac}")
         # Add peer
         try:
-            e.add_peer(receiver_mac)
-        except OSError as err:
+            e.add_peer(mac_str_to_bytes(receiver_mac))
+        except Exception as err:
             print("Failed to add peer:", err)
             raise
 
@@ -130,10 +145,10 @@ try:
                 pin2.value(0)
             # Send the message without acknowledgment
             try:
-                if not e.send(receiver_mac, msg, False):
-                    print("Failed to send message (send returned False)")
-            except OSError as err:
-                print(f"Failed to send message (OSError: {err})")
+                if not e.send(mac_str_to_bytes(receiver_mac), msg, False):
+                    print(f"Failed to send message to {receiver_mac} (send returned False)")
+            except Exception as err:
+                print(f"Failed to send message to {receiver_mac} (OSError: {err})")
             
         pin23 = Pin(23, Pin.OUT)
         pin23.value(1)
@@ -150,6 +165,8 @@ try:
         
     while True:
         time.sleep(1)
+        # resent last value
+        gpio16_irq(pin2)
 
 except KeyboardInterrupt:
     # Permet à Thonny de stopper le script avec CTRL+C
@@ -158,7 +175,9 @@ except KeyboardInterrupt:
 
 except Exception as e:
     print (f"Exception:{e}")
+    sys.print_exception(e)
     time.sleep(5)
+
 
 
 

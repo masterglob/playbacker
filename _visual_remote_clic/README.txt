@@ -6,7 +6,9 @@ Receiver:
 - Any ESP32-wroom based (D1 Mini will work)
 
 Install (both cards have the same procedure, the MAC address will trigger expected function)
-- Install micropython for ESP32 WROOM Generic (flash 'ESP32_GENERIC-20250911-v1.26.1.bin' using ESPTOOL with python)
+- Install micropython for ESP32 WROOM Generic (flash 'ESP32_GENERIC-20250911-v1.26.1.bin' using ESPTOOL with python):
+  * python3 -m esptool --chip esp32 --port COM7 erase_flash
+  * python3 -m esptool --chip esp32 --port COM7 --baud 460800 write_flash -z 0x1000 ESP32_GENERIC-20250911-v1.26.1.bin
 - Use Thonny (for example):
   * Connect to COM device.
   * Create file "main.py" (on remote) and paste the content of main.py in this folder. This file will be automatically executed on power UP.
