@@ -11,13 +11,10 @@ gethw()
   aplay -l|grep "^card .*$DEV.*device"|sed 's/^card *\([0-9]*\):.*device *\([0-9]\).*$/hw:\1,\2/'
 }
 
-I2S_DEV=$(gethw "sndrpihifiberry" )
-HDMI_DEV=$(gethw "bcm2835 HDMI 1")
-HDPH_DEV=$(gethw "Headphones")
- 
-echo "I2S_DEV='$I2S_DEV'"
-echo "HDMI_DEV='$HDMI_DEV'"
-echo "HDPH_DEV='$HDPH_DEV'"
+
+I2S_DEV="hw:CARD=sndrpihifiberry"
+HDPH_DEV="hw:CARD=Headphones"
+HDMI_DEV="hw:CARD=vc4hdmi"
 for i in $( ps |grep pbkr |awk '{print $1;}'); do
 kill $i 2>/dev/null
 done

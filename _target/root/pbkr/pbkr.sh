@@ -1,12 +1,5 @@
 cd /root/pbkr
 
-gethw()
-{
-  DEV=$1
-  #aplay -l|grep "device 0"|grep "$NAME"|sed "s/card \([0-9]*\).*$/hw:\1/"
-  aplay -l|grep "^card .*$DEV.*device"|sed 's/^card *\([0-9]*\):.*device *\([0-9]\).*$/hw:\1,\2/'
-}
-
 while true ; do
     LAN_OK=false
     ifconfig wlan0 2>/dev/null >/dev/null && LAN_OK=true
@@ -29,9 +22,9 @@ while true ; do
        echo "I2S card OK"
     fi
 
-	I2S_DEV=$(gethw "sndrpihifiberry" "")
-	HDMI_DEV=$(gethw "bcm2835 HDMI 1")
-	HDPH_DEV=$(gethw "Headphones")
+   I2S_DEV="hw:CARD=sndrpihifiberry"
+   HDPH_DEV="hw:CARD=Headphones"
+	HDMI_DEV="hw:CARD=vc4hdmi"
     echo "Starting PBKR '$I2S_DEV' '$HDMI_DEV' '$HDPH_DEV'" |tee /dev/kmsg
     ./pbkr "$I2S_DEV" "$HDMI_DEV" "$HDPH_DEV"
     echo "PBKR stopped unexpectedly" |tee /dev/kmsg
