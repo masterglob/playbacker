@@ -13,5 +13,5 @@ pause
 set MKTRGT=%1
 
 @echo Compiling
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make %MKTRGT% -C %TARGET_PATH%" BUILD_ID=%Build%
+%PUTTYPATH%\plink -batch -i %PPK%  %USER%@%IP% "make %MKTRGT% -C %TARGET_PATH%" BUILD_ID=%Build%
 :: %PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "sudo cp %TARGET_PATH%/out/pbkr /root/pbkr"

@@ -10,7 +10,7 @@ cd "%~dp0"
 
 
 ::@%PUTTYPATH%\pscp
-%PUTTYPATH%\pscp -i %PPK% -r src/ %USER%@%IP%:/home/tc/_dev/src
+%PUTTYPATH%\pscp -batch -i %PPK% -r src/ %USER%@%IP%:/home/tc/_dev/src
 
 @echo Compiling
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "make -C %TARGET_PATH% clean all"
+%PUTTYPATH%\plink -batch -i %PPK%  %USER%@%IP% "make -C %TARGET_PATH% clean all"

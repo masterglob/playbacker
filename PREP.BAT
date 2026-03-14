@@ -7,5 +7,5 @@ cd "%~dp0"
 @set PUTTYPATH="C:\Program Files\PuTTY"
 
 @echo Compiling
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "tce-load -i gcc gdb make compiletc wiringpi-dev libasound-dev samba4"
-%PUTTYPATH%\plink -i %PPK%  %USER%@%IP% "sudo /usr/local/sbin/smbd -D || true"
+%PUTTYPATH%\plink -batch -i %PPK%  %USER%@%IP% "tce-load -i gcc gdb make compiletc wiringpi-dev libasound-dev samba4"
+%PUTTYPATH%\plink -batch -i %PPK%  %USER%@%IP% "sudo /usr/local/sbin/smbd -D || true"

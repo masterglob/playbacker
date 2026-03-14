@@ -12,4 +12,4 @@ cd "%~dp0"
 
 
 ::@%PUTTYPATH%\pscp
-%PUTTYPATH%\pscp -i %PPK% -r _dev/ %USER%@%IP%:%TARGET_PATH%
+%PUTTYPATH%\pscp -batch -i %PPK% -r _dev/ %USER%@%IP%:%TARGET_PATH%
