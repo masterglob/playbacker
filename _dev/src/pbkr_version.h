@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.4"
+#define PBKR_VERSION "2.0.5"
 extern const int PBKR_BUILD_ID;
 
 /*
