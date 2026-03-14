@@ -25,13 +25,17 @@ extern const int PBKR_BUILD_ID;
    - Support PROTOOLS files
    - Initiate "MIDI learn" feature (Not completed yet)
    - General improvements for OSC & MIDI
+ New in V2.0.4:
+   - Minor fixes
+ New in V2.0.5:
+   - Fixup issues in Sound card switching.
+   - Add a "visual click" using a ESP32 in "EspNow" mode
 
  Known bugs:
    - Default MIDI volume is not applied until it is manually changed
  TODO:
    - handle multiple OSC clients (change to Multicast or ahndle a list of connected clients)
    - Manage volume & clicVolume (See main_pkbr.cpp)
-   - Auto-identify HW ? (currently set by caller script in argv[])
 
  */
 

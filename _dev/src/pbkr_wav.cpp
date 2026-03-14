@@ -202,6 +202,7 @@ WavFileLRC::WavFileLRC (const std::string& path, const std::string& filename):
 WavFileLRC::~WavFileLRC (void)
 {
     if (_eof) delete(_eof);
+    if (_bof) delete (_bof);
 }
 
 /*******************************************************************************/

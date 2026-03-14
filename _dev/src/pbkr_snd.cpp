@@ -13,6 +13,7 @@
 #include <alsa/asoundlib.h>
 #include <alloca.h>
 
+#include "pbkr_display_mgr.h"
 
 #define DEBUG_SND printf
 // #define DEBUG_SND(...)
@@ -52,6 +53,7 @@ SoundPlayer::SoundPlayer(const char * device_name):
     mSampleRate = DEFAULT_FREQUENCY_HZ;
 
 	setup();
+    assert(pcm_handle);
 	_samples =  (StereoSample *)malloc(SND_BUFFER_SIZE);
 	_sampleFill = _samples;
 	_sampleToFill = 0;
@@ -61,6 +63,8 @@ SoundPlayer::SoundPlayer(const char * device_name):
 SoundPlayer::~SoundPlayer(void)
 {
     clear();
+    snd_pcm_close(pcm_handle);
+    
 
 	/* Stop PCM device after pending frames have been played */
 	//snd_pcm_drain(pcm_handle);
@@ -77,8 +81,6 @@ void SoundPlayer::clear(void)
     {
         /* Stop PCM device and drop pending frames */
         snd_pcm_drop(pcm_handle);
-        snd_pcm_close(pcm_handle);
-        pcm_handle = NULL;
         mPaused = true;
     }
 } // SoundPlayer::clear
@@ -201,7 +203,8 @@ void SoundPlayer::unpause(void)
     mMutex.lock();
     if (mPaused)
     {
-        setup();
+        snd_pcm_prepare(pcm_handle);
+        mPaused = false;
     }
     mMutex.unlock();
 }
@@ -235,9 +238,22 @@ void SoundPlayer::fill(const StereoSample* samples, snd_pcm_uframes_t count)
             /*DEBUG_SND("_sampleToFill=%u (%u)\n",_sampleToFill,SND_CHANNEL_SAMPLES);*/
             if (_sampleToFill == SND_CHANNEL_SAMPLES)
             {
-                while ((pcmreturn = snd_pcm_writei(pcm_handle, _samples, _sampleToFill )) < 0) {
+                int retry = 0;
+                pcmreturn = snd_pcm_writei(pcm_handle, _samples, _sampleToFill);
+                while (pcmreturn < 0 && retry < 10) 
+                {
+                    // -EPIPE = Underrun, -ESTRPIPE = suspended, etc.
+                    err_printf("ALSA Error %ld: %s. Recovering...\n", pcmreturn, snd_strerror(pcmreturn));
+                    
                     snd_pcm_prepare(pcm_handle);
-                    err_printf( "<<<<<<<<<<<<<<< Buffer Underrun >>>>>>>>>>>>>>>\n");
+                    pcmreturn = snd_pcm_writei(pcm_handle, _samples, _sampleToFill);
+                    retry++;
+                }
+                
+                if (pcmreturn < 0)
+                {
+                    DISPLAY::DisplayManager::instance().warning("ALSA ERR." + std::string(_pcm_name));
+                    mPaused = true;
                 }
                 _sampleToFill = 0;
                 _sampleFill = _samples;
