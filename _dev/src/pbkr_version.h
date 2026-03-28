@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.5"
+#define PBKR_VERSION "2.0.6"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -30,6 +30,9 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.5:
    - Fixup issues in Sound card switching.
    - Add a "visual click" using a ESP32 in "EspNow" mode
+ New in V2.0.6:
+   - Fixup issues in Sound card switching (Revert previous version) => PCM data underrun.
+   - Add "setProjectById" and assign it to tinypad "bank" button.
 
  Known bugs:
    - Default MIDI volume is not applied until it is manually changed
