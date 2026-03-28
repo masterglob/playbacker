@@ -236,18 +236,34 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
     // Note : 6 bytes per sample
     static const int bytesPerSeconde (mAudioHdr.nSamplesPerSec * 6);
     streamoff offset(bytesPerSeconde * nbSeconds);
-    const int sign(forward ? 1 : -1);
     const int curPos = mIf.tellg();
-    if (!forward && curPos < offset)
+    cout << "FF, TELLG() =" << curPos << ",OFF=" << offset << endl;
+    if (curPos < 0)
     {
-        // Avoid underflow when rewinding
-        offset = curPos;
+        cout << "FF, TELLG failed, GOOD=" << mIf.good() << endl;
     }
-    mIf.seekg(offset * sign, ios_base::cur);
-    cout << "FF, sec= "<< nbSeconds << ", dir=" << sign << ", EOF =" << mIf.eof() << ", GOOD=" << mIf.good() << endl;
-    if (mIf.good())
+    else
     {
-        printf("Pos=%s\n",getTimeCode().c_str());
+        if (forward)
+        {
+            mIf.seekg(offset, ios_base::cur);
+        }
+        else
+        {
+            if (curPos - offset > mHdrLen)
+            {
+                mIf.seekg(-offset, ios_base::cur);
+            }
+            else
+            {
+                mIf.seekg(mHdrLen, ios_base::beg);
+            }
+            cout << "FF, sec= "<< nbSeconds << ", dir=" << (forward ? "FWD" : "BWD" ) << ", EOF =" << mIf.eof() << ", GOOD=" << mIf.good() << endl;
+        }
+        if (mIf.good())
+        {
+            printf("Pos=%s\n",getTimeCode().c_str());
+        }
     }
     m_mutex.unlock();
 }
