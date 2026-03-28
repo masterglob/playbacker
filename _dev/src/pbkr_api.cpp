@@ -10,6 +10,8 @@
 #include "pbkr_version.h"
 
 #include <stdlib.h>
+#include <iomanip>
+
 
 #define DEBUG_MIDI 0
 
@@ -310,8 +312,16 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
 
     if (cfg.name == MIDI_NAME_TINYPAD)
     {
-        /** TInyPad MINI:
+        /** TinyPad MINI:
          */
+#if 1 // To debug MIDI!
+        cout << "TinyPad MINI: ";
+        for (size_t i{0} ; i < msg.m_len; ++i)
+        {
+            cout << " " << setw(2) << hex << (uint32_t)msg.m_msg[i];
+        }
+        cout << endl;
+#endif
         if (msg.m_len == 3)
         {
             static const uint8_t CMD_NOTE(0x90);
@@ -410,6 +420,7 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                         MainMenu::instance().pressKey(MainMenu::KEY_RIGHT);
                     return;
                 default:
+                    DISPLAY::DisplayManager::instance().info("Not ass.:btn-" + std::to_string(b1));
                     return;
                 }
             }
@@ -433,6 +444,7 @@ void onMidiEvent(const MIDI::MIDI_Msg& msg, const MIDI::MIDI_Ctrl_Cfg& cfg)
                 const uint8_t bankId( msg.m_msg[9]);
                 DISPLAY::DisplayManager::instance().info(
                         std::string("Bank:") + std::to_string(bankId));
+                setProjectById(bankId);
                 return;
             }
         }

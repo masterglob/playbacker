@@ -99,6 +99,7 @@ extern void SelectProjectMenu(Project* proj);
 extern void openCopyFromUSBMenu();
 extern void openNetMenuFromUSBMenu();
 extern void openDeleteProjectMenu();
+extern void setProjectById(const uint8_t showId);
 
 extern void refreshMidiVolume    (void);
 extern void refreshLatency    (void);

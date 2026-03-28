@@ -1,5 +1,6 @@
 
 #include <unistd.h>
+#include <string>
 
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
@@ -195,6 +196,7 @@ struct SelectProjectShowMenuItem : ListMenuItem
     virtual const std::string menul2(void);
     virtual void onEnter(const bool longPressed=false);
     void setDefaultProject(void);
+    void setProjectById(const uint8_t showId);
     static const string m_saveSection;
 private:
     string m_projectTitle;
@@ -877,6 +879,26 @@ SelectProjectShowMenuItem::setDefaultProject(void)
     }
 }
 
+/*******************************************************************************/
+void
+SelectProjectShowMenuItem::setProjectById(const uint8_t showId)
+{
+    Project* p{nullptr};
+    try
+    {
+        p = getAllProjects().at(showId);
+    }
+    catch (const std::exception& e)
+    {
+        DISPLAY::DisplayManager::instance().info("No proj #" + to_string(showId));
+        cout << "Failed to find project #" << to_string(showId) << ":" << e.what() << endl;
+    }
+    if (p)
+    {
+        fileManager.loadProject(p);
+        Config::instance().saveStr(m_saveSection, p->m_title);
+    }
+}
 
 /*******************************************************************************/
 const std::string
@@ -1220,7 +1242,14 @@ const std::string ClicSettingsMenuItem::menul2(void)
 namespace PBKR
 {
 
-void refreshMidiVolume    (void)
+/*******************************************************************************/
+void setProjectById(const uint8_t showId)
+{
+    ::selectProjectShowMenuItem.setProjectById(showId);
+}
+
+
+void refreshMidiVolume(void)
 {
     ::clicSettingsMenuItem.sendVolume();
 }
