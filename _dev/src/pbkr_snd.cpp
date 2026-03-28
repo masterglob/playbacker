@@ -49,6 +49,7 @@ SoundPlayer::SoundPlayer(const char * device_name):
     _pcm_name (strdup (device_name)),
     mPaused(true)
 {
+    DEBUG_SND("SoundPlayer::SoundPlayer(%s)\n",pcm_name());
     snd_pcm_hw_params_malloc (&hwparams);
     mSampleRate = DEFAULT_FREQUENCY_HZ;
 
@@ -63,8 +64,8 @@ SoundPlayer::SoundPlayer(const char * device_name):
 SoundPlayer::~SoundPlayer(void)
 {
     clear();
-    snd_pcm_close(pcm_handle);
-    
+    if (pcm_handle)
+        snd_pcm_close(pcm_handle);
 
 	/* Stop PCM device after pending frames have been played */
 	//snd_pcm_drain(pcm_handle);
@@ -81,6 +82,8 @@ void SoundPlayer::clear(void)
     {
         /* Stop PCM device and drop pending frames */
         snd_pcm_drop(pcm_handle);
+        snd_pcm_close(pcm_handle);
+        pcm_handle = NULL;
         mPaused = true;
     }
 } // SoundPlayer::clear
@@ -203,8 +206,7 @@ void SoundPlayer::unpause(void)
     mMutex.lock();
     if (mPaused)
     {
-        snd_pcm_prepare(pcm_handle);
-        mPaused = false;
+        setup();
     }
     mMutex.unlock();
 }

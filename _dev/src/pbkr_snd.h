@@ -36,7 +36,7 @@ public:
     void set_sample_rate(const SampleRate::Frequency freq);
     inline SampleRate::Frequency sample_rate(void)const{return mSampleRate;}
 
-	const char* pcm_name(void)const{return _pcm_name;}
+	const char* pcm_name(void)const{return _pcm_name ? _pcm_name : "<null>";}
 
 	/* Append samples in buffer.
 	 * Plays only when buffer is full
