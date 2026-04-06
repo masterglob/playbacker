@@ -346,7 +346,8 @@ FileManager::FileManager (void):
         Thread("FileManager"),
         m_indexPlaying(0),
         m_nbFiles(0),
-        _file(NULL),
+        _wavFile(nullptr),
+        _midiFile(nullptr),
         _reading(false),
         _starting(false),
         _paused(false),
@@ -360,7 +361,8 @@ FileManager::FileManager (void):
 /*******************************************************************************/
 FileManager::~FileManager (void)
 {
-    if (_file) delete (_file);
+    if (_wavFile) delete (_wavFile);
+    if (_midiFile) delete (_midiFile);
 }
 
 /*******************************************************************************/
@@ -406,7 +408,7 @@ void FileManager::body(void)
         }
 
         // update timecode
-        const string timecode (_file ? _file->getTimeCode() : " ");
+        const string timecode (_wavFile ? _wavFile->getTimeCode() : " ");
         display.setTimeCode(timecode);
     }
 }
@@ -450,7 +452,7 @@ FileManager::unloadProject (void)
     m_indexPlaying = -1;
     m_nbFiles = -1;
     _pProject->setInuse(false);
-    _pProject = NULL;
+    _pProject = nullptr;
     display.onEvent(DISPLAY::DisplayManager::evProjectTitle, "No project...");
     display.onEvent(DISPLAY::DisplayManager::evProjectTrackCount, std::to_string (0));
 
@@ -459,11 +461,11 @@ FileManager::unloadProject (void)
 /*******************************************************************************/
 void FileManager::startReading(void)
 {
-    if (!_file)
+    if (!_wavFile)
     {
         selectIndex (m_indexPlaying);
     }
-    if (_file)
+    if (_wavFile)
     {
         if (_reading)
         {
@@ -471,7 +473,7 @@ void FileManager::startReading(void)
         }
         else
         {
-            _file->reset();
+            _wavFile->reset();
             _reading = true;
             _starting = true;
             _paused = false;
@@ -488,12 +490,12 @@ void FileManager::startReading(void)
 /*******************************************************************************/
 void FileManager::pauseReading(void)
 {
-    if (_file && _reading)
+    if (_wavFile && _reading)
     {
         if (_paused)
         {
             _paused = false;
-            _file->fastForward(false, PAUSE_BACKWARD_S);
+            _wavFile->fastForward(false, PAUSE_BACKWARD_S);
             display.onEvent(DISPLAY::DisplayManager::evPlay);
         }
         else
@@ -508,14 +510,16 @@ void FileManager::pauseReading(void)
 /*******************************************************************************/
 void FileManager::stopReading(void)
 {
-    if (_file && _reading)
+    if (_wavFile && _reading)
     {
         _starting = false;
         _reading = false;
         printf("Stop reading\n");
         display.onEvent(DISPLAY::DisplayManager::evStop);
-        if (_file) delete (_file);
-        _file=NULL;
+        if (_wavFile) delete (_wavFile);
+        if (_midiFile) delete (_midiFile);
+        _wavFile = nullptr;
+        _midiFile = nullptr;
     }
 
 } // FileManager::stopReading
@@ -523,18 +527,18 @@ void FileManager::stopReading(void)
 /*******************************************************************************/
 void FileManager::fastForward(void)
 {
-    if (_file && _reading)
+    if (_wavFile && _reading)
     {
-        _file->fastForward(true, FAST_FORWARD_BACKWARD_S);
+        _wavFile->fastForward(true, FAST_FORWARD_BACKWARD_S);
     }
 } // FileManager:: fastForward
 
 /*******************************************************************************/
 void FileManager::backward(void)
 {
-    if (_file && _reading)
+    if (_wavFile && _reading)
     {
-        _file->fastForward(false, FAST_FORWARD_BACKWARD_S);
+        _wavFile->fastForward(false, FAST_FORWARD_BACKWARD_S);
     }
 } // FileManager:: backward
 
@@ -550,9 +554,9 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, double&
         _starting = false;
         timePos = 0.0;
     }
-    else if (_reading && _file && (!_paused))
+    else if (_reading && _wavFile && (!_paused))
     {
-        if (not _file->getNextSample(l ,r, l2, r2, timePos))
+        if (not _wavFile->getNextSample(l ,r, l2, r2, timePos))
         {
             stopReading();
         }
@@ -576,35 +580,35 @@ void FileManager::startup(void)
 /*******************************************************************************/
 std::string FileManager::filename(size_t idx)const
 {
-    if (_pProject == NULL) return "";
+    if (_pProject == nullptr) return "";
     return _pProject->getByTrackId(idx).m_filename;
 }
 
 /*******************************************************************************/
 std::string FileManager::fileTitle(size_t idx)const
 {
-    if (_pProject == NULL) return "";
+    if (_pProject == nullptr) return "";
     return _pProject->getByTrackId(idx).m_title;
 }
 
 /*******************************************************************************/
 float FileManager::fileGetVolumeSamples(size_t idx)const
 {
-    if (_pProject == NULL) return -1.0;
+    if (_pProject == nullptr) return -1.0;
     return _pProject->getByTrackId(idx).m_volumeSamples;
 }
 
 /*******************************************************************************/
 float FileManager::fileGetVolumeClic(size_t idx)const
 {
-    if (_pProject == NULL) return -1.0;
+    if (_pProject == nullptr) return -1.0;
     return _pProject->getByTrackId(idx).m_volumeClic;
 }
 
 /*******************************************************************************/
 void FileManager::fileSetVolumeSamples(size_t idx, float value)const
 {
-    if (_pProject == NULL || idx == 0) return;
+    if (_pProject == nullptr || idx == 0) return;
     _pProject->getByTrackId(idx).setVolumeSamples(value);
     API::setSamplesVolume(value);
 }
@@ -612,7 +616,7 @@ void FileManager::fileSetVolumeSamples(size_t idx, float value)const
 /*******************************************************************************/
 void FileManager::fileSetVolumeClic(size_t idx, float value)const
 {
-    if (_pProject == NULL || idx == 0) return;
+    if (_pProject == nullptr || idx == 0) return;
     _pProject->getByTrackId(idx).setVolumeClic(value);
     API::setClicVolume(value);
 }
@@ -620,7 +624,7 @@ void FileManager::fileSetVolumeClic(size_t idx, float value)const
 /*******************************************************************************/
 bool FileManager::fileAreParamsModified(size_t idx)const
 {
-    if (_pProject == NULL || idx == 0) return false;
+    if (_pProject == nullptr || idx == 0) return false;
     const Track& track(_pProject->getByTrackId(idx));
     return track.isVolumeClicModified() ||
             track.isVolumeSamplesModified();
@@ -629,7 +633,7 @@ bool FileManager::fileAreParamsModified(size_t idx)const
 /*******************************************************************************/
 void FileManager::fileSaveParamsModification(size_t idx)const
 {
-    if (_pProject == NULL || idx == 0) return;
+    if (_pProject == nullptr || idx == 0) return;
     _pProject->applyModifications(idx);
 }
 
@@ -673,22 +677,31 @@ bool FileManager::selectIndex(const size_t i)
     }
     stopReading();
     m_indexPlaying = trackId;
+    const string path(_pProject->m_source.pPath + "/" + _pProject->m_title);
     try
     {
-        const string path(_pProject->m_source.pPath + "/" + _pProject->m_title);
-        _file = new WavFileLRC (path, track.m_filename);
+        if(_wavFile) delete (_wavFile);
+        if(_midiFile) delete (_midiFile);
+        _midiFile = nullptr;
+
+        _wavFile = new WavFileLRC (path, track.m_filename);
     }
     catch (...) {
         printf("Open cancelled, file badly formatted\n");
 
         display.warning(string("BAD FILE FORMAT"));
-        _file = NULL;
+        _wavFile = nullptr;
         return false;
     }
-    if (_file->is_open())
+    if (_wavFile->is_open())
     {
-        printf("Opened %s\n",_file->mFilename.c_str());
-        actualSampleRate.set(_file->frequency());
+        try { _midiFile = new MidiFile(path + "/" + track.m_midiFilename); }
+        catch(const std::exception&e) {
+            printf("Failed to open file %s:%s\n", track.m_midiFilename.c_str(), e.what());
+        }
+
+        printf("Opened %s %s\n",_wavFile->mFilename.c_str(), (_midiFile ? "(With MIDI file)" : ""));
+        actualSampleRate.set(_wavFile->frequency());
         refreshMidiVolume();
         globalMenu.refresh();
         const string trackIdx(std::to_string(track.m_index));
@@ -698,7 +711,7 @@ bool FileManager::selectIndex(const size_t i)
     }
     else
     {
-        printf("Failed to open <%s>\n",_file->mFilename.c_str());
+        printf("Failed to open <%s>\n",_wavFile->mFilename.c_str());
     }
     return false;
 

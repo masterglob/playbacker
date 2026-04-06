@@ -192,7 +192,7 @@ struct MidiEvent {
 // ─── MIDI parser (no external dependencies) ───────────────────────────────────
 class MidiFile {
 public:
-    explicit MidiFile(const char* path);  // see .cpp
+    explicit MidiFile(const std::string path);  // see .cpp
 
     // Resolves ticks -> seconds and returns a flat list of events sorted by time_sec.
     // Iterate or index it directly — no wrapper needed.

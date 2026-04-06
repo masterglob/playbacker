@@ -483,7 +483,7 @@ void MidiFile::parseTrack(const uint8_t* p, size_t len,
 
 // --- Constructor: load and parse the .mid file --------------------------------
 
-MidiFile::MidiFile(const char* path) {
+MidiFile::MidiFile(const std::string path) {
     std::ifstream f(path, std::ios::binary);
     if (!f) throw std::runtime_error(std::string("Cannot open: ") + path);
 

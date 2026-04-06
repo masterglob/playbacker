@@ -20,12 +20,13 @@ using namespace std;
 class Track
 {
 public:
-    Track(const string& title,const int index,const string filename,
+    Track(const string& title,const int index, const string filename,
             const float volumeSamples = -1.0, const float volumeClic = -1.0);
     virtual ~Track(void)=default;
     string   m_title;
     int      m_index;
     string   m_filename;
+    string   m_midiFilename;
 private:
     mutable float    m_volumeSamplesDef;
     mutable float    m_volumeClicDef;

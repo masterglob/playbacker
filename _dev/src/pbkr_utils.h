@@ -29,6 +29,7 @@ private:
 };
 
 class WavFileLRC;
+class MidiFile;
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
@@ -217,7 +218,8 @@ private:
     size_t m_indexPlaying; // 1 = track 1
     size_t m_nbFiles;
     std::string m_title;
-    WavFileLRC* _file;
+    WavFileLRC* _wavFile;
+    MidiFile* _midiFile;
     bool _reading;
     bool _starting; // When starting, the title may be sent to WeMos
     bool _paused;
