@@ -26,8 +26,10 @@
 
 namespace PBKR
 {
+
 namespace MIDI
 {
+
 /**
  * A midi message
  */

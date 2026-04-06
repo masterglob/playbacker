@@ -211,14 +211,6 @@ void Console::changeVolume (float v, const float duration)
     if (v > 1.0) v = 1.0;
     if (v < 0.0) v = 0.0;
     _volume = v;
-
-    const uint8_t vol8 (v * 128.0);
-    MidiOutMsg msg;
-    msg.push_back(MIDI_CMD_CC | MIDI_CHANNEL_16);
-    msg.push_back(MIDI_CC_VOLUME);
-    msg.push_back(vol8);
-    wemosControl.pushMessage(msg);
-
 }
 
 /*******************************************************************************/

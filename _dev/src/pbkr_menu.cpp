@@ -1140,10 +1140,8 @@ void ClicSettingsMenuItem::onEnter(const bool longPressed)
 void  ClicSettingsMenuItem::sendVolume(void)
 {
     const uint8_t vol8 (paramToVolume(m_pVolume.m_val));
-
-    MidiOutMsg msg;
-    msg.push_back(vol8); // Volume value
-    wemosControl.pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
+    (void)vol8;
+    // TODO!
 }
 
 /*******************************************************************************/

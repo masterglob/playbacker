@@ -33,12 +33,15 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.6:
    - Fixup issues in Sound card switching (Revert previous version) => PCM data underrun.
    - Add "setProjectById" and assign it to tinypad "bank" button.
+ WIP :
+   - Remove old "Wemos MIDI" feature
+   - Add MIDI support (Sw only)
 
  Known bugs:
-   - Default MIDI volume is not applied until it is manually changed
+   - MIDI tracks Need delay compensation.
  TODO:
-   - handle multiple OSC clients (change to Multicast or ahndle a list of connected clients)
-   - Manage volume & clicVolume (See main_pkbr.cpp)
+   - handle multiple OSC clients (change to Multicast or handle a list of connected clients)
+   - Manage volume & clicVolume (See TODO main_pkbr.cpp and pbkr_menu.cpp)
 
  */
 

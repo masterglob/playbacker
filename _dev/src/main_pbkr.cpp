@@ -118,9 +118,9 @@ int main (int argc, char**argv)
     int argi(1);
     bool interactive_console(false);
     int dacIdx = 0;
-    const char* hifidac = NULL;
-    const char *hdmidac = NULL;
-    const char *hdphdac = NULL;
+    const char* hifidac = nullptr;
+    const char *hdmidac = nullptr;
+    const char *hdphdac = nullptr;
     while (argi < argc)
     {
         const char* const cmd(argv[argi++]);
@@ -167,7 +167,7 @@ int main (int argc, char**argv)
 
     print_version();
 
-    if (hifidac == NULL || hdphdac == NULL)
+    if (hifidac == nullptr || hdphdac == nullptr)
     {
         print_help(argv[0]);
         return 0;
@@ -178,7 +178,7 @@ int main (int argc, char**argv)
 
 	GPIOs::GPIO::begin();
 
-	MidiOutMsg midiOut;
+    MidiOutSerial midiOut(MIDI_OUT_SERIAL);
 
     // TODO : Add a settings parameter for OUT volume (general)
     const float& mainVolume(PBKR::API::samplesVolume);
@@ -199,7 +199,6 @@ int main (int argc, char**argv)
 		// l/r is the output sample
 		// l2/r2 is the clic outputs
         float l,r, l2, r2;
-        double timePos{-1.0};
 		float phase = 0;
 		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
 
@@ -217,7 +216,7 @@ int main (int argc, char**argv)
 		while (!Thread::isExitting())
 		{
 		    // if (BTN.pressed()) break;
-		    bool playing = fileManager.getSample(l,r, l2, r2, timePos);
+		    bool playing = fileManager.getSample(l,r, l2, r2, midiOut);
 		    if (!playing)
 		    {
                 playerHifi.pause();
@@ -225,7 +224,7 @@ int main (int argc, char**argv)
                 while (!playing && !Thread::isExitting())
                 {
                     usleep(1000*10);
-                    playing = fileManager.getSample(l,r, l2, r2, timePos);
+                    playing = fileManager.getSample(l,r, l2, r2, midiOut);
                 }
                 // Unpause both first, so that putting samples start exactly
                 // at the same time
@@ -260,16 +259,11 @@ int main (int argc, char**argv)
             r = rightLatency.putSample (r);
             l2 = leftClicLatency.putSample(l2);
             r2 = rightClicLatency.putSample (r2);
+            // TODO : MIDI does not compensate latency...
 
             playerHifi.write_sample(l,r);
             playerClic->write_sample(l2,r2);
             ::manageLed(abs(l2)+abs(r2) > 0.05);
-
-            /* TODO :
-             * - Load a MIDI file
-             * - use 'timePos' to generate MIDI output in 'midiOut'
-             */
-			wemosControl.sendByte(); // TODO : Remove
 
 			if (ledFader->update())
 			{

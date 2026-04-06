@@ -8,6 +8,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <thread>
 
 #include <unistd.h>
 #include <string.h>
@@ -55,7 +56,7 @@ FileManager fileManager;
 
 /*******************************************************************************/
 Thread::Thread(const std::string& name):
-        m_stop(false), m_done(false),_thread(-1),_attr(NULL),m_name(name)
+        m_stop(false), m_done(false),_thread(-1),_attr(nullptr),m_name(name)
 
 {
 }
@@ -92,7 +93,7 @@ void* Thread::real_start(void* param)
 		thr -> body ();
 	    thr->m_done = true;
 	}
-	return NULL;
+	return nullptr;
 }
 
 bool Thread::m_isExitting(false);
@@ -128,10 +129,10 @@ void setLowPriority(void)
 }
 
 /*******************************************************************************/
-void setRealTimePriority(void)
+void setRealTimePriority(int prio)
 {
     sched_param sch;
-    sch.__sched_priority = 80;
+    sch.__sched_priority = prio;
     if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &sch))
     {
         throw EXCEPTION("Failed to set Thread scheduling : setRealTimePriority");
@@ -339,6 +340,25 @@ float Fader::position (void)
 	return result;
 }
 
+
+/*******************************************************************************
+ * MidiEvent
+ *******************************************************************************/
+void MIDI_FILE::MidiEvent::pushToQueue(ByteQueue& queue) const
+{
+    // Sanity guard — Meta (0xFF) and SysEx (0xF0) are never in the event list
+    const uint8_t t = static_cast<uint8_t>(type) & 0xF0;
+    if (t == 0xF0) return;
+
+    // Status byte = event type (high nibble) | channel (low nibble)
+    queue.push(static_cast<uint8_t>(type) | (channel & 0x0F));
+    queue.push(data1);
+
+    // ProgramChange (0xC0) and ChannelPressure (0xD0) have only 1 data byte
+    if (t != 0xC0 && t != 0xD0)
+        queue.push(data2);
+}
+
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
@@ -347,13 +367,12 @@ FileManager::FileManager (void):
         m_indexPlaying(0),
         m_nbFiles(0),
         _wavFile(nullptr),
-        _midiFile(nullptr),
         _reading(false),
         _starting(false),
         _paused(false),
         _lastL(0.0),
         _lastR(0.0),
-        _pProject(NULL),
+        _pProject(nullptr),
         m_usbMounted(false)
 {
 }
@@ -362,7 +381,6 @@ FileManager::FileManager (void):
 FileManager::~FileManager (void)
 {
     if (_wavFile) delete (_wavFile);
-    if (_midiFile) delete (_midiFile);
 }
 
 /*******************************************************************************/
@@ -517,9 +535,8 @@ void FileManager::stopReading(void)
         printf("Stop reading\n");
         display.onEvent(DISPLAY::DisplayManager::evStop);
         if (_wavFile) delete (_wavFile);
-        if (_midiFile) delete (_midiFile);
         _wavFile = nullptr;
-        _midiFile = nullptr;
+        _midiEvents.clear();
     }
 
 } // FileManager::stopReading
@@ -529,7 +546,9 @@ void FileManager::fastForward(void)
 {
     if (_wavFile && _reading)
     {
+        const double fromTime = _wavFile->getTimePos();
         _wavFile->fastForward(true, FAST_FORWARD_BACKWARD_S);
+        resynchMidi(fromTime);
     }
 } // FileManager:: fastForward
 
@@ -538,12 +557,40 @@ void FileManager::backward(void)
 {
     if (_wavFile && _reading)
     {
+        const float fromTime = _wavFile->getTimePos();
         _wavFile->fastForward(false, FAST_FORWARD_BACKWARD_S);
+        resynchMidi(fromTime);
     }
 } // FileManager:: backward
 
 /*******************************************************************************/
-bool FileManager::getSample( float& l, float & r, float& l2, float & r2, double& timePos)
+void FileManager::resynchMidi(float fromTime)
+{
+    float now = _wavFile->getTimePos();
+
+    if (now < fromTime)
+    {
+        // (Backward)
+        while (_nextMidiIdx > 0 && _midiEvents[_nextMidiIdx].time_sec > now)
+        {
+            _nextMidiIdx--;
+        }
+    }
+    else
+    {
+        // (Forwward)
+        while (_nextMidiIdx + 1 < _midiEvents.size() &&
+               _midiEvents[_nextMidiIdx].time_sec <= now)
+        {
+            _nextMidiIdx++;
+        }
+
+    }
+    DEBUG_MIDI("resynchMidi (t=%f)=>%u\n", fromTime, _nextMidiIdx);
+} // FileManager:: resynchMidi
+
+/*******************************************************************************/
+bool FileManager::getSample( float& l, float & r, float& l2, float & r2, ByteQueue& midiOut)
 {
     if (_starting)
     {
@@ -552,13 +599,25 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, double&
         // just start reading... (No more used be could be used to delay while a
         // task is preparing before reading)
         _starting = false;
-        timePos = 0.0;
     }
     else if (_reading && _wavFile && (!_paused))
     {
+        float timePos{-1.0f};
         if (not _wavFile->getNextSample(l ,r, l2, r2, timePos))
         {
             stopReading();
+        }
+        else if (timePos >= 0.0)
+        {
+            // Look for MIDI events at this time slot
+            while (_nextMidiIdx < _midiEvents.size())
+            {
+                const MIDI_FILE::MidiEvent& evt{_midiEvents[_nextMidiIdx]};
+                if (evt.time_sec > timePos) break;
+                evt.pushToQueue(midiOut);
+                // printf("Evt:N=%d, t=%f nt=%f \n", _nextMidiIdx, timePos,  evt.time_sec);
+                _nextMidiIdx++;
+            }
         }
         return true;
     }
@@ -567,7 +626,6 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, double&
     r = _lastR;
     l2 = 0;
     r2 = 0;
-    timePos = -1.0;
     return false;
 } // FileManager::getSample
 
@@ -678,15 +736,16 @@ bool FileManager::selectIndex(const size_t i)
     stopReading();
     m_indexPlaying = trackId;
     const string path(_pProject->m_source.pPath + "/" + _pProject->m_title);
+
+    if(_wavFile) delete (_wavFile);
+    _midiEvents.clear();
+
     try
     {
-        if(_wavFile) delete (_wavFile);
-        if(_midiFile) delete (_midiFile);
-        _midiFile = nullptr;
-
         _wavFile = new WavFileLRC (path, track.m_filename);
     }
-    catch (...) {
+    catch (...)
+    {
         printf("Open cancelled, file badly formatted\n");
 
         display.warning(string("BAD FILE FORMAT"));
@@ -695,12 +754,17 @@ bool FileManager::selectIndex(const size_t i)
     }
     if (_wavFile->is_open())
     {
-        try { _midiFile = new MidiFile(path + "/" + track.m_midiFilename); }
-        catch(const std::exception&e) {
+        try
+        {
+            MidiFile midiFile(path + "/" + track.m_midiFilename);
+            _midiEvents = midiFile.buildEventList();
+        }
+        catch(const std::exception&e)
+        {
             printf("Failed to open file %s:%s\n", track.m_midiFilename.c_str(), e.what());
         }
 
-        printf("Opened %s %s\n",_wavFile->mFilename.c_str(), (_midiFile ? "(With MIDI file)" : ""));
+        printf("Opened %s (%u midi events)\n",_wavFile->mFilename.c_str(), _midiEvents.size());
         actualSampleRate.set(_wavFile->frequency());
         refreshMidiVolume();
         globalMenu.refresh();
@@ -752,14 +816,14 @@ const char* NET_DEV_ETH ("eth0");
 const char* getIPAddr (const char* device)
 {
     static char ipaddr[INET_ADDRSTRLEN];
-    struct ifaddrs * ifAddrStruct=NULL;
-    struct ifaddrs * ifa=NULL;
-    void * tmpAddrPtr=NULL;
+    struct ifaddrs * ifAddrStruct=nullptr;
+    struct ifaddrs * ifa=nullptr;
+    void * tmpAddrPtr=nullptr;
 
     strcat(ipaddr, "\?\?\?");
 
     getifaddrs(&ifAddrStruct);
-    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+    for (ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next) {
            if (!ifa->ifa_addr) {
                continue;
            }
@@ -781,14 +845,14 @@ const char* getIPAddr (const char* device)
 const char* getIPNetMask (const char* device)
 {
     static char ipaddr[INET_ADDRSTRLEN+1];
-    struct ifaddrs * ifAddrStruct=NULL;
-    struct ifaddrs * ifa=NULL;
-    void * tmpAddrPtr=NULL;
+    struct ifaddrs * ifAddrStruct=nullptr;
+    struct ifaddrs * ifa=nullptr;
+    void * tmpAddrPtr=nullptr;
 
     strcat(ipaddr, "\?\?\?");
 
     getifaddrs(&ifAddrStruct);
-    for (ifa = ifAddrStruct; ifa != NULL; ifa = ifa->ifa_next) {
+    for (ifa = ifAddrStruct; ifa != nullptr; ifa = ifa->ifa_next) {
            if (!ifa->ifa_netmask) {
                continue;
            }
@@ -808,80 +872,49 @@ const char* getIPNetMask (const char* device)
 }
 
 /*******************************************************************************
- * SEND MESSAGES TO WEMOS
+ * SERIAL LINE (MIDI)
  *******************************************************************************/
-WemosControl::WemosControl(const char* filename):
-    m_handle (file_open_write (filename)),
-    m_keepAlive(2, 0.0, 0.0)
+MidiOutSerial::MidiOutSerial(const char* filename):
+    m_handle (file_open_write (filename))
 {
-    if (m_handle < 0) {
-        throw EXCEPTION("Failed to open serial port\n");
-    }
+    m_thread = std::thread(&MidiOutSerial::midiThread, this);
 }
 
-WemosControl::~WemosControl(void)
+MidiOutSerial::~MidiOutSerial()
 {
-    close(m_handle);
+    m_running = false;
+    if (m_thread.joinable())
+        m_thread.join();
+    if (m_handle >= 0)
+        close(m_handle);
 }
 
-void WemosControl::pushMessage(const MidiOutMsg& msg)
+void MidiOutSerial::midiThread()
 {
-    m_mutex.lock();
-    m_msgs.push_back(msg);
-    m_mutex.unlock();
-}
-void WemosControl::pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& msg)
-{
-    MidiOutMsg sysMsg;
-    m_mutex.lock();
-    sysMsg.push_back(0xF0);
-    sysMsg.push_back(0x43);
-    sysMsg.push_back(0x4D);
-    sysMsg.push_back(0x4D);
-    sysMsg.push_back((uint8_t) cmd);
-    sysMsg.push_back(msg);
-    sysMsg.push_back(0xF7);
-    m_msgs.push_back(sysMsg);
-    m_mutex.unlock();
-}
+    setRealTimePriority(85);
 
-void WemosControl::sendByte(void)
-{
-    if (not m_msgs.empty())
-    {
-        const uint8_t byte (m_msgs.pop_front());
-        write(m_handle, &byte, 1);
-        if (m_msgs.empty())
-        {
-            m_keepAlive.restart();
+    static constexpr size_t BUFFER_SIZE = 64;
+    uint8_t buffer[BUFFER_SIZE];
+
+    while (m_running) {
+        size_t count = 0;
+
+        while (count < BUFFER_SIZE && pop(buffer[count])) {
+            count++;
+        }
+
+        if (count > 0) {
+            write(m_handle, buffer, count);
+            // Debug print
+            DEBUG_MIDI("MIDI OUT [%zu]: ", count);
+            for (size_t i = 0; i < count; ++i) {
+                DEBUG_MIDI("%02X ", buffer[i]);
+            }
+            DEBUG_MIDI("\n");
+        } else {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
     }
-    else
-    {
-        if (m_keepAlive.update())
-        {
-            m_keepAlive.restart();
-            MidiOutMsg msg;
-            pushSysExMessage(WemosControl::SYSEX_COMMAND_VOLUME, msg);
-        }
-    }
-}
-
-void ByteQueue::push_back(const ByteQueue& queue)
-{
-    m_queue.insert(m_queue.end(), queue.m_queue.begin(), queue.m_queue.end());
-    m_queue.push_back(0);
-}
-
-uint8_t ByteQueue::pop_front(void)
-{
-    if(m_queue.empty())
-    {
-        return 0;
-    }
-    const uint8_t result = m_queue.front();
-    m_queue.pop_front();
-    return result;
 }
 
 /*******************************************************************************
@@ -894,5 +927,4 @@ Latency<float> rightLatency;
 Latency<float> leftClicLatency;
 Latency<float> rightClicLatency;
 
-WemosControl wemosControl("/dev/ttyAMA0"); // TODO : Remove
 } // namespace PBKR

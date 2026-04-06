@@ -7,15 +7,15 @@
 
 using namespace PBKR;
 
-static const char* eventTypeName(MidiEventType t) {
+static const char* eventTypeName(MIDI_FILE::MidiEventType t) {
     switch (t) {
-        case MidiEventType::NoteOff:         return "NoteOff        ";
-        case MidiEventType::NoteOn:          return "NoteOn         ";
-        case MidiEventType::PolyPressure:    return "PolyPressure   ";
-        case MidiEventType::ControlChange:   return "ControlChange  ";
-        case MidiEventType::ProgramChange:   return "ProgramChange  ";
-        case MidiEventType::ChannelPressure: return "ChannelPressure";
-        case MidiEventType::PitchBend:       return "PitchBend      ";
+        case MIDI_FILE::MidiEventType::NoteOff:         return "NoteOff        ";
+        case MIDI_FILE::MidiEventType::NoteOn:          return "NoteOn         ";
+        case MIDI_FILE::MidiEventType::PolyPressure:    return "PolyPressure   ";
+        case MIDI_FILE::MidiEventType::ControlChange:   return "ControlChange  ";
+        case MIDI_FILE::MidiEventType::ProgramChange:   return "ProgramChange  ";
+        case MIDI_FILE::MidiEventType::ChannelPressure: return "ChannelPressure";
+        case MIDI_FILE::MidiEventType::PitchBend:       return "PitchBend      ";
         default:                             return "Unknown        ";
     }
 }
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
 
     // -- Load and parse --------------------------------------------------------
     MidiFile midi(path);
-    std::vector<MidiEvent> events = midi.buildEventList();
+    MIDI_FILE::MidiEventVect events = midi.buildEventList();
 
     // -- File summary ----------------------------------------------------------
     std::cout << "File    : " << path << "\n"
@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
     const size_t n = (events.size() < max_print2) ? events.size() : max_print2;
 
     for (size_t i = 0; i < n; ++i) {
-        const MidiEvent& ev = events[i];
+        const MIDI_FILE::MidiEvent& ev = events[i];
         std::cout << std::left
                   << std::setw(6)  << i
                   << std::setw(12) << std::fixed << std::setprecision(4) << ev.time_sec

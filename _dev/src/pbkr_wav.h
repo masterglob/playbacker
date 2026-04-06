@@ -2,6 +2,7 @@
 #define _pbkr_wav_h_
 
 #include "pbkr_utils.h"
+#include "pbkr_midi.h"
 #include "pbkr_config.h"
 
 #include <mutex>
@@ -102,14 +103,15 @@ public:
     /**
      * Return True if the file is still reading. false when terminated
      */
-    bool getNextSample(float & l, float & r, float& l2, float & r2, double& timePos);
+    bool getNextSample(float & l, float & r, float& l2, float & r2, float& timePos);
+    float getTimePos(void) const;
 
     /**
      * false = backward.
      */
     void fastForward(bool forward, const int nbSeconds);
     string getTimeCode(void);
-    double toTimePos(size_t sampleIdx) const;
+    float toTimePos() const;
 
     inline SampleRate::Frequency frequency(void)const{return mAudioHdr.nSamplesPerSec;}
     virtual void reset(void);
@@ -119,6 +121,7 @@ private:
 
     const bool _hasAudioClickTrack;
     const size_t _eltSize;
+    size_t _sampleIdx{0};
 
     struct PACK LRC_SampleWithAudioClick
     {
@@ -147,7 +150,7 @@ private:
     };
     Buffer _buffers[WAV_NB_BUFFERS];
     size_t _bufferIdx;
-    std::mutex m_mutex;
+    mutable std::mutex m_mutex;
     void readBuffer(size_t index);
 };
 
@@ -162,33 +165,6 @@ public:
     uint8_t readSample(void);
 };
 
-/*******************************************************************************
- * MidiFile
- *******************************************************************************/
-enum class MidiEventType : uint8_t {
-    NoteOff         = 0x80,
-    NoteOn          = 0x90,
-    PolyPressure    = 0xA0,
-    ControlChange   = 0xB0,
-    ProgramChange   = 0xC0,
-    ChannelPressure = 0xD0,
-    PitchBend       = 0xE0,
-    SysEx           = 0xF0,
-    Meta            = 0xFF,
-};
-
-// Channel events only — Meta and SysEx are used internally during parsing
-// (tempo map) but are not exposed. This keeps MidiEvent a trivial flat struct
-// with no heap allocation, safe for vector reallocation on old GCC ABI.
-struct MidiEvent {
-    uint32_t      tick     = 0;    // absolute position in MIDI ticks
-    double        time_sec = 0.0;  // position in seconds (after tempo resolution)
-    MidiEventType type     = MidiEventType::NoteOff;
-    uint8_t       channel  = 0;    // 0-15
-    uint8_t       data1    = 0;    // note / CC number / etc.
-    uint8_t       data2    = 0;    // velocity / CC value / etc.
-};
-
 // ─── MIDI parser (no external dependencies) ───────────────────────────────────
 class MidiFile {
 public:
@@ -196,7 +172,7 @@ public:
 
     // Resolves ticks -> seconds and returns a flat list of events sorted by time_sec.
     // Iterate or index it directly — no wrapper needed.
-    std::vector<MidiEvent> buildEventList() const;
+    MIDI_FILE::MidiEventVect buildEventList() const;
 
     uint16_t format()     const noexcept { return format_; }
     uint16_t numTracks()  const noexcept { return num_tracks_; }

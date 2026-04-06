@@ -9,6 +9,9 @@
 #include <deque>
 #include <vector>
 #include <mutex>
+#include <atomic>
+#include <array>
+#include <thread>
 
 #include "pbkr_config.h"
 #include "pbkr_types.h"
@@ -29,7 +32,7 @@ private:
 };
 
 class WavFileLRC;
-class MidiFile;
+class ByteQueue;
 /*******************************************************************************
  * GLOBAL CONSTANTS
  *******************************************************************************/
@@ -43,7 +46,7 @@ class MidiFile;
  *******************************************************************************/
 
 void setLowPriority(void);
-void setRealTimePriority(void);
+void setRealTimePriority(int prio=80);
 
 class Thread
 {
@@ -173,6 +176,39 @@ private:
 class Project;
 typedef vector<Project*,allocator<Project*>> ProjectVect;
 
+namespace MIDI_FILE
+{
+
+/*******************************************************************************
+ * MidiFile
+ *******************************************************************************/
+enum class MidiEventType : uint8_t {
+    NoteOff         = 0x80,
+    NoteOn          = 0x90,
+    PolyPressure    = 0xA0,
+    ControlChange   = 0xB0,
+    ProgramChange   = 0xC0,
+    ChannelPressure = 0xD0,
+    PitchBend       = 0xE0,
+    SysEx           = 0xF0,
+    Meta            = 0xFF,
+};
+
+// Channel events only — Meta and SysEx are used internally during parsing
+// (tempo map) but are not exposed. This keeps MidiEvent a trivial flat struct
+// with no heap allocation, safe for vector reallocation on old GCC ABI.
+struct MidiEvent {
+    uint32_t      tick     = 0;    // absolute position in MIDI ticks
+    float         time_sec = 0.0;  // position in seconds (after tempo resolution)
+    MidiEventType type     = MidiEventType::NoteOff;
+    uint8_t       channel  = 0;    // 0-15
+    uint8_t       data1    = 0;    // note / CC number / etc.
+    uint8_t       data2    = 0;    // velocity / CC value / etc.
+    void pushToQueue(ByteQueue&) const;
+};
+using MidiEventVect = std::vector<MidiEvent>;
+}
+
 /*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
@@ -196,7 +232,7 @@ public:
      * - 4-track files : MIDI is set to 0
      * @return true is sound is playing
      */
-    bool getSample( float& l, float & r, float& l2, float & r2, double& timePos);
+    bool getSample( float& l, float & r, float& l2, float & r2, ByteQueue& midiOut);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return m_title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}
@@ -215,11 +251,13 @@ protected:
 	virtual void body(void);
 private:
     void preBuffer(void);
+    void resynchMidi(float fromTime);
     size_t m_indexPlaying; // 1 = track 1
     size_t m_nbFiles;
     std::string m_title;
     WavFileLRC* _wavFile;
-    MidiFile* _midiFile;
+    MIDI_FILE::MidiEventVect _midiEvents{};
+    size_t _nextMidiIdx{0}; // NExt unread Midi event index (in _midiEvents)
     bool _reading;
     bool _starting; // When starting, the title may be sent to WeMos
     bool _paused;
@@ -255,53 +293,57 @@ extern Latency<float> leftClicLatency;
 extern Latency<float> rightClicLatency;
 
 /*******************************************************************************
- * SEND MESSAGES TO WEMOS
+ * SEND MESSAGES TO MIDI
  *******************************************************************************/
-class ByteQueue
-{
-public:
-    inline void push_back(const uint8_t u8)
-    {
-        m_queue.push_back(u8);
-    }
-    void push_back(const ByteQueue& queue);
-    inline bool empty(void) const
-    {
-        return m_queue.empty();
-    }
-    uint8_t pop_front(void);
-    inline void clear(void)
-    {
-        m_queue.clear();
-    }
-private:
-    typedef std::deque<uint8_t, std::allocator<uint8_t>> m_Queue;
-    m_Queue m_queue;
-};
-typedef ByteQueue MidiOutMsg;
 
-class WemosControl
+class ByteQueue {
+public:
+    static constexpr size_t SIZE = 1024 * 16;
+
+    inline bool push(uint8_t b) {
+        size_t next = (write_idx + 1) % SIZE;
+        if (next == read_idx.load(std::memory_order_acquire))
+            return false; // full
+
+        buffer[write_idx] = b;
+        write_idx = next;
+        return true;
+    }
+
+    inline bool pop(uint8_t& b) {
+        size_t r = read_idx.load(std::memory_order_relaxed);
+        if (r == write_idx)
+            return false; // empty
+
+        b = buffer[r];
+        read_idx.store((r + 1) % SIZE, std::memory_order_release);
+        return true;
+    }
+
+private:
+    std::array<uint8_t, SIZE> buffer;
+    std::atomic<size_t> read_idx{0};
+    size_t write_idx{0}; // single producer
+};
+
+
+/*******************************************************************************
+ * SERIAL LINE (MIDI)
+ *******************************************************************************/
+class MidiOutSerial : public ByteQueue
 {
 public:
-    explicit WemosControl(const char* filename);
-    virtual ~WemosControl();
-    enum Sysex_Command
-    {
-        SYSEX_COMMAND_KEEP_ALIVE = 0,
-        SYSEX_COMMAND_VOLUME = 6,
-        SYSEX_COMMAND_PLAY_SAMPLE = 0x7F,
-    };
-    void pushMessage(const MidiOutMsg& msg);
-    void pushSysExMessage(const Sysex_Command cmd, const MidiOutMsg& msg);
-    void sendByte(void);
-    void check(void);
+    explicit MidiOutSerial(const char* filename);
+    MidiOutSerial() = delete;
+    ~MidiOutSerial();
+
 private:
-    ByteQueue m_msgs;
-    std::mutex m_mutex;
     int m_handle;
-    Fader m_keepAlive;
+    std::thread m_thread;
+    std::atomic<bool> m_running{true};
+
+    void midiThread();
 };
-extern WemosControl wemosControl;
 
 /*******************************************************************************
  * GENERAL PURPOSE FUNCTIONS

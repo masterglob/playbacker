@@ -267,6 +267,7 @@ WavFileLRC::fastForward(bool forward, const int nbSeconds)
             printf("Pos=%s\n",getTimeCode().c_str());
         }
     }
+    _sampleIdx = (static_cast<size_t>(mIf.tellg()) - mHdrLen) / _eltSize;
     m_mutex.unlock();
 }
 
@@ -287,15 +288,22 @@ WavFileLRC::getTimeCode(void)
 }
 
 /*******************************************************************************/
-inline double
-WavFileLRC::toTimePos(size_t sampleIdx) const
+inline float
+WavFileLRC::toTimePos(void) const
 {
-    return static_cast<double>(sampleIdx) / static_cast<double>(mAudioHdr.nSamplesPerSec);
+    const float idx{ static_cast<float>(_sampleIdx)};
+    return idx / mAudioHdr.nSamplesPerSec;
+}
+
+/*******************************************************************************/
+float WavFileLRC::getTimePos(void) const
+{
+    return toTimePos();
 }
 
 /*******************************************************************************/
 bool
-WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, double& timePos)
+WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, float& timePos)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
     Buffer* b(&_buffers[_bufferIdx]);
@@ -315,12 +323,13 @@ WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, double& t
             r = 0.0;
             l2 = 0.0;
             r2 = 0.0;
-            timePos = -1.0;
+            timePos = -1.0f;
             return false;
         }
     }
 
-    timePos = toTimePos(b->_pos);
+    timePos = toTimePos();
+    _sampleIdx++;
     if (_hasAudioClickTrack)
     {
         LRC_SampleWithAudioClick& sample (b->_samples._data4[b->_pos++]);
@@ -516,7 +525,7 @@ MidiFile::MidiFile(const std::string path) {
 }
 
 // --- Tick -> seconds resolution (with tempo map support) ---------------------
-std::vector<MidiEvent> MidiFile::buildEventList() const {
+MIDI_FILE::MidiEventVect MidiFile::buildEventList() const {
     // 1. Build the tempo map from track 0 (meta event 0x51)
     //    maps tick -> microseconds per beat
     std::map<uint32_t, uint32_t> tempo_map;
@@ -534,18 +543,18 @@ std::vector<MidiEvent> MidiFile::buildEventList() const {
     }
 
     // 2. Convert a tick position to seconds using the tempo map
-    auto tickToSec = [&](uint32_t tick) -> double {
-        double sec = 0.0;
+    auto tickToSec = [&](uint32_t tick) -> float {
+        float sec = 0.0f;
         uint32_t prev_tick = 0;
         uint32_t cur_tempo = 500000;
 
         for (auto& kv : tempo_map) {
             if (kv.first >= tick) break;
-            sec += (double)(kv.first - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
+            sec += (float)(kv.first - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
             prev_tick = kv.first;
             cur_tempo = kv.second;
         }
-        sec += (double)(tick - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
+        sec += (float)(tick - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
         return sec;
     };
 
@@ -561,7 +570,7 @@ std::vector<MidiEvent> MidiFile::buildEventList() const {
 
     // resize + index assignment avoids push_back, which always instantiates
     // _M_realloc_insert and triggers a GCC <7.1 ABI warning at compile time.
-    std::vector<MidiEvent> events(count);
+    MIDI_FILE::MidiEventVect events(count);
     size_t idx = 0;
 
     for (auto& track : tracks_) {
@@ -569,10 +578,10 @@ std::vector<MidiEvent> MidiFile::buildEventList() const {
             if (raw.status == 0xFF || raw.status == 0xF0 || raw.status == 0xF7)
                 continue;
 
-            MidiEvent& ev = events[idx++];
+            MIDI_FILE::MidiEvent& ev = events[idx++];
             ev.tick     = raw.tick;
             ev.time_sec = tickToSec(raw.tick);
-            ev.type     = static_cast<MidiEventType>(raw.status & 0xF0);
+            ev.type     = static_cast<MIDI_FILE::MidiEventType>(raw.status & 0xF0);
             ev.channel  = raw.status & 0x0F;
             ev.data1    = raw.data[0];
             ev.data2    = raw.data[1];
@@ -584,7 +593,7 @@ std::vector<MidiEvent> MidiFile::buildEventList() const {
     // trigger a GCC <7.1 iterator-passing ABI warning. Events from a well-formed
     // MIDI file are nearly sorted, so this is O(n) in the common case.
     for (size_t i = 1; i < events.size(); ++i) {
-        MidiEvent key = events[i];
+        MIDI_FILE::MidiEvent key = events[i];
         size_t j = i;
         while (j > 0 && events[j - 1].time_sec > key.time_sec) {
             events[j] = events[j - 1];
