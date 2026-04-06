@@ -340,66 +340,6 @@ float Fader::position (void)
 }
 
 /*******************************************************************************
- * MIDI Decoder
- *******************************************************************************/
-MIDI_Decoder::MIDI_Decoder(void):m_maxLevel(0.0),m_hasBreak(false),m_oof(true),m_skip(100){}
-
-/*******************************************************************************/
-int MIDI_Decoder::receive (int16_t val)
-{
-    static const float MAX_BYTE (256.0);
-    if (m_skip)
-    {
-        m_skip--;
-        m_oof = true;
-        val = 0;
-    }
-    if (val < 0)
-    {
-        if (val > -(MAX_BYTE*2))
-        {
-            printf("Serial encoding error :insufficient level (%f)!\n",m_maxLevel);
-        }
-        m_maxLevel = -val;
-        m_hasBreak = true;
-        m_oof = true;
-        DEBUG_MIDI("MIDI break: %d (%f)\n",val, m_maxLevel);
-    }
-    else if (m_hasBreak)
-    {
-        m_hasBreak = false;
-        m_oof = (val == 0);
-        DEBUG_MIDI("MIDI OOF=%d (%d)\n",m_oof, val);
-    }
-
-    if (m_oof) return -1;
-
-    const float f ((MAX_BYTE * val) / m_maxLevel);
-    const int b (round (f));
-    /*
-    static int maxLog(500);
-    if (maxLog-- > 0)
-    {
-
-        const int vAccurate ((b * m_maxLevel) /MAX_BYTE);
-        const int vInaccurate (((b+1) * m_maxLevel) /MAX_BYTE);
-        DEBUG_MIDI("MIDI B=0x%02X (%d), accurate would be %d, err = %d %%)\n",
-                b,val, vAccurate, abs(100 * (val - vAccurate)/(vInaccurate - vAccurate)));
-
-    }
-     */
-    if (b >= MAX_BYTE)
-    {
-        printf("Serial encoding error, MAX=(%f), b=%d\n",m_maxLevel,b);
-        m_skip = 100;
-        m_hasBreak = false;
-        m_maxLevel = 0.0;
-    }
-    return b;
-} // MIDI_Decoder::receive
-
-
-/*******************************************************************************
  * FILE MANAGER
  *******************************************************************************/
 FileManager::FileManager (void):

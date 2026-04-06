@@ -116,20 +116,8 @@ private:
     Fader* _eof;  // Fade out
     Fader* _bof;  // Fade in
 
-    /**
-     * if _hasMidiTrack is true, we use a 3 track WAV file and 3rd track is embedded midi
-     * */
-    const bool _hasMidiTrack;
     const bool _hasAudioClickTrack;
     const size_t _eltSize;
-
-
-    struct PACK LRC_SampleWithMidi
-    {
-        int16_t l;
-        int16_t r;
-        int16_t midi;
-    };
 
     struct PACK LRC_SampleWithAudioClick
     {
@@ -153,7 +141,6 @@ private:
         {
             char _buffer;
             LRC_SampleStereo            _data2[WAV_BUFFER_SAMPLES];
-            LRC_SampleWithMidi          _data3[WAV_BUFFER_SAMPLES];
             LRC_SampleWithAudioClick    _data4[WAV_BUFFER_SAMPLES];
         } _samples;
     };

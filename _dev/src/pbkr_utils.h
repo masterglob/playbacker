@@ -169,25 +169,6 @@ private:
 };
 #endif // USE_MIDI_AS_TRACK
 
-/*******************************************************************************
- * MIDI Decoder
- *******************************************************************************/
-
-class MIDI_Decoder
-{
-public:
-    MIDI_Decoder(void);
-    /* @param f: the MIDI value read from WAV stream
-     * @return a byte to send on erial link if >=0.
-     */
-    int receive (int16_t val);
-private:
-    float m_maxLevel;
-    bool  m_hasBreak;
-    bool  m_oof; // out of frame
-    int   m_skip;
-};
-
 class Project;
 typedef vector<Project*,allocator<Project*>> ProjectVect;
 
@@ -243,7 +224,6 @@ private:
     bool _paused;
     float _lastL;
     float _lastR;
-    MIDI_Decoder _midiDecoder;
     Project* _pProject;
     ProjectVect m_allProjects;
     bool m_usbMounted;
