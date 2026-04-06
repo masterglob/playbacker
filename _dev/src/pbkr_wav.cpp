@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <fstream>
+#include <cstring>
+#include <stdexcept>
+#include <map>
+
 
 
 // #define DEBUG_WAV printf
@@ -31,7 +36,6 @@ size_t fileLength(std::ifstream& f)
     f.seekg(intPos,std::ios::beg);
     return result;
 }
-
 } // namespace
 
 
@@ -417,6 +421,185 @@ uint8_t WavFile8Mono::readSample(void)
     uint8_t result;
     fread (mIf, (char*) &result, 1);
     return result;
+}
+
+/*******************************************************************************/
+
+// --- Binary helpers -----------------------------------------------------------
+
+uint32_t MidiFile::readBE32(const uint8_t* p) {
+    return (uint32_t(p[0])<<24)|(uint32_t(p[1])<<16)|(uint32_t(p[2])<<8)|p[3];
+}
+uint16_t MidiFile::readBE16(const uint8_t* p) {
+    return uint16_t((p[0]<<8)|p[1]);
+}
+uint32_t MidiFile::readVarLen(const uint8_t*& p, const uint8_t* end) {
+    uint32_t v = 0;
+    for (int i = 0; i < 4 && p < end; ++i) {
+        uint8_t b = *p++;
+        v = (v << 7) | (b & 0x7F);
+        if (!(b & 0x80)) return v;
+    }
+    throw std::runtime_error("Invalid VarLen");
+}
+
+// --- Parse a single MTrk chunk ------------------------------------------------
+void MidiFile::parseTrack(const uint8_t* p, size_t len,
+                           std::vector<RawEvent>& out) {
+    const uint8_t* end = p + len;
+    uint32_t abs_tick = 0;
+    uint8_t  running_status = 0;
+
+    while (p < end) {
+        uint32_t delta = readVarLen(p, end);
+        abs_tick += delta;
+
+        uint8_t status = *p;
+        if (status & 0x80) {          // new status byte
+            if (status != 0xF0 && status != 0xFF) running_status = status;
+            ++p;
+        } else {                       // running status (reuse previous)
+            status = running_status;
+        }
+
+        RawEvent ev;
+        ev.tick   = abs_tick;
+        ev.status = status;
+        ev.data[0] = ev.data[1] = 0;
+        ev.meta_type = 0;
+
+        if (status == 0xFF) {          // Meta event
+            ev.meta_type = *p++;
+            uint32_t mlen = readVarLen(p, end);
+            ev.sysex_or_meta.assign(p, p + mlen);
+            p += mlen;
+        } else if (status == 0xF0 || status == 0xF7) {  // SysEx
+            uint32_t slen = readVarLen(p, end);
+            ev.sysex_or_meta.assign(p, p + slen);
+            p += slen;
+        } else {                       // Channel event
+            uint8_t type = status & 0xF0;
+            ev.data[0] = *p++;
+            // ProgramChange and ChannelPressure have only 1 data byte
+            if (type != 0xC0 && type != 0xD0) ev.data[1] = *p++;
+        }
+        out.push_back(std::move(ev));
+    }
+}
+
+// --- Constructor: load and parse the .mid file --------------------------------
+
+MidiFile::MidiFile(const char* path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error(std::string("Cannot open: ") + path);
+
+    std::vector<uint8_t> buf((std::istreambuf_iterator<char>(f)),
+                              std::istreambuf_iterator<char>());
+    const uint8_t* p   = buf.data();
+    const uint8_t* end = p + buf.size();
+
+    // MThd header
+    if (std::memcmp(p, "MThd", 4)) throw std::runtime_error("Not a MIDI file");
+    uint32_t hlen = readBE32(p+4);
+    format_       = readBE16(p+8);
+    num_tracks_   = readBE16(p+10);
+    ticks_per_qn_ = readBE16(p+12);
+    p += 8 + hlen;
+
+    // MTrk chunks — unknown chunk types are skipped as per the MIDI spec
+    tracks_.resize(num_tracks_);
+    for (uint16_t t = 0; t < num_tracks_ && p + 8 <= end; ) {
+        uint32_t tlen = readBE32(p + 4);
+        if (std::memcmp(p, "MTrk", 4) != 0) {
+            p += 8 + tlen;  // skip unknown chunk and keep going
+            continue;
+        }
+        p += 8;
+        parseTrack(p, tlen, tracks_[t]);
+        p += tlen;
+        ++t;
+    }
+}
+
+// --- Tick -> seconds resolution (with tempo map support) ---------------------
+std::vector<MidiEvent> MidiFile::buildEventList() const {
+    // 1. Build the tempo map from track 0 (meta event 0x51)
+    //    maps tick -> microseconds per beat
+    std::map<uint32_t, uint32_t> tempo_map;
+    tempo_map[0] = 500000;  // default: 120 BPM
+
+    for (auto& track : tracks_) {
+        for (auto& ev : track) {
+            if (ev.status == 0xFF && ev.meta_type == 0x51
+                && ev.sysex_or_meta.size() >= 3) {
+                auto& d = ev.sysex_or_meta;
+                uint32_t usec = (uint32_t(d[0])<<16)|(uint32_t(d[1])<<8)|d[2];
+                tempo_map[ev.tick] = usec;
+            }
+        }
+    }
+
+    // 2. Convert a tick position to seconds using the tempo map
+    auto tickToSec = [&](uint32_t tick) -> double {
+        double sec = 0.0;
+        uint32_t prev_tick = 0;
+        uint32_t cur_tempo = 500000;
+
+        for (auto& kv : tempo_map) {
+            if (kv.first >= tick) break;
+            sec += (double)(kv.first - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
+            prev_tick = kv.first;
+            cur_tempo = kv.second;
+        }
+        sec += (double)(tick - prev_tick) / ticks_per_qn_ * cur_tempo * 1e-6;
+        return sec;
+    };
+
+    // 3. Merge all tracks into a single flat list (channel events only)
+    //    Meta and SysEx are skipped — they were already consumed by the tempo map.
+    // Count channel events first so reserve() is exact and push_back()
+    // never triggers a reallocation (avoids GCC <7.1 _M_realloc_insert warning).
+    size_t count = 0;
+    for (auto& track : tracks_)
+        for (auto& raw : track)
+            if (raw.status != 0xFF && raw.status != 0xF0 && raw.status != 0xF7)
+                ++count;
+
+    // resize + index assignment avoids push_back, which always instantiates
+    // _M_realloc_insert and triggers a GCC <7.1 ABI warning at compile time.
+    std::vector<MidiEvent> events(count);
+    size_t idx = 0;
+
+    for (auto& track : tracks_) {
+        for (auto& raw : track) {
+            if (raw.status == 0xFF || raw.status == 0xF0 || raw.status == 0xF7)
+                continue;
+
+            MidiEvent& ev = events[idx++];
+            ev.tick     = raw.tick;
+            ev.time_sec = tickToSec(raw.tick);
+            ev.type     = static_cast<MidiEventType>(raw.status & 0xF0);
+            ev.channel  = raw.status & 0x0F;
+            ev.data1    = raw.data[0];
+            ev.data2    = raw.data[1];
+        }
+    }
+
+    // 4. Sort by time_sec (multi-track files may interleave events)
+    // Insertion sort avoids std::stable_sort / lower_bound internals that
+    // trigger a GCC <7.1 iterator-passing ABI warning. Events from a well-formed
+    // MIDI file are nearly sorted, so this is O(n) in the common case.
+    for (size_t i = 1; i < events.size(); ++i) {
+        MidiEvent key = events[i];
+        size_t j = i;
+        while (j > 0 && events[j - 1].time_sec > key.time_sec) {
+            events[j] = events[j - 1];
+            --j;
+        }
+        events[j] = key;
+    }
+
+    return events;
 }
 
 } // namespace PBKR

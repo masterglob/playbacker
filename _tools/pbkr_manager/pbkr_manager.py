@@ -42,7 +42,12 @@ MAX_PROPERTIES = 18
 NO_TRACK_ID = 999
 PROP_TITLE = "title"
 PROP_TRACK = "track"
-     
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
+    
 class _ProjectUI():
     def __init__(self, mgr, win):
         self.mgr, self.win = mgr, win
@@ -1063,7 +1068,7 @@ class _Manager:
         win.minsize(WIN_WIDTH, WIN_HEIGHT)
         # win.resizable(False, False)   
         self.win = win       
-        win.iconbitmap(default='images/PBKR_MGR.ico')
+        win.iconbitmap(default=resource_path('images/PBKR_MGR.ico'))
         
         self._initpath=os.path.abspath (os.path.dirname(args[0]))
         self._args = args

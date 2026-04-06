@@ -7,6 +7,9 @@
 #include <mutex>
 #include <iostream>
 #include <fstream>
+#include <cstdint>
+#include <vector>
+#include <stdexcept>
 
 #define PACK __attribute__((__packed__))
 namespace PBKR
@@ -36,9 +39,9 @@ protected:
     {
         // Full size = 44
         // Hdr WAVE
-        uint32_t FileTypeBlocID; // �RIFF�  (0x52,0x49,0x46,0x46)
+        uint32_t FileTypeBlocID; // "RIFF"  (0x52,0x49,0x46,0x46)
         uint32_t FileSize; // FileSize minus 8 bytes
-        uint32_t FileFormatID; // �WAVE�  (0x57,0x41,0x56,0x45)
+        uint32_t FileFormatID; // "WAVE"  (0x57,0x41,0x56,0x45)
     };
 
     struct PACK AudioHdr
@@ -66,8 +69,8 @@ protected:
     struct PACK DataHdr
     {
         // Data HDR
-        uint32_t DataBlocID; // Constante �data�  (0x64,0x61,0x74,0x61)
-        uint32_t DataSize; // Nombre d'octets des donn�es de Data (= full size - 44)
+        uint32_t DataBlocID; // Constante "data"  (0x64,0x61,0x74,0x61)
+        uint32_t DataSize; // Nombre d'octets des donnees de Data (= full size - 44)
         uint16_t Data[];
     };
 protected:
@@ -170,5 +173,67 @@ public:
     virtual  ~WavFile8Mono (void);
     uint8_t readSample(void);
 };
+
+/*******************************************************************************
+ * MidiFile
+ *******************************************************************************/
+enum class MidiEventType : uint8_t {
+    NoteOff         = 0x80,
+    NoteOn          = 0x90,
+    PolyPressure    = 0xA0,
+    ControlChange   = 0xB0,
+    ProgramChange   = 0xC0,
+    ChannelPressure = 0xD0,
+    PitchBend       = 0xE0,
+    SysEx           = 0xF0,
+    Meta            = 0xFF,
+};
+
+// Channel events only — Meta and SysEx are used internally during parsing
+// (tempo map) but are not exposed. This keeps MidiEvent a trivial flat struct
+// with no heap allocation, safe for vector reallocation on old GCC ABI.
+struct MidiEvent {
+    uint32_t      tick     = 0;    // absolute position in MIDI ticks
+    double        time_sec = 0.0;  // position in seconds (after tempo resolution)
+    MidiEventType type     = MidiEventType::NoteOff;
+    uint8_t       channel  = 0;    // 0-15
+    uint8_t       data1    = 0;    // note / CC number / etc.
+    uint8_t       data2    = 0;    // velocity / CC value / etc.
+};
+
+// ─── MIDI parser (no external dependencies) ───────────────────────────────────
+class MidiFile {
+public:
+    explicit MidiFile(const char* path);  // see .cpp
+
+    // Resolves ticks -> seconds and returns a flat list of events sorted by time_sec.
+    // Iterate or index it directly — no wrapper needed.
+    std::vector<MidiEvent> buildEventList() const;
+
+    uint16_t format()     const noexcept { return format_; }
+    uint16_t numTracks()  const noexcept { return num_tracks_; }
+    uint16_t ticksPerQN() const noexcept { return ticks_per_qn_; }
+
+private:
+    struct RawEvent {
+        uint32_t tick;
+        uint8_t  status;
+        uint8_t  data[2];
+        uint8_t  meta_type;
+        std::vector<uint8_t> sysex_or_meta;
+    };
+
+    uint16_t format_       = 0;
+    uint16_t num_tracks_   = 0;
+    uint16_t ticks_per_qn_ = 480;
+
+    std::vector<std::vector<RawEvent>> tracks_;  // one vector per track
+
+    static uint32_t readVarLen(const uint8_t*& p, const uint8_t* end);
+    static uint32_t readBE32(const uint8_t* p);
+    static uint16_t readBE16(const uint8_t* p);
+    void parseTrack(const uint8_t* p, size_t len, std::vector<RawEvent>& out);
+};
+
 } // namespace PBKR
 #endif // _pbkr_wav_h_

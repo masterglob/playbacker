@@ -104,5 +104,8 @@ pbkr:prepare
 	$(Q)make obj FILE=pbkr_utils.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory
 	$(Q)make link TARGET=pbkr --no-print-directory 
+midi_test:wav
+	$(Q)make obj FILE=main_midi_test.cpp --no-print-directory 
+	$(Q)make link TARGET=midi_test --no-print-directory 
 clean:
 	rm -f src/* .build/*
