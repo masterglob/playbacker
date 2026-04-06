@@ -501,7 +501,7 @@ void MIDI_Controller_Mgr::applyMidiLearn(const MIDI_Event_Type& event, const MID
 
     outfile << MainMenu::keyToString(mMidiLearn) << std::endl;
     outfile.close();
-#warning "TODO: insert new shortcut in current list"
+    // "TODO: insert new shortcut in current list"
 
     cancelMidiLearn();
 }
