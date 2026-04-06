@@ -287,8 +287,15 @@ WavFileLRC::getTimeCode(void)
 }
 
 /*******************************************************************************/
+inline double
+WavFileLRC::toTimePos(size_t sampleIdx) const
+{
+    return static_cast<double>(sampleIdx) / static_cast<double>(mAudioHdr.nSamplesPerSec);
+}
+
+/*******************************************************************************/
 bool
-WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, int16_t& midi)
+WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, double& timePos)
 {
     static const float READ_VOLUME (1.0 / 0x8000);
     Buffer* b(&_buffers[_bufferIdx]);
@@ -308,11 +315,12 @@ WavFileLRC::getNextSample(float & l, float & r, float& l2, float & r2, int16_t& 
             r = 0.0;
             l2 = 0.0;
             r2 = 0.0;
-            midi = -1;
+            timePos = -1.0;
             return false;
         }
     }
-    midi = 0;
+
+    timePos = toTimePos(b->_pos);
     if (_hasAudioClickTrack)
     {
         LRC_SampleWithAudioClick& sample (b->_samples._data4[b->_pos++]);

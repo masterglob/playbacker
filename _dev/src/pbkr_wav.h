@@ -102,13 +102,14 @@ public:
     /**
      * Return True if the file is still reading. false when terminated
      */
-    bool getNextSample(float & l, float & r, float& l2, float & r2, int16_t& midi);
+    bool getNextSample(float & l, float & r, float& l2, float & r2, double& timePos);
 
     /**
      * false = backward.
      */
     void fastForward(bool forward, const int nbSeconds);
     string getTimeCode(void);
+    double toTimePos(size_t sampleIdx) const;
 
     inline SampleRate::Frequency frequency(void)const{return mAudioHdr.nSamplesPerSec;}
     virtual void reset(void);

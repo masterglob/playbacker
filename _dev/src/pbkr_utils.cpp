@@ -539,9 +539,8 @@ void FileManager::backward(void)
 } // FileManager:: backward
 
 /*******************************************************************************/
-bool FileManager::getSample( float& l, float & r, float& l2, float & r2, int& midiB)
+bool FileManager::getSample( float& l, float & r, float& l2, float & r2, double& timePos)
 {
-    midiB = -1;
     if (_starting)
     {
         API::setSamplesVolume(fileGetVolumeSamples(m_indexPlaying));
@@ -549,16 +548,14 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, int& mi
         // just start reading... (No more used be could be used to delay while a
         // task is preparing before reading)
         _starting = false;
+        timePos = 0.0;
     }
     else if (_reading && _file && (!_paused))
     {
-        int16_t midiIn;
-        if (not _file->getNextSample(l ,r, l2, r2, midiIn))
+        if (not _file->getNextSample(l ,r, l2, r2, timePos))
         {
             stopReading();
         }
-
-        midiB = _midiDecoder.receive(midiIn);
         return true;
     }
 
@@ -566,6 +563,7 @@ bool FileManager::getSample( float& l, float & r, float& l2, float & r2, int& mi
     r = _lastR;
     l2 = 0;
     r2 = 0;
+    timePos = -1.0;
     return false;
 } // FileManager::getSample
 
@@ -883,5 +881,5 @@ Latency<float> rightLatency;
 Latency<float> leftClicLatency;
 Latency<float> rightClicLatency;
 
-WemosControl wemosControl("/dev/ttyAMA0");
+WemosControl wemosControl("/dev/ttyAMA0"); // TODO : Remove
 } // namespace PBKR

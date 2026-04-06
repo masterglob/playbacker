@@ -192,11 +192,10 @@ public:
     /**
      * Automatically retreive L/R and clic1/clic2 + MIDI informations
      * - Stereo track : Clic1/Clic2 & MIDI are set to 0
-     * - 3-track files : Clic1/Clic2 are set to 0
      * - 4-track files : MIDI is set to 0
      * @return true is sound is playing
      */
-    bool getSample( float& l, float & r, float& l2, float & r2, int& midiB);
+    bool getSample( float& l, float & r, float& l2, float & r2, double& timePos);
     bool reading(void)const{return _reading;}
     const std::string title(void)const {return m_title;}
     size_t indexPlaying(void)const {return m_indexPlaying;}

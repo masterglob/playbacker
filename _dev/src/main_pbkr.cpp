@@ -178,7 +178,7 @@ int main (int argc, char**argv)
 
 	GPIOs::GPIO::begin();
 
-	MidiOutMsg midiCmdToWemos; // The midi command read from file and sent to wemos
+	MidiOutMsg midiOut;
 
     // TODO : Add a settings parameter for OUT volume (general)
     const float& mainVolume(PBKR::API::samplesVolume);
@@ -199,7 +199,7 @@ int main (int argc, char**argv)
 		// l/r is the output sample
 		// l2/r2 is the clic outputs
         float l,r, l2, r2;
-        int midi;
+        double timePos{-1.0};
 		float phase = 0;
 		const float phasestep=(TWO_PI * 440.0)/ 48000.0; // TODO PHASE!
 
@@ -217,7 +217,7 @@ int main (int argc, char**argv)
 		while (!Thread::isExitting())
 		{
 		    // if (BTN.pressed()) break;
-		    bool playing = fileManager.getSample(l,r, l2, r2 ,midi);
+		    bool playing = fileManager.getSample(l,r, l2, r2, timePos);
 		    if (!playing)
 		    {
                 playerHifi.pause();
@@ -225,7 +225,7 @@ int main (int argc, char**argv)
                 while (!playing && !Thread::isExitting())
                 {
                     usleep(1000*10);
-                    playing = fileManager.getSample(l,r, l2, r2 ,midi);
+                    playing = fileManager.getSample(l,r, l2, r2, timePos);
                 }
                 // Unpause both first, so that putting samples start exactly
                 // at the same time
@@ -260,23 +260,16 @@ int main (int argc, char**argv)
             r = rightLatency.putSample (r);
             l2 = leftClicLatency.putSample(l2);
             r2 = rightClicLatency.putSample (r2);
-            midi = midiLatency.putSample(midi);
 
             playerHifi.write_sample(l,r);
             playerClic->write_sample(l2,r2);
             ::manageLed(abs(l2)+abs(r2) > 0.05);
-			if (midi >=0)
-			{
-			    // printf("TODO : MIDI byte to send: %02X\n",midi);
-			    midiCmdToWemos.push_back(midi);
-			}
-			else if (not midiCmdToWemos.empty())
-			{
-			    wemosControl.pushMessage(midiCmdToWemos);
-			    midiCmdToWemos.clear();
-			}
 
-			wemosControl.sendByte();
+            /* TODO :
+             * - Load a MIDI file
+             * - use 'timePos' to generate MIDI output in 'midiOut'
+             */
+			wemosControl.sendByte(); // TODO : Remove
 
 			if (ledFader->update())
 			{
