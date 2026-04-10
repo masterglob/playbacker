@@ -24,6 +24,9 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <ctime>
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 // #define DEBUG_MIDI printf
 #define DEBUG_MIDI(...)
@@ -44,6 +47,44 @@ static DISPLAY::DisplayManager& display (DISPLAY::DisplayManager::instance());
 
 #define FAST_FORWARD_BACKWARD_S 20
 #define PAUSE_BACKWARD_S 5
+
+#ifndef BOTHER
+#define BOTHER 0010000
+#endif
+
+#ifndef TCGETS2
+#define TCGETS2 0x802c542a
+#define TCSETS2 0x402c542b
+#endif
+
+struct termios2 {
+    tcflag_t c_iflag;
+    tcflag_t c_oflag;
+    tcflag_t c_cflag;
+    tcflag_t c_lflag;
+
+    cc_t c_line;
+    cc_t c_cc[19];
+
+    speed_t c_ispeed;
+    speed_t c_ospeed;
+};
+
+bool setMidiBaud(int fd)
+{
+    struct termios2 tio;
+
+    if (ioctl(fd, TCGETS2, &tio) < 0)
+        return false;
+
+    tio.c_cflag &= ~CBAUD;
+    tio.c_cflag |= BOTHER;
+
+    tio.c_ispeed = 31250;
+    tio.c_ospeed = 31250;
+
+    return ioctl(fd, TCSETS2, &tio) == 0;
+}
 
 } // namespace
 
@@ -877,6 +918,21 @@ const char* getIPNetMask (const char* device)
 MidiOutSerial::MidiOutSerial(const char* filename):
     m_handle (file_open_write (filename))
 {
+    if (m_handle < 0)
+    {
+
+        printf("MIDI OUT: failed to open %s\n", filename ? filename : "<null>");
+        return;
+    }
+    if (!setMidiBaud(m_handle))
+    {
+        printf("Failed to initialize MIDI OUT\n");
+        close(m_handle);
+        m_handle = -1;
+        return;
+    }
+    printf("Initialized MIDI OUT on %s\n", filename ? filename : "<null>");
+
     m_thread = std::thread(&MidiOutSerial::midiThread, this);
 }
 
