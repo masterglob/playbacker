@@ -536,6 +536,7 @@ void FileManager::startReading(void)
             _reading = true;
             _starting = true;
             _paused = false;
+            _nextMidiIdx = 0;
             printf("Start reading...\n");
             display.onEvent(DISPLAY::DisplayManager::evPlay);
         }
@@ -578,6 +579,7 @@ void FileManager::stopReading(void)
         if (_wavFile) delete (_wavFile);
         _wavFile = nullptr;
         _midiEvents.clear();
+        _nextMidiIdx = 0;
     }
 
 } // FileManager::stopReading
