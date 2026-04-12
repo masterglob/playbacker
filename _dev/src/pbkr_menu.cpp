@@ -265,21 +265,16 @@ struct ClicSettingsMenuItem : ListMenuItem
 private:
     static int paramToVolume(const int param){return (param * 127) /100;}
     void setLatency(void);
+    void setMidiLatency(void);
     typedef enum {
         ID_VOLUME = 0,
-        ID_LATENCY,
-        ID_CHANN_L,
-        ID_CHANN_R,
-        ID_PRIM_NOTE,
-        ID_SECN_NOTE,
+        ID_CLIC_LATENCY,
+        ID_MIDI_LATENCY,
         ID_COUNT
     } ItemId;
     NumParam m_pVolume;
-    NumParam m_pLatency;
-    NumParam m_pChannL;
-    NumParam m_pChannR;
-    NumParam m_pPriNote;
-    NumParam m_pSecNote;
+    NumParam m_pClicLatency;
+    NumParam m_pMidiLatency;
     NumParam* m_param[ID_COUNT];
 };
 static ClicSettingsMenuItem clicSettingsMenuItem ("Clic settings", &settingsMenuItem);
@@ -1118,15 +1113,22 @@ ClicSettingsMenuItem::ClicSettingsMenuItem (const std::string & title, MenuItem*
 :
         ListMenuItem(title, parent, ID_COUNT),
          m_pVolume(NumParam("Volume", "", 100, 10, 10, 90)),
-         m_pLatency(NumParam("Latency", "ms", 50, -60, 2, 2)),
-         m_pChannL(FixedNumParam ("Left Chann.", "", 15)),
-         m_pChannR(FixedNumParam ("Right Chann.", "", 16)),
-         m_pPriNote(FixedNumParam ("Primary Note", "", 24)),
-         m_pSecNote(FixedNumParam ("Second. Note", "", 25)),
-        m_param{&m_pVolume, &m_pLatency,&m_pChannL,&m_pChannR, &m_pPriNote,&m_pSecNote}
+         m_pClicLatency(NumParam("Latency", "ms", 50, -60, 2, 2)),
+         m_pMidiLatency(NumParam("MidiLatency", "ms", 90, 0, 5, 30)),
+        m_param{&m_pVolume, &m_pClicLatency, &m_pMidiLatency}
 {
     m_pVolume.m_val = Config::instance().loadInt("MIDI_VOLUME", 60);
-    m_pLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", 4));
+    m_pClicLatency.m_val = ( Config::instance().loadInt("CLIC_LATENCY", 4));
+    m_pMidiLatency.m_val = ( Config::instance().loadInt("MIDI_LATENCY", 4));
+
+    if (m_pClicLatency.m_val < -60)
+        m_pClicLatency.m_val = -60;
+    if (m_pClicLatency.m_val > 50)
+        m_pClicLatency.m_val = 50;
+    if (m_pMidiLatency.m_val < 0)
+        m_pClicLatency.m_val = 0;
+    if (m_pMidiLatency.m_val > 90)
+        m_pClicLatency.m_val = 90;
     setLatency ();
 }
 
@@ -1147,21 +1149,27 @@ void  ClicSettingsMenuItem::sendVolume(void)
 /*******************************************************************************/
 void  ClicSettingsMenuItem::refreshLatency(void)
 {
-    const int prevLatency (m_pLatency.m_val);
-    m_pLatency.m_val = 0;
+    const int prevLatency (m_pClicLatency.m_val);
+    m_pClicLatency.m_val = 0;
     setLatency();
-    m_pLatency.m_val = prevLatency;
+    m_pClicLatency.m_val = prevLatency;
     setLatency();
+    setMidiLatency();
 }
 
 /*******************************************************************************/
 void  ClicSettingsMenuItem::setLatency(void)
 {
-    leftLatency.setMs(m_pLatency.m_val);
-    rightLatency.setMs(m_pLatency.m_val);
-    leftClicLatency.setMs(-m_pLatency.m_val);
-    rightClicLatency.setMs(-m_pLatency.m_val);
-    midiLatency.setMs(-m_pLatency.m_val);
+    leftLatency.setMs(m_pClicLatency.m_val);
+    rightLatency.setMs(m_pClicLatency.m_val);
+    leftClicLatency.setMs(-m_pClicLatency.m_val);
+    rightClicLatency.setMs(-m_pClicLatency.m_val);
+}
+
+/*******************************************************************************/
+void  ClicSettingsMenuItem::setMidiLatency(void)
+{
+    midiLatency.setMs(m_pMidiLatency.m_val);
 }
 
 /*******************************************************************************/
@@ -1196,9 +1204,13 @@ void ClicSettingsMenuItem::onUpDownPress(const bool isUp)
         sendVolume ();
         break;
     }
-    case ID_LATENCY:
-        Config::instance().saveInt("MIDI_LATENCY", value);
+    case ID_CLIC_LATENCY:
+        Config::instance().saveInt("CLIC_LATENCY", value);
         setLatency();
+        break;
+    case ID_MIDI_LATENCY:
+        Config::instance().saveInt("MIDI_LATENCY", value);
+        setMidiLatency();
         break;
     default:
         break;
