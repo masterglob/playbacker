@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.6"
+#define PBKR_VERSION "2.0.7"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -33,9 +33,9 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.6:
    - Fixup issues in Sound card switching (Revert previous version) => PCM data underrun.
    - Add "setProjectById" and assign it to tinypad "bank" button.
- WIP :
+ New in V2.0.7:
    - Remove old "Wemos MIDI" feature
-   - Add MIDI support (Sw only)
+   - Add MIDI support
 
  Known bugs:
    - MIDI tracks Need delay compensation.
