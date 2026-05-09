@@ -159,14 +159,26 @@ class _ProjectUI():
             btn.grid(row = y, column = 2, padx=2, pady=2)
             self._btns.append(btn)
             
+            btn_midi = tk.Button(fr, text="MIDI", command=lambda self=self, song=song: self.onMidiEdit(song))
+            btn_midi.grid(row=y, column=3, padx=2, pady=2)
+            self._btns.append(btn_midi)
+            song.btn_midi = btn_midi
+
+            def on_midi_check(result, btn=btn_midi):
+                btn.config(bg="#50C050" if result.strip() == "OK" else btn.master.cget("bg"))
+
+            SSHCommander(self.mgr.ssh,
+                         "test -f '%s.mid' && echo 'OK'" % song.fullPathName,
+                         lambda result, cb=on_midi_check: btn_midi.after(0, cb, result))
+            
             if prevSong:
                 cmd = lambda self=self, song=song, prevSong=prevSong: self.onMove(song, prevSong)
                 btn = tk.Button(fr,text="Move Up", command = cmd)
-                btn.grid(row = y, column = 3, padx=2, pady=2)
+                btn.grid(row = y, column = 4, padx=2, pady=2)
                 self._btns.append(btn)   
                 
             btn = tk.Button(fr,text="Delete", command = lambda self=self, song=song : self.onDeleteSong(song))
-            btn.grid(row = y, column = 4, padx=2, pady=2)
+            btn.grid(row = y, column = 5, padx=2, pady=2)
             self._btns.append(btn)
                      
             self._vars.append((song,var))
@@ -314,6 +326,83 @@ class _ProjectUI():
             if song.getTitle() != title:
                 print("New title : <%s>"%title)
                 song.setTitle(self.mgr, title)
+                
+    def onMidiEdit(self, song):
+        if self.readOnly.get():
+            return
+        midi_remote = song.fullPathName + ".mid"
+
+        popup = tk.Toplevel(self.win)
+        popup.title("MIDI - %s" % song.getTitle())
+        popup.grab_set()
+        self.win.update_idletasks()
+        x = self.win.winfo_rootx() + self.win.winfo_width() // 2 - 200
+        y = self.win.winfo_rooty() + self.win.winfo_height() // 2 - 80
+        popup.geometry("+%d+%d" % (x, y))
+
+        tk.Label(popup, text="MIDI file for:\n%s" % song.name,
+                 font=("Arial", 11), pady=8).pack()
+
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(pady=10)
+
+        def do_upload():
+            fullfilename = tk.filedialog.askopenfilename(
+                parent=popup,
+                initialdir=self.mgr.param_LastOpenPath.get(),
+                title="Select a MIDI file for %s" % song.name,
+                filetypes=(('MIDI files', '*.mid *.midi'), ('All files', '*.*'))
+            )
+            if not fullfilename:
+                return
+            srcDir, _ = os.path.split(os.path.abspath(fullfilename))
+            self.mgr.param_LastOpenPath.set(srcDir)
+            SSHUploader(self.mgr.ssh, fullfilename, midi_remote,
+                        event=lambda success, result: self.__midiDone(success, result, "upload", btn_delete, status_lbl, song))
+
+        def do_delete():
+            if not tk.messagebox.askokcancel(
+                    "Delete MIDI file",
+                    "Confirm deletion of MIDI file for:\n%s" % song.name):
+                return
+            SSHCommander(self.mgr.ssh,
+                         "rm -f '%s'" % midi_remote,
+                         lambda result: self.__midiDone(True, result, "delete", btn_delete, status_lbl, song))
+            
+        tk.Button(btn_frame, text="Select a local MIDI file",
+                  width=38, command=do_upload).pack(pady=4)
+
+        btn_delete = tk.Button(btn_frame, text="Delete MIDI file on RPI",
+                               width=38, command=do_delete, state="disabled")
+        btn_delete.pack(pady=4)
+
+        tk.Button(btn_frame, text="Close",
+                  width=38, command=popup.destroy).pack(pady=4)
+
+        status_lbl = tk.Label(popup, text="", fg="#207020", font=("Arial", 10), pady=4)
+        status_lbl.pack()
+
+        def on_check_result(result):
+            if result.strip() == "OK":
+                btn_delete.config(state="normal")
+
+        SSHCommander(self.mgr.ssh,
+                     "test -f '%s' && echo 'OK'" % midi_remote,
+                     lambda result: popup.after(0, on_check_result, result))
+
+    def __midiDone(self, success, result, action, btn_delete, status_lbl, song):
+        if not success:
+            status_lbl.config(text="Operation failed: %s" % result, fg="#A01010")
+        else:
+            if action == "upload":
+                status_lbl.config(text="MIDI file successfully uploaded.", fg="#207020")
+                btn_delete.config(state="normal")
+                song.btn_midi.config(bg="#50C050")
+            elif action == "delete":
+                status_lbl.config(text="MIDI file deleted.", fg="#207020")
+                btn_delete.config(state="disabled")
+                song.btn_midi.config(bg=song.btn_midi.master.cget("bg"))
+        
     def __delete(self):
         # delete current project
         if self.readOnly.get():return 
