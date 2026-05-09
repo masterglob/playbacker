@@ -38,8 +38,9 @@ def askTitle(parent, name, title):
         result = askstring(parent = parent,
                           title = 'Set Title (%s)'%name,
                           prompt = 'Enter new title for file (%s)'%name,
-                          initialvalue = title).strip()
+                          initialvalue = title)
         if result:
+            result = result.strip()
             if not re.match(r"^[ 'A-Z0-9_+-]+$", result, flags=re.IGNORECASE): 
                 messagebox.showerror("Bad title", "Do not use special chars in title")
             else:
