@@ -1,0 +1,1 @@
+python3 -m PyInstaller --onefile pbkr_manager.py --add-data "images:images" --icon=images/PBKR_MGR.ico
