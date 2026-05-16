@@ -7,6 +7,7 @@ CFLAGS= -O1 -Wall -I/usr/local/include/libxml2 -g
 LIBS=-lwiringPi 
 LIBS+=-lasound
 LIBS+=-lpthread
+LIBS+=-lusb-1.0
 # LIBS+=-lxml2
 LIBS +=  -g
 
@@ -60,6 +61,9 @@ menu:
 gpio:
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
+dmx:
+	$(Q)make obj FILE=pbkr_dmx.cpp --no-print-directory 
+	$(Q)make link TARGET=pbkr --no-print-directory 
 projects:
 	$(Q)make obj FILE=pbkr_projects.cpp --no-print-directory 
 	$(Q)make link TARGET=pbkr --no-print-directory 
@@ -89,6 +93,7 @@ lcd_display:prepare
 	$(Q)make link_display --no-print-directory
 pbkr:prepare
 	$(Q)make obj FILE=main_pbkr.cpp --no-print-directory &
+	$(Q)make obj FILE=pbkr_dmx.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_gpio.cpp --no-print-directory
 	$(Q)make obj FILE=pbkr_midi.cpp --no-print-directory & 
 	$(Q)make obj FILE=pbkr_wav.cpp --no-print-directory 

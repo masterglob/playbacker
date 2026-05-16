@@ -1,6 +1,6 @@
 #pragma once
 
-#define PBKR_VERSION "2.0.7"
+#define PBKR_VERSION "2.0.8"
 extern const int PBKR_BUILD_ID;
 
 /*
@@ -36,6 +36,8 @@ extern const int PBKR_BUILD_ID;
  New in V2.0.7:
    - Remove old "Wemos MIDI" feature
    - Add MIDI support
+ New in V2.0.8:
+   - Add DMXIS support (driver only)
 
  Known bugs:
    - MIDI tracks Need delay compensation.

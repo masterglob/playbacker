@@ -1,0 +1,12 @@
+openssh.tcz
+kmaps.tcz
+firmware-rpi-wifi.tcz
+wifi.tcz
+alsa.tcz
+libasound-dev.tcz
+hostapd.tcz
+alsa-utils.tcz
+wiringpi.tcz
+usb-serial-5.10.77-piCore-v7.tcz
+
+ntfs-3g.tcz

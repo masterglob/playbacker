@@ -1,0 +1,8 @@
+piCore Linux 13.0.3 (ARMv7)
+kernel: 5.10.77-piCore-v7
+
+piCore 13.x
+
+Repo des TCZ:
+http://repo.tinycorelinux.net/13.x/armv7/tcz/
+

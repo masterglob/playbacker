@@ -26,6 +26,7 @@
 #include "pbkr_console.h"
 #include "pbkr_api.h"
 #include "pbkr_websrv.h"
+#include "pbkr_dmx.h"
 
 
 /*******************************************************************************
@@ -208,6 +209,8 @@ int main (int argc, char**argv)
         SOUND::SoundPlayer playerClic2 (hdphdac);
         // const bool usingHdmi (false); // TODO => make this dynamic
         SOUND::SoundPlayer* playerClic( &playerClic2);
+
+        DmxIs dmx;
 
 		setRealTimePriority();
 
