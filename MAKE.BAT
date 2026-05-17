@@ -6,7 +6,6 @@ cd "%~dp0"
 @echo %BUILD%>build_id
 @cd ..
 echo BUILD=%BUILD%
-pause
 
 @CALL COPY
 

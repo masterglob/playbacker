@@ -211,6 +211,7 @@ int main (int argc, char**argv)
         SOUND::SoundPlayer* playerClic( &playerClic2);
 
         DmxIs dmx;
+        initializeDmxParams(dmx);
 
 		setRealTimePriority();
 

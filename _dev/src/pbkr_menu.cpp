@@ -4,6 +4,7 @@
 
 #include "pbkr_menu.h"
 #include "pbkr_cfg.h"
+#include "pbkr_dmx.h"
 #include "pbkr_osc.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_projects.h"
@@ -21,6 +22,7 @@ struct ListMenuItem;
 struct PlayMenuItem;
 struct NetShowMenuItem;
 struct SettingsMenuItem;
+struct DmxMenuItem;
 struct SelectProjectShowMenuItem;
 struct ClicSettingsMenuItem;
 struct CopyFromUSBMenuItem;
@@ -31,6 +33,35 @@ static const char* label_empty ("<EMPTY>");
 static string boolToString(const bool b)
 {
     return (b ? "<YES>" : "<NO>");
+}
+
+
+inline DmxIs::IndexSet getAllDmxIdx(uint16_t begin, uint16_t end)
+{
+    DmxIs::IndexSet s;
+
+    for (uint32_t i = begin; i <= end; ++i)
+    {
+        s.insert(static_cast<uint16_t>(i));
+    }
+    return s;
+}
+
+void incOrDecMod(size_t& val, bool isInc, const size_t modulo)
+{
+    if (isInc)
+        val = (val + 1 < modulo ? val + 1 : 0);
+    else
+        val = (val > 0 ? val - 1 : modulo - 1);
+}
+void incOrDecMod(uint8_t& val, bool isInc, const size_t modulo)
+{
+    size_t tmp(val);
+    if (isInc)
+        tmp = (tmp + 1 < modulo ? tmp + 1 : 0);
+    else
+        tmp = (tmp > 0 ? tmp - 1 : modulo - 1);
+    val = (uint8_t)tmp;
 }
 
 static inline void increment (uint32_t& val, const int incr, const uint32_t max)
@@ -187,6 +218,33 @@ private:
     size_t m_indexPlaying;
 };
 static SongParamsMenuItem songParamsMenuItem ("Song", &mainMenuItem);
+
+/*******************************************************************************/
+struct DmxMenuItem : MenuItem
+{
+    DmxMenuItem(const std::string & title, MenuItem* parent);
+    virtual ~DmxMenuItem(void);
+    const std::string menul1(void) override;
+    const std::string menul2(void) override;
+    void onLeftRightPress(const bool isLeft) override;
+    void onUpDownPress(const bool isUp) override;
+    void onEnter(const bool longPressed=false) override;
+    void onExit(void) override;
+    void initializeDmxParams(DmxIs&);
+private:
+    size_t m_menuIdx{0};
+    size_t m_breathIdx{0};
+    uint8_t m_minPow;
+    uint8_t m_maxPow;
+    DmxIs::IndexSet m_breathSet;
+    bool m_breathAll{false};
+    const size_t m_nbSubmenus{4};
+    static const string m_saveSectionMinPow;
+    static const string m_saveSectionMaxPow;
+};
+const string DmxMenuItem::m_saveSectionMinPow("DmxMinPow");
+const string DmxMenuItem::m_saveSectionMaxPow("DmxMaxPow");
+static DmxMenuItem dmxMenuItem ("DMX config", &mainMenuItem);
 
 /*******************************************************************************/
 struct SelectProjectShowMenuItem : ListMenuItem
@@ -839,6 +897,178 @@ SongParamsMenuItem::onEnter(const bool longPressed)
     onExit();
 }
 
+
+/*******************************************************************************
+ *
+########  ##     ## ##     ##     ######   #######  ##    ## ######## ####  ######
+##     ## ###   ###  ##   ##     ##    ## ##     ## ###   ## ##        ##  ##    ##
+##     ## #### ####   ## ##      ##       ##     ## ####  ## ##        ##  ##
+##     ## ## ### ##    ###       ##       ##     ## ## ## ## ######    ##  ##   ####
+##     ## ##     ##   ## ##      ##       ##     ## ##  #### ##        ##  ##    ##
+##     ## ##     ##  ##   ##     ##    ## ##     ## ##   ### ##        ##  ##    ##
+########  ##     ## ##     ##     ######   #######  ##    ## ##       ####  ######
+
+*******************************************************************************/
+
+DmxMenuItem::DmxMenuItem(const std::string & title, MenuItem* parent)
+:
+        MenuItem(title, parent)
+{
+
+    m_minPow = Config::instance().loadInt(m_saveSectionMinPow, 0);
+    m_maxPow = Config::instance().loadInt(m_saveSectionMaxPow, 255);
+}
+
+/*******************************************************************************/
+DmxMenuItem::~DmxMenuItem(){
+
+}
+
+/*******************************************************************************/
+const std::string DmxMenuItem::menul1(void)
+{
+    return "DMX Config";
+}
+
+/*******************************************************************************/
+const std::string DmxMenuItem::menul2(void)
+{
+    DmxIs* pDmx = DmxIs::instance();
+    if (!pDmx) return "N/C";
+    switch(m_menuIdx)
+    {
+    case 0:
+    {
+        return "SN="+pDmx->getSN();
+    }
+    case 1:
+        if (m_breathIdx > 0)
+        {
+            const std::string prefix= (m_breathSet.find(m_breathIdx - 1) != m_breathSet.end() ? "*" : " ");
+            return prefix+" Breath #" + std::to_string(m_breathIdx);
+        }
+        else
+        {
+            const std::string prefix= (m_breathAll ? "*" : " ");
+            return prefix+ " Breath (all)";
+        }
+    case 2:
+        return "Min Pow=" + std::to_string(pDmx->getMin());
+    case 3:
+        return "Max Pow=" + std::to_string(pDmx->getMax());
+    default:
+        return "??";
+    }
+}
+
+
+/*******************************************************************************/
+void DmxMenuItem::onUpDownPress(const bool isUp)
+{
+    DmxIs* pDmx = DmxIs::instance();
+    if (!pDmx) return ;
+
+    m_minPow = pDmx->getMin();
+    m_maxPow = pDmx->getMax();
+
+    switch(m_menuIdx)
+    {
+    case 1:
+    {
+        incOrDecMod(m_breathIdx, isUp,  256);
+    }
+    break;
+    case 2:
+    {
+        incOrDecMod(m_minPow, isUp, 256);
+        Config::instance().saveInt(m_saveSectionMinPow, m_minPow);
+        pDmx->setPowerRange(m_minPow, m_maxPow);
+    }
+    break;
+    case 3:
+    {
+        incOrDecMod(m_maxPow, isUp, 256);
+        Config::instance().saveInt(m_saveSectionMaxPow, m_maxPow);
+        pDmx->setPowerRange(m_minPow, m_maxPow);
+    }
+    break;
+    default:
+        break;
+    }
+}
+
+/*******************************************************************************/
+void DmxMenuItem::onLeftRightPress(const bool isLeft)
+{
+    ::incOrDecMod(m_menuIdx, !isLeft, m_nbSubmenus);
+}
+
+/*******************************************************************************/
+void DmxMenuItem::onEnter(const bool longPressed)
+{
+    switch(m_menuIdx)
+    {
+    case 0:
+        break;
+    case 1:
+    {
+        uint16_t idx{ static_cast<uint16_t>(m_breathIdx) };
+        if (idx == 0)
+        {
+            m_breathAll = !m_breathAll;
+            if (m_breathAll)
+                m_breathSet = getAllDmxIdx(0,255);
+            else
+                m_breathSet.clear();
+        }
+        else
+        {
+            idx--;
+            // flip bit
+            if (!m_breathSet.erase(idx))
+            {
+                m_breathSet.insert(idx);
+            }
+        }
+        DmxIs* pDmx = DmxIs::instance();
+        if (pDmx)
+        {
+            pDmx->breathTest(m_breathSet);
+        }
+    }
+    break;
+    case 2:
+        printf( "TODO2\n");
+        break;
+    case 3:
+        printf( "TODO3\n");
+        break;
+    default:
+        break;
+    }
+}
+
+
+/*******************************************************************************/
+void DmxMenuItem::onExit(void)
+{
+    DmxIs* pDmx = DmxIs::instance();
+    if (pDmx)
+    {
+        // Stop breath test and reset all
+        m_breathSet.clear();
+        m_breathAll = false;
+        pDmx->breathTest({});
+    }
+    MenuItem::onExit();
+}
+
+
+/*******************************************************************************/
+void DmxMenuItem::initializeDmxParams(DmxIs& dmx)
+{
+    dmx.setPowerRange(m_minPow, m_maxPow);
+}
 
 /*******************************************************************************
  *
@@ -1533,6 +1763,7 @@ void setDefaultProject(void)
 } // setDefaultProject
 
 
+/*******************************************************************************/
 bool Button::pressed(bool& longPress)const
 {
     longPress = false;
@@ -1576,5 +1807,10 @@ bool Button::pressed(bool& longPress)const
     return false;
 }
 
+/*******************************************************************************/
+void initializeDmxParams(DmxIs& dmx)
+{
+    dmxMenuItem.initializeDmxParams(dmx);
+}
 } // namespace PBKR
 

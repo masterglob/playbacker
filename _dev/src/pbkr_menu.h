@@ -2,6 +2,7 @@
 
 #include "pbkr_config.h"
 #include "pbkr_utils.h"
+#include "pbkr_dmx.h"
 #include "pbkr_gpio.h"
 
 #include <iostream>
@@ -100,6 +101,7 @@ extern void openCopyFromUSBMenu();
 extern void openNetMenuFromUSBMenu();
 extern void openDeleteProjectMenu();
 extern void setProjectById(const uint8_t showId);
+extern void initializeDmxParams(DmxIs&);
 
 extern void refreshMidiVolume    (void);
 extern void refreshLatency    (void);

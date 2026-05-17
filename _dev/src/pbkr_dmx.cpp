@@ -40,11 +40,15 @@ namespace PBKR
 {
 using namespace std;
 
+DmxIs* DmxIs::m_instance{nullptr};
+
 /***********************************************************************/DmxIs::DmxIs(uint16_t vendor_id, uint16_t product_id):
                 m_vendor_id(vendor_id),
                 m_product_id(product_id),
                 m_ledsTx(NB_LEDS)
 {
+    m_sn = "N/C";
+    m_instance = this;
     libusb_init(&m_ctx);
     start();
     breathTest(BREATH_TEST);
@@ -58,6 +62,7 @@ using namespace std;
     PRINT("~DmxIs-Mid2\n");
     libusb_exit(m_ctx);
     PRINT("~DmxIs-Out\n");
+    m_instance = nullptr;
 }
 
 /***********************************************************************/
@@ -93,7 +98,7 @@ void DmxIs::setLed(uint8_t idx, uint8_t val)
 }
 
 /***********************************************************************/
-void DmxIs::breathTest(const IndexVect& lines)
+void DmxIs::breathTest(const IndexSet& lines)
 {
     Lock lock(m_mutex);
     m_breathTest = lines;
@@ -116,6 +121,7 @@ void DmxIs::resetDevice()
         libusb_close(m_devh);
         m_devh = nullptr;
     }
+    m_sn = "N/C";
     m_idx = 0;
 }
 
@@ -186,17 +192,17 @@ void DmxIs::tryReloadDevice()
         }
 
         // Read SN
-        string snNum{"SN="};
+        m_sn.clear();
         while(1)
         {
             const uint16_t data = readReg90();
             if(!data) break;
 
             const char c (data > 0x7F ? '?': (char)data);
-            snNum.push_back(c);
+            m_sn.push_back(c);
         }
 
-        props.emplace_back(snNum);
+        props.emplace_back("SN=" + m_sn);
 
         printf("DMXIS:\n");
         for (const string& prop : props)
@@ -252,8 +258,8 @@ void DmxIs::tryReloadDevice()
 void DmxIs::updateBreathValue(void)
 {
    static float m_breathPhase{0.0f};
-   const float range((DEFAULT_DMX_MAX_VAL - DEFAULT_DMX_MIN_VAL)/2);
-   m_breathValue = DEFAULT_DMX_MIN_VAL + (uint8_t)((1+cos(m_breathPhase)) * range) ;
+   const float range((m_pMax - m_pMin)/2);
+   m_breathValue = m_pMin + (uint8_t)((1+cos(m_breathPhase)) * range) ;
 
    static_assert(DEFAULT_DMX_POLL_MS > 5);
    m_breathPhase += 3.1415 / DEFAULT_DMX_POLL_MS;
