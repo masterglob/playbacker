@@ -627,7 +627,7 @@ class OSC (Thread):
             if sIn == None and self.connecting:
                 try:
                     ip, pIn, pOut = self.connecting
-                    addrIn=("", pOut)
+                    addrIn=("0.0.0.0", pOut)
                     addrOut=(ip,pIn)
                     sIn = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                     sOut = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
