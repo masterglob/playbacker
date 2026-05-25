@@ -57,7 +57,8 @@ public:
 	virtual ~Thread(void);
 	void start(bool needJoin=true);
 	virtual void body(void) =0;
-    void stop(void){m_stop=true;}
+	static void stop(void){m_stop=true;}
+    inline static bool stopping() {return m_stop;}
     bool isDone(void){return m_done;}
     static void join_all(void);
     static void doExit(void);
@@ -66,16 +67,18 @@ protected:
 private:
     struct ThrInfo
     {
-        pthread_t pid;
+        ThrInfo() = delete;
+        ThrInfo(const std::string& n, Thread* pTh);
         std::string name;
+        std::thread thr;
         const std::string toStr(void)const
-        {return std::string("THREAD ") + name+"(" + std::to_string(pid) + ")";}
+        {return std::string("THREAD ") + name;}
     };
     typedef std::vector<ThrInfo,std::allocator<ThrInfo>> ThreadVect;
     static ThreadVect mVect;
-	static void* real_start(void* param);
+	void real_start();
     static bool m_isExitting;
-    bool m_stop;
+    static bool m_stop;
     bool m_done;
 	static std::mutex m_mutex;
 	pthread_t _thread;

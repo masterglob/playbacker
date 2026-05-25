@@ -59,7 +59,6 @@ DisplayManager& DisplayManager::instance(void)
 DisplayManager::DisplayManager(void):
         Thread("DisplayManager"),
         m_display(DISPLAY_I2C_ADDRESS),
-        m_running(true),
         m_ready(false),
         m_printIdx(0),
         m_isInfo(true),
@@ -102,15 +101,14 @@ DisplayManager::DisplayManager(void):
 /*******************************************************************************/
 DisplayManager::~DisplayManager(void)
 {
-    m_running = false;
 }
 
 /*******************************************************************************/
 void DisplayManager::body(void)
 {
-    while (m_running)
+    while (!stopping())
     {
-        for (int i(0);(i<6) && m_running ;i++)
+        for (int i(0);(i<6) && !stopping() ;i++)
         {
             usleep(1000*100);
             m_mutex.lock();

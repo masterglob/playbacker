@@ -7,6 +7,7 @@
 #include "pbkr_menu.h"
 #include "pbkr_projects.h"
 #include "pbkr_dmx.h"
+#include "lumidi/lum_program.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -98,9 +99,10 @@ namespace PBKR
 {
 FileManager fileManager;
 
+bool Thread::m_stop{false};
 /*******************************************************************************/
 Thread::Thread(const std::string& name):
-        m_stop(false), m_done(false),_thread(-1),_attr(nullptr),m_name(name)
+        m_done(false),_thread(-1),_attr(nullptr),m_name(name)
 
 {
 }
@@ -111,33 +113,32 @@ Thread::~Thread(void)
 }
 
 /*******************************************************************************/
+Thread::ThrInfo::ThrInfo(const std::string& n, Thread* pTh):
+        name(n), thr([pTh](){pTh->real_start();})
+{
+
+}
+
+/*******************************************************************************/
 void Thread::start(bool needJoin)
 {
     DEBUG_THREADS("Thread::start\n");
     m_mutex.lock();
-	pthread_create (&_thread, _attr,Thread::real_start, (void*)this);
 	if (needJoin)
 	{
-	    ThrInfo info;
-	    info.name = m_name;
-	    info.pid = _thread;
-	    mVect.push_back(info);
+	    mVect.emplace_back(m_name, this);
 	}
     m_mutex.unlock();
-    DEBUG_THREADS("[THREAD] start %s\n", info.name.c_str());
+    DEBUG_THREADS("[THREAD] start %s\n", m_name.c_str());
 }
 
 /*******************************************************************************/
-void* Thread::real_start(void* param)
+void Thread::real_start()
 {
     DEBUG_THREADS("Thread::real_start\n");
-	Thread* thr((Thread*)param);
-	if (thr)
-	{
-		thr -> body ();
-	    thr->m_done = true;
-	}
-	return nullptr;
+    body ();
+    m_done = true;
+	return;
 }
 
 bool Thread::m_isExitting(false);
@@ -148,12 +149,14 @@ bool Thread::isExitting(void){return m_isExitting;}
 void Thread::join_all(void)
 {
     m_mutex.lock();
+    stop();
     for (auto it = mVect.begin() ; it != mVect.end(); it++)
     {
         ThrInfo& info (*it);
-        void* returnVal;
         DEBUG_THREADS("[THREAD] joining %s...\n", info.toStr().c_str());
-        pthread_join(info.pid, &returnVal);
+        if (info.thr.joinable())
+            info.thr.join();
+
         DEBUG_THREADS("[OK]\n");
     }
     mVect.clear();
@@ -1000,9 +1003,10 @@ void MidiOutSerial::midiThread()
             {
                 int channel = msgOut.channel();
 
+                // std::cout<< "LUMIDI msg on channel " << channel  <<":" << msgOut.dumpHex() << std::endl;
                 if (channel == m_lumiChannel)
                 {
-                    // m_lumiProcessor.process(msgOut);
+                    LUMIDI::Program::feed(msgOut);
                 }
                 else
                 {

@@ -76,7 +76,6 @@ private:
     void refresh(void);
     virtual void body(void);
     I2C_Display m_display;
-    bool m_running;
     bool m_ready;
     volatile uint32_t m_printIdx;
     bool m_isInfo;
