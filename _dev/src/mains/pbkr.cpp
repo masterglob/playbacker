@@ -28,6 +28,8 @@
 #include "pbkr_websrv.h"
 #include "pbkr_dmx.h"
 
+#include "lumidi/lum_program.h"
+
 
 /*******************************************************************************
  *
@@ -213,6 +215,7 @@ int main (int argc, char**argv)
 
         DmxIs dmx;
         initializeDmxParams(dmx);
+        LUMIDI::Program lumiPgr(dmx.getLeds512());
 
 		setRealTimePriority();
 

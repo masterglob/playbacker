@@ -98,6 +98,15 @@ void DmxIs::setLed(uint8_t idx, uint8_t val)
 }
 
 /***********************************************************************/
+uint8_t* DmxIs::getLeds512()
+{
+    // Just for safety
+    while ( m_ledsTx.size() <= NB_LEDS)
+        m_ledsTx.emplace_back(0);
+    return m_ledsTx.data();
+}
+
+/***********************************************************************/
 void DmxIs::breathTest(const IndexSet& lines)
 {
     Lock lock(m_mutex);

@@ -1,10 +1,12 @@
 #include "pbkr_api.h"
+#include "pbkr_cfg.h"
 #include "pbkr_utils.h"
 #include "pbkr_display_mgr.h"
 #include "pbkr_wav.h"
 #include "pbkr_osc.h"
 #include "pbkr_menu.h"
 #include "pbkr_projects.h"
+#include "pbkr_dmx.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -43,6 +45,8 @@
 namespace
 {
 using namespace PBKR;
+
+const std::string LUMI_CHN("LumidiChannel");
 
 #define FAST_FORWARD_BACKWARD_S 20
 #define PAUSE_BACKWARD_S 5
@@ -916,7 +920,7 @@ const char* getIPNetMask (const char* device)
            }
 
        }
-       if (ifAddrStruct!=NULL) freeifaddrs(ifAddrStruct);
+       if (ifAddrStruct!=nullptr) freeifaddrs(ifAddrStruct);
 
     return ipaddr;
 }
@@ -924,9 +928,20 @@ const char* getIPNetMask (const char* device)
 /*******************************************************************************
  * SERIAL LINE (MIDI)
  *******************************************************************************/
+
+MidiOutSerial* MidiOutSerial::m_instance{nullptr};
+
 MidiOutSerial::MidiOutSerial(const char* filename):
     m_handle (file_open_write (filename))
 {
+    m_instance = this;
+    setLumiChannel(Config::instance().loadInt(LUMI_CHN, 0));
+    if (m_lumiChannel < 0 || m_lumiChannel > 15)
+    {
+        m_lumiChannel = 0;
+        Config::instance().saveInt(LUMI_CHN, m_lumiChannel);
+    }
+    printf("LUMIDI channel : %d\n", m_lumiChannel+1);
     if (m_handle < 0)
     {
 
@@ -947,6 +962,7 @@ MidiOutSerial::MidiOutSerial(const char* filename):
 
 MidiOutSerial::~MidiOutSerial()
 {
+    m_instance = nullptr;
     m_running = false;
     if (m_thread.joinable())
         m_thread.join();
@@ -954,31 +970,61 @@ MidiOutSerial::~MidiOutSerial()
         close(m_handle);
 }
 
+void MidiOutSerial::setLumiChannel(int newChannel)
+{
+    m_lumiChannel = newChannel;
+    if (m_lumiChannel < 0 || m_lumiChannel > 15)
+    {
+        m_lumiChannel = 0;
+    }
+    Config::instance().saveInt(LUMI_CHN, m_lumiChannel);
+}
+
 void MidiOutSerial::midiThread()
 {
     setRealTimePriority(85);
 
-    static constexpr size_t BUFFER_SIZE = 64;
-    uint8_t buffer[BUFFER_SIZE];
+    LUMIDI::MidiParser parser;
 
-    while (m_running) {
-        size_t count = 0;
+    uint8_t byte;
 
-        while (count < BUFFER_SIZE && pop(buffer[count])) {
-            count++;
-        }
+    LUMIDI::MidiMessage msgOut;
 
-        if (count > 0) {
-            write(m_handle, buffer, count);
-            // Debug print
-            DEBUG_MIDI("MIDI OUT [%zu]: ", count);
-            for (size_t i = 0; i < count; ++i) {
-                DEBUG_MIDI("%02X ", buffer[i]);
+    while (m_running)
+    {
+        if (pop(byte))
+        {
+            parser.feed(byte);
+
+            while (parser.pop(msgOut))
+            {
+                int channel = msgOut.channel();
+
+                if (channel == m_lumiChannel)
+                {
+                    // m_lumiProcessor.process(msgOut);
+                }
+                else
+                {
+                    forwardMessage(msgOut);
+                }
             }
-            DEBUG_MIDI("\n");
-        } else {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
+        else
+        {
+            std::this_thread::sleep_for(
+                std::chrono::microseconds(100));
+        }
+    }
+}
+
+void MidiOutSerial::forwardMessage(const LUMIDI::MidiMessage& msg)
+{
+    write(m_handle, &msg.status, 1);
+
+    if (msg.length > 0)
+    {
+        write(m_handle, msg.data.data(), msg.length);
     }
 }
 

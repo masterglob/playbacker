@@ -16,6 +16,8 @@
 #include "pbkr_config.h"
 #include "pbkr_types.h"
 
+#include "lumidi/lum_types.h"
+
 namespace PBKR
 {
 
@@ -330,6 +332,10 @@ private:
 /*******************************************************************************
  * SERIAL LINE (MIDI)
  *******************************************************************************/
+/** This class routes the MIDI signals:
+ * - To direct output
+ * - To LUMIDI mapper (led controls). Reserved channel via config 'LumidiChannel'
+ */
 class MidiOutSerial : public ByteQueue
 {
 public:
@@ -337,12 +343,20 @@ public:
     MidiOutSerial() = delete;
     ~MidiOutSerial();
 
+    void setLumiChannel(int);
+    inline int getLumiChannel()const{return m_lumiChannel;}
+
+    static inline MidiOutSerial* instance(){return m_instance;}
+
 private:
+    static MidiOutSerial* m_instance;
     int m_handle;
+    int m_lumiChannel{0};
     std::thread m_thread;
     std::atomic<bool> m_running{true};
 
     void midiThread();
+    void forwardMessage(const LUMIDI::MidiMessage& msg);
 };
 
 /*******************************************************************************

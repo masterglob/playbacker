@@ -238,12 +238,15 @@ private:
     uint8_t m_maxPow;
     DmxIs::IndexSet m_breathSet;
     bool m_breathAll{false};
-    const size_t m_nbSubmenus{4};
+    const size_t m_nbSubmenus{5};
+    int m_midiChannel;
     static const string m_saveSectionMinPow;
     static const string m_saveSectionMaxPow;
+    static const string m_saveSectionMidiChannel;
 };
 const string DmxMenuItem::m_saveSectionMinPow("DmxMinPow");
 const string DmxMenuItem::m_saveSectionMaxPow("DmxMaxPow");
+const string DmxMenuItem::m_saveSectionMidiChannel("DmxMidiChannel");
 static DmxMenuItem dmxMenuItem ("DMX config", &mainMenuItem);
 
 /*******************************************************************************/
@@ -917,6 +920,7 @@ DmxMenuItem::DmxMenuItem(const std::string & title, MenuItem* parent)
 
     m_minPow = Config::instance().loadInt(m_saveSectionMinPow, 0);
     m_maxPow = Config::instance().loadInt(m_saveSectionMaxPow, 255);
+    m_midiChannel =  Config::instance().loadInt(m_saveSectionMidiChannel, 0);
 }
 
 /*******************************************************************************/
@@ -934,14 +938,14 @@ const std::string DmxMenuItem::menul1(void)
 const std::string DmxMenuItem::menul2(void)
 {
     DmxIs* pDmx = DmxIs::instance();
-    if (!pDmx) return "N/C";
     switch(m_menuIdx)
     {
     case 0:
     {
-        return "SN="+pDmx->getSN();
+        return "SN="+ (pDmx ? pDmx->getSN() : "N/C");
     }
     case 1:
+        if (!pDmx) return "Breath #N/C";
         if (m_breathIdx > 0)
         {
             const std::string prefix= (m_breathSet.find(m_breathIdx - 1) != m_breathSet.end() ? "*" : " ");
@@ -953,11 +957,17 @@ const std::string DmxMenuItem::menul2(void)
             return prefix+ " Breath (all)";
         }
     case 2:
-        return "Min Pow=" + std::to_string(pDmx->getMin());
+        return "Min Pow=" + (pDmx ? std::to_string(pDmx->getMin()) : "N/C");
     case 3:
-        return "Max Pow=" + std::to_string(pDmx->getMax());
+        if (!pDmx) return "N/C";
+        return "Max Pow=" + (pDmx ?  std::to_string(pDmx->getMax()) : "N/C");
+    case 4:
+    {
+        MidiOutSerial* pMidi = MidiOutSerial::instance();
+        return "Midi Chn=" + (pMidi ? std::to_string(pMidi->getLumiChannel() + 1) :  "???");
+    }
     default:
-        return "??";
+        return "?" + std::to_string(m_menuIdx) + "?";
     }
 }
 
@@ -966,7 +976,6 @@ const std::string DmxMenuItem::menul2(void)
 void DmxMenuItem::onUpDownPress(const bool isUp)
 {
     DmxIs* pDmx = DmxIs::instance();
-    if (!pDmx) return ;
 
     m_minPow = pDmx->getMin();
     m_maxPow = pDmx->getMax();
@@ -975,11 +984,13 @@ void DmxMenuItem::onUpDownPress(const bool isUp)
     {
     case 1:
     {
+        if (!pDmx) return ;
         incOrDecMod(m_breathIdx, isUp,  256);
     }
     break;
     case 2:
     {
+        if (!pDmx) return ;
         incOrDecMod(m_minPow, isUp, 256);
         Config::instance().saveInt(m_saveSectionMinPow, m_minPow);
         pDmx->setPowerRange(m_minPow, m_maxPow);
@@ -987,9 +998,19 @@ void DmxMenuItem::onUpDownPress(const bool isUp)
     break;
     case 3:
     {
+        if (!pDmx) return ;
         incOrDecMod(m_maxPow, isUp, 256);
         Config::instance().saveInt(m_saveSectionMaxPow, m_maxPow);
         pDmx->setPowerRange(m_minPow, m_maxPow);
+    }
+    break;
+    case 4:
+    {
+        MidiOutSerial* pMidi = MidiOutSerial::instance();
+        if (!pMidi) return;
+        size_t idx(pMidi->getLumiChannel());
+        incOrDecMod(idx, isUp, 16);
+        pMidi->setLumiChannel(idx);
     }
     break;
     default:
@@ -1000,6 +1021,7 @@ void DmxMenuItem::onUpDownPress(const bool isUp)
 /*******************************************************************************/
 void DmxMenuItem::onLeftRightPress(const bool isLeft)
 {
+    printf ("m_menuIdx=%u, m_nbSubmenus=%u\n", m_menuIdx, m_nbSubmenus);
     ::incOrDecMod(m_menuIdx, !isLeft, m_nbSubmenus);
 }
 

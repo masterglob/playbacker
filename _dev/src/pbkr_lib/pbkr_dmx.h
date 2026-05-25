@@ -30,6 +30,8 @@ public:
     void join();
     void setLed(uint8_t idx, uint8_t val);
 
+    uint8_t* getLeds512();
+
     inline std::string getSN()const {return m_sn;};
     void setPowerRange(const uint8_t pMin, const uint8_t pMax);
     void breathTest(const IndexSet& lines={});
