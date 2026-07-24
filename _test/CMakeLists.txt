@@ -28,6 +28,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
     ${CMAKE_BINARY_DIR}/../bin/Release
 )
 
+
 #
 # Build par défaut : Debug
 #
@@ -50,6 +51,13 @@ else()
     )
     set(CMAKE_C_FLAGS_DEBUG "-g -O0")
     set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+endif()
+
+
+if(WIN32)
+    include_directories(
+        ${CMAKE_CURRENT_SOURCE_DIR}/stubs
+    )
 endif()
 
 #
@@ -82,7 +90,9 @@ file(GLOB MAIN_SOURCES
 
 foreach(MAIN_FILE ${MAIN_SOURCES})
 
+
     get_filename_component(EXE_NAME ${MAIN_FILE} NAME_WE)
+    Message("Building ${EXE_NAME}")
 
     add_executable(${EXE_NAME}
         ${MAIN_FILE}
@@ -92,5 +102,6 @@ foreach(MAIN_FILE ${MAIN_SOURCES})
         PRIVATE
             pbkr_lib
     )
+        
 
 endforeach()
