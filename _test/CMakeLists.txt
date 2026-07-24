@@ -13,6 +13,22 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #
+# Répertoires de sortie
+#
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY
+    ${CMAKE_BINARY_DIR}/../bin
+)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG
+    ${CMAKE_BINARY_DIR}/../bin/Debug
+)
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE
+    ${CMAKE_BINARY_DIR}/../bin/Release
+)
+
+#
 # Build par défaut : Debug
 #
 
